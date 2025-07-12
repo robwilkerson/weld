@@ -6,8 +6,24 @@ export function CompareFiles(arg1, arg2) {
   return window['go']['main']['App']['CompareFiles'](arg1, arg2);
 }
 
+export function CopyLineToFile(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CopyLineToFile'](arg1, arg2, arg3, arg4);
+}
+
 export function ReadFileContent(arg1) {
   return window['go']['main']['App']['ReadFileContent'](arg1);
+}
+
+export function ReadFileContentWithCache(arg1) {
+  return window['go']['main']['App']['ReadFileContentWithCache'](arg1);
+}
+
+export function RemoveLineFromFile(arg1, arg2) {
+  return window['go']['main']['App']['RemoveLineFromFile'](arg1, arg2);
+}
+
+export function SaveFile(arg1) {
+  return window['go']['main']['App']['SaveFile'](arg1);
 }
 
 export function SelectFile() {

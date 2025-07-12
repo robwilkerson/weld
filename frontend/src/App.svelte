@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { SelectFile, CompareFiles, type DiffResult, type DiffLine } from '../wailsjs/go/main/App.js'
+  import { SelectFile, CompareFiles, CopyLineToFile, SaveFile, type DiffResult, type DiffLine } from '../wailsjs/go/main/App.js'
   import Prism from 'prismjs'
   
   // Import core languages
@@ -31,11 +31,17 @@
   let rightPane: HTMLElement
   let isScrollSyncing: boolean = false
   let isDarkMode: boolean = true
+  let hasUnsavedChanges: boolean = false
   
   $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath
+  
+  // Only show "files are identical" banner if they're identical on disk (no unsaved changes)
   $: areFilesIdentical = diffResult && diffResult.lines && diffResult.lines.length > 0 && 
       diffResult.lines.every(line => line.type === 'same') && 
-      leftFilePath !== rightFilePath
+      leftFilePath !== rightFilePath &&
+      !hasUnsavedChanges
+
+  $: lineNumberWidth = getLineNumberWidth()
 
   async function selectLeftFile(): Promise<void> {
     try {
@@ -45,6 +51,7 @@
       if (path) {
         leftFilePath = path
         leftFileName = path.split('/').pop() || path
+        hasUnsavedChanges = false // Reset unsaved changes when selecting new files
         errorMessage = `Left file selected: ${leftFileName}`
         diffResult = null // Clear previous results
       } else {
@@ -64,6 +71,7 @@
       if (path) {
         rightFilePath = path
         rightFileName = path.split('/').pop() || path
+        hasUnsavedChanges = false // Reset unsaved changes when selecting new files
         errorMessage = `Right file selected: ${rightFileName}`
         diffResult = null // Clear previous results
       } else {
@@ -169,8 +177,8 @@
 
   async function initializeDefaultFiles(): Promise<void> {
     try {
-      const leftPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-sample-1.js'
-      const rightPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-sample-2.js'
+      const leftPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-1.js'
+      const rightPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-2.js'
       
       leftFilePath = leftPath
       leftFileName = leftPath.split('/').pop() || leftPath
@@ -198,8 +206,17 @@
     
     try {
       errorMessage = "Copying line to right file..."
-      // TODO: Implement backend function to copy line
-      console.log("Copying line to right:", line.leftLine)
+      
+      // Copy the line from left to right file at the appropriate position
+      await CopyLineToFile(leftFilePath, rightFilePath, line.leftNumber, line.leftLine)
+      
+      // Mark as having unsaved changes
+      hasUnsavedChanges = true
+      
+      // Refresh the diff to show the changes
+      await compareBothFiles()
+      
+      errorMessage = "Line copied successfully"
     } catch (error) {
       console.error("Error copying line to right:", error)
       errorMessage = `Error copying line: ${error}`
@@ -214,8 +231,17 @@
     
     try {
       errorMessage = "Copying line to left file..."
-      // TODO: Implement backend function to copy line
-      console.log("Copying line to left:", line.rightLine)
+      
+      // Copy the line from right to left file at the appropriate position
+      await CopyLineToFile(rightFilePath, leftFilePath, line.rightNumber, line.rightLine)
+      
+      // Mark as having unsaved changes
+      hasUnsavedChanges = true
+      
+      // Refresh the diff to show the changes
+      await compareBothFiles()
+      
+      errorMessage = "Line copied successfully"
     } catch (error) {
       console.error("Error copying line to left:", error)
       errorMessage = `Error copying line: ${error}`
@@ -228,6 +254,60 @@
 
   async function copyLineFromLeft(lineIndex: number): Promise<void> {
     await copyLineToRight(lineIndex)
+  }
+
+  async function saveLeftFile(): Promise<void> {
+    try {
+      await SaveFile(leftFilePath)
+      hasUnsavedChanges = false
+      errorMessage = "Left file saved successfully"
+    } catch (error) {
+      console.error("Error saving left file:", error)
+      errorMessage = `Error saving left file: ${error}`
+    }
+  }
+
+  async function saveRightFile(): Promise<void> {
+    try {
+      await SaveFile(rightFilePath)
+      hasUnsavedChanges = false
+      errorMessage = "Right file saved successfully"
+    } catch (error) {
+      console.error("Error saving right file:", error)
+      errorMessage = `Error saving right file: ${error}`
+    }
+  }
+
+  function handleKeydown(event: KeyboardEvent): void {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+    const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey
+    
+    if (isCtrlOrCmd && event.key === 's') {
+      event.preventDefault()
+      
+      // Save both files if they have changes
+      if (leftFilePath) {
+        saveLeftFile()
+      }
+      if (rightFilePath) {
+        saveRightFile()
+      }
+    }
+  }
+
+  function getLineNumberWidth(): string {
+    if (!diffResult || !diffResult.lines.length) return '32px'
+    
+    // Find the highest line number
+    const maxLineNumber = Math.max(
+      ...diffResult.lines.map(line => Math.max(line.leftNumber || 0, line.rightNumber || 0))
+    )
+    
+    // Calculate width based on number of digits - much tighter calculation
+    const digits = Math.max(2, maxLineNumber.toString().length)
+    const width = digits * 6 + 8 // ~6px per digit + minimal 8px padding (4px each side)
+    
+    return `${width}px`
   }
 
   function getLanguageFromFilename(filename: string): string {
@@ -355,6 +435,9 @@
     initializeDefaultFiles()
     document.documentElement.setAttribute('data-theme', 'dark')
     
+    // Add keyboard event listener
+    document.addEventListener('keydown', handleKeydown)
+    
     // Test Prism.js
     console.log('Testing Prism.js...')
     console.log('Prism object:', Prism)
@@ -364,6 +447,11 @@
     const testCode = 'function test() { return "hello"; }'
     const testResult = Prism.highlight(testCode, Prism.languages.javascript, 'javascript')
     console.log('Test highlighting result:', testResult)
+    
+    // Cleanup on destroy
+    return () => {
+      document.removeEventListener('keydown', handleKeydown)
+    }
   })
 </script>
 
@@ -401,7 +489,7 @@
 
   <div class="diff-container">
     {#if diffResult}
-      <div class="file-header">
+      <div class="file-header" style="--line-number-width: {lineNumberWidth}">
         <div class="file-info left">{getDisplayPath(leftFilePath, rightFilePath, true)}</div>
         <div class="file-info right">{getDisplayPath(leftFilePath, rightFilePath, false)}</div>
       </div>
@@ -422,7 +510,7 @@
         </div>
       {/if}
       
-      <div class="diff-content">
+      <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
         <div class="left-pane" bind:this={leftPane} on:scroll={syncLeftScroll}>
           <div class="pane-content">
             {#each diffResult.lines as line, index}
@@ -727,7 +815,7 @@
 
   .file-info {
     flex: 1;
-    padding: 0.5rem 0.5rem 0.5rem calc(50px + 1rem + 1px);
+    padding: 0.5rem 0.5rem 0.5rem calc(var(--line-number-width, 32px) + 0.5rem + 1px);
     font-weight: 400;
     color: #4c4f69;
     text-align: left;
@@ -748,8 +836,8 @@
     flex: 1;
     min-width: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    font-size: 0.9rem;
-    line-height: 1.4;
+    font-size: 0.8rem;
+    line-height: 1.3;
     overflow: auto;
     background: #eff1f5;
     position: relative;
@@ -784,7 +872,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: calc(50px + 1rem + 1px);
+    width: calc(var(--line-number-width, 32px) + 1px);
     height: 100%;
     background: #e6e9ef;
     border-right: 1px solid #dce0e8;
@@ -794,15 +882,15 @@
 
   .line {
     display: flex;
-    min-height: 1.4em;
+    min-height: 1.3em;
     white-space: pre;
     align-items: flex-start;
     width: 100%;
   }
 
   .line-number {
-    width: 50px;
-    padding: 0 0.5rem;
+    width: var(--line-number-width, 32px);
+    padding: 0 5px 0 5px;
     text-align: right;
     color: #6c6f85;
     background: #e6e9ef;
@@ -812,6 +900,7 @@
     position: sticky;
     left: 0;
     z-index: 1;
+    font-size: 0.75rem;
   }
 
   .line-text {

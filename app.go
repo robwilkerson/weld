@@ -83,14 +83,14 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 	fmt.Printf("Comparing files: %s vs %s\n", leftPath, rightPath)
 	
-	leftLines, err := a.ReadFileContent(leftPath)
+	leftLines, err := a.ReadFileContentWithCache(leftPath)
 	if err != nil {
 		fmt.Printf("Error reading left file: %v\n", err)
 		return nil, fmt.Errorf("error reading left file: %w", err)
 	}
 	fmt.Printf("Left file has %d lines\n", len(leftLines))
 
-	rightLines, err := a.ReadFileContent(rightPath)
+	rightLines, err := a.ReadFileContentWithCache(rightPath)
 	if err != nil {
 		fmt.Printf("Error reading right file: %v\n", err)
 		return nil, fmt.Errorf("error reading right file: %w", err)
@@ -194,4 +194,111 @@ func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
 		}
 	}
 	return -1
+}
+
+// CopyLineToFile copies a line from one file to another in memory
+func (a *App) CopyLineToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
+	fmt.Printf("CopyLineToFile: from %s to %s, line %d: %s\n", sourceFile, targetFile, lineNumber, lineContent)
+	
+	// Read target file
+	targetLines, err := a.ReadFileContent(targetFile)
+	if err != nil {
+		return fmt.Errorf("failed to read target file: %w", err)
+	}
+	
+	// Insert line at specified position (1-based line numbers)
+	insertIndex := lineNumber - 1
+	if insertIndex < 0 {
+		insertIndex = 0
+	}
+	if insertIndex > len(targetLines) {
+		insertIndex = len(targetLines)
+	}
+	
+	// Create new slice with inserted line
+	newLines := make([]string, 0, len(targetLines)+1)
+	newLines = append(newLines, targetLines[:insertIndex]...)
+	newLines = append(newLines, lineContent)
+	newLines = append(newLines, targetLines[insertIndex:]...)
+	
+	// Store in memory (we'll implement a cache for unsaved changes)
+	return a.storeFileInMemory(targetFile, newLines)
+}
+
+// RemoveLineFromFile removes a line from a file in memory
+func (a *App) RemoveLineFromFile(targetFile string, lineNumber int) error {
+	fmt.Printf("RemoveLineFromFile: from %s, line %d\n", targetFile, lineNumber)
+	
+	// Read target file
+	targetLines, err := a.ReadFileContent(targetFile)
+	if err != nil {
+		return fmt.Errorf("failed to read target file: %w", err)
+	}
+	
+	// Remove line at specified position (1-based line numbers)
+	removeIndex := lineNumber - 1
+	if removeIndex < 0 || removeIndex >= len(targetLines) {
+		return fmt.Errorf("line number %d is out of range", lineNumber)
+	}
+	
+	// Create new slice without the line
+	newLines := make([]string, 0, len(targetLines)-1)
+	newLines = append(newLines, targetLines[:removeIndex]...)
+	newLines = append(newLines, targetLines[removeIndex+1:]...)
+	
+	// Store in memory
+	return a.storeFileInMemory(targetFile, newLines)
+}
+
+// In-memory storage for unsaved file changes
+var fileCache = make(map[string][]string)
+
+func (a *App) storeFileInMemory(filepath string, lines []string) error {
+	fileCache[filepath] = lines
+	fmt.Printf("Stored %d lines in memory for %s\n", len(lines), filepath)
+	return nil
+}
+
+// ReadFileContent now checks memory cache first
+func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
+	// Check memory cache first
+	if cachedLines, exists := fileCache[filepath]; exists {
+		fmt.Printf("Reading %d lines from cache for %s\n", len(cachedLines), filepath)
+		return cachedLines, nil
+	}
+	
+	// Fall back to reading from disk
+	return a.ReadFileContent(filepath)
+}
+
+// SaveFile saves the in-memory changes to disk
+func (a *App) SaveFile(filepath string) error {
+	cachedLines, exists := fileCache[filepath]
+	if !exists {
+		return fmt.Errorf("no unsaved changes for file: %s", filepath)
+	}
+	
+	// Write to file
+	file, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+	
+	for i, line := range cachedLines {
+		if i > 0 {
+			if _, err := file.WriteString("\n"); err != nil {
+				return fmt.Errorf("failed to write newline: %w", err)
+			}
+		}
+		if _, err := file.WriteString(line); err != nil {
+			return fmt.Errorf("failed to write line: %w", err)
+		}
+	}
+	
+	// Remove from cache after successful save
+	delete(fileCache, filepath)
+	fmt.Printf("Saved file %s and removed from cache\n", filepath)
+	
+	return nil
 }
