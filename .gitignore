@@ -1,4 +1,4 @@
 .claude
-build/bin
+build
 node_modules
 frontend/dist

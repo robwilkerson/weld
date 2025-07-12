@@ -1,6 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { SelectFile, CompareFiles, type DiffResult, type DiffLine } from '../wailsjs/go/main/App.js'
+  import Prism from 'prismjs'
+  
+  // Import core languages
+  import 'prismjs/components/prism-javascript'
+  import 'prismjs/components/prism-typescript'
+  import 'prismjs/components/prism-java'
+  import 'prismjs/components/prism-go'
+  import 'prismjs/components/prism-python'
+  import 'prismjs/components/prism-php'
+  import 'prismjs/components/prism-ruby'
+  import 'prismjs/components/prism-csharp'
+  import 'prismjs/components/prism-css'
+  import 'prismjs/components/prism-json'
+  import 'prismjs/components/prism-markdown'
+  import 'prismjs/components/prism-bash'
+  
+  // Import Prism CSS theme - try different approach
+  import 'prismjs/themes/prism-tomorrow.css'
 
   let leftFilePath: string = ""
   let rightFilePath: string = ""
@@ -172,9 +190,180 @@
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
   }
 
+  async function copyLineToRight(lineIndex: number): Promise<void> {
+    if (!diffResult || !diffResult.lines[lineIndex]) return
+    
+    const line = diffResult.lines[lineIndex]
+    if (line.type !== 'removed') return
+    
+    try {
+      errorMessage = "Copying line to right file..."
+      // TODO: Implement backend function to copy line
+      console.log("Copying line to right:", line.leftLine)
+    } catch (error) {
+      console.error("Error copying line to right:", error)
+      errorMessage = `Error copying line: ${error}`
+    }
+  }
+
+  async function copyLineToLeft(lineIndex: number): Promise<void> {
+    if (!diffResult || !diffResult.lines[lineIndex]) return
+    
+    const line = diffResult.lines[lineIndex]
+    if (line.type !== 'added') return
+    
+    try {
+      errorMessage = "Copying line to left file..."
+      // TODO: Implement backend function to copy line
+      console.log("Copying line to left:", line.rightLine)
+    } catch (error) {
+      console.error("Error copying line to left:", error)
+      errorMessage = `Error copying line: ${error}`
+    }
+  }
+
+  async function copyLineFromRight(lineIndex: number): Promise<void> {
+    await copyLineToLeft(lineIndex)
+  }
+
+  async function copyLineFromLeft(lineIndex: number): Promise<void> {
+    await copyLineToRight(lineIndex)
+  }
+
+  function getLanguageFromFilename(filename: string): string {
+    if (!filename) return 'markup'
+    
+    const ext = filename.split('.').pop()?.toLowerCase()
+    console.log('Language detection:', filename, 'extension:', ext)
+    
+    const languageMap: Record<string, string> = {
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'java': 'java',
+      'go': 'go',
+      'py': 'python',
+      'php': 'php',
+      'rb': 'ruby',
+      'cs': 'csharp',
+      'css': 'css',
+      'scss': 'css',
+      'sass': 'css',
+      'json': 'json',
+      'md': 'markdown',
+      'sh': 'bash',
+      'bash': 'bash',
+      'zsh': 'bash',
+      'c': 'c',
+      'cpp': 'cpp',
+      'h': 'c',
+      'hpp': 'cpp'
+    }
+    
+    const language = languageMap[ext] || 'markup'
+    console.log('Detected language:', language)
+    return language
+  }
+
+  function highlightCode(code: string, language: string): string {
+    if (!code.trim()) return code
+    
+    console.log('Highlighting code:', code.substring(0, 50), 'with language:', language)
+    console.log('Available languages:', Object.keys(Prism.languages))
+    
+    try {
+      const grammar = Prism.languages[language]
+      console.log('Grammar found for', language, ':', !!grammar)
+      
+      if (grammar) {
+        const highlighted = Prism.highlight(code, grammar, language)
+        console.log('Original:', code.substring(0, 30))
+        console.log('Highlighted:', highlighted.substring(0, 50))
+        return highlighted
+      } else {
+        console.warn('No grammar found for language:', language)
+      }
+    } catch (error) {
+      console.warn('Syntax highlighting error:', error)
+    }
+    
+    return code
+  }
+
+  function getHighlightedLine(line: string, filename: string): string {
+    if (!line.trim()) return line
+    
+    let highlighted = line
+    
+    // Store original positions to avoid double-highlighting
+    const protectedRanges: Array<{start: number, end: number}> = []
+    
+    function addProtection(match: RegExpMatchArray) {
+      if (match.index !== undefined) {
+        protectedRanges.push({
+          start: match.index,
+          end: match.index + match[0].length
+        })
+      }
+    }
+    
+    function isProtected(start: number, end: number): boolean {
+      return protectedRanges.some(range => 
+        (start >= range.start && start < range.end) ||
+        (end > range.start && end <= range.end) ||
+        (start <= range.start && end >= range.end)
+      )
+    }
+    
+    // 1. Comments first
+    highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
+      const fullMatch = args[args.length - 1] as RegExpMatchArray
+      addProtection(fullMatch)
+      return `<span class="syntax-comment">${match}</span>`
+    })
+    
+    // 2. Strings
+    highlighted = highlighted.replace(/(["'`])([^"'`]*?)\1/g, (match, ...args) => {
+      const fullMatch = args[args.length - 1] as RegExpMatchArray
+      addProtection(fullMatch)
+      return `<span class="syntax-string">${match}</span>`
+    })
+    
+    // 3. Keywords (simpler approach)
+    const keywords = ['function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'class', 'export', 'import', 'new', 'this', 'true', 'false', 'null', 'undefined']
+    keywords.forEach(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g')
+      let match
+      while ((match = regex.exec(line)) !== null) {
+        if (!isProtected(match.index, match.index + match[0].length)) {
+          highlighted = highlighted.replace(match[0], `<span class="syntax-keyword">${match[0]}</span>`)
+        }
+      }
+    })
+    
+    // 4. Numbers
+    highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, '<span class="syntax-number">$1</span>')
+    
+    // 5. Function calls
+    highlighted = highlighted.replace(/\b([a-zA-Z_$]\w*)\s*(?=\()/g, '<span class="syntax-function">$1</span>')
+    
+    return highlighted
+  }
+
   onMount(() => {
     initializeDefaultFiles()
     document.documentElement.setAttribute('data-theme', 'dark')
+    
+    // Test Prism.js
+    console.log('Testing Prism.js...')
+    console.log('Prism object:', Prism)
+    console.log('Available languages:', Object.keys(Prism.languages))
+    
+    // Test basic JavaScript highlighting
+    const testCode = 'function test() { return "hello"; }'
+    const testResult = Prism.highlight(testCode, Prism.languages.javascript, 'javascript')
+    console.log('Test highlighting result:', testResult)
   })
 </script>
 
@@ -236,21 +425,37 @@
       <div class="diff-content">
         <div class="left-pane" bind:this={leftPane} on:scroll={syncLeftScroll}>
           <div class="pane-content">
-            {#each diffResult.lines as line}
+            {#each diffResult.lines as line, index}
               <div class="line {getLineClass(line.type)}">
                 <span class="line-number">{line.leftNumber || ''}</span>
-                <span class="line-text">{line.leftLine || ' '}</span>
+                <span class="line-text">{@html getHighlightedLine(line.leftLine || ' ', leftFilePath)}</span>
               </div>
             {/each}
           </div>
         </div>
         
+        <div class="center-gutter">
+          {#each diffResult.lines as line, index}
+            <div class="gutter-line">
+              {#if line.type === 'added'}
+                <button class="gutter-arrow left-arrow" on:click={() => copyLineToLeft(index)} title="Copy left">
+                  ←
+                </button>
+              {:else if line.type === 'removed'}
+                <button class="gutter-arrow right-arrow" on:click={() => copyLineToRight(index)} title="Copy right">
+                  →
+                </button>
+              {/if}
+            </div>
+          {/each}
+        </div>
+        
         <div class="right-pane" bind:this={rightPane} on:scroll={syncRightScroll}>
           <div class="pane-content">
-            {#each diffResult.lines as line}
+            {#each diffResult.lines as line, index}
               <div class="line {getLineClass(line.type)}">
                 <span class="line-number">{line.rightNumber || ''}</span>
-                <span class="line-text">{line.rightLine || ' '}</span>
+                <span class="line-text">{@html getHighlightedLine(line.rightLine || ' ', rightFilePath)}</span>
               </div>
             {/each}
           </div>
@@ -542,8 +747,6 @@
   .left-pane, .right-pane {
     flex: 1;
     min-width: 0;
-    width: 50%;
-    border-right: 1px solid #dce0e8;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     font-size: 0.9rem;
     line-height: 1.4;
@@ -552,8 +755,21 @@
     position: relative;
   }
 
-  .right-pane {
-    border-right: none;
+  .center-gutter {
+    width: 50px;
+    background: #e6e9ef;
+    border-left: 1px solid #dce0e8;
+    border-right: 1px solid #dce0e8;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .gutter-line {
+    min-height: 1.4em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
   }
 
   .pane-content {
@@ -813,5 +1029,234 @@
 
   :global([data-theme="dark"]) .info-text {
     color: #7dc4e4;
+  }
+
+  .gutter-arrow {
+    background: #fff;
+    border: 1px solid #dce0e8;
+    border-radius: 4px;
+    width: 32px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .gutter-arrow:hover {
+    background: #f8f9fa;
+    border-color: #acb0be;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: scale(1.05);
+  }
+
+  .left-arrow {
+    color: #16a34a;
+  }
+
+  .left-arrow:hover {
+    color: #15803d;
+    background: #f0fdf4;
+    border-color: #16a34a;
+  }
+
+  .right-arrow {
+    color: #dc2626;
+  }
+
+  .right-arrow:hover {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #dc2626;
+  }
+
+  /* Dark mode gutter arrows */
+  :global([data-theme="dark"]) .center-gutter {
+    background: #1e2030;
+    border-left-color: #363a4f;
+    border-right-color: #363a4f;
+  }
+
+  :global([data-theme="dark"]) .gutter-arrow {
+    background: #363a4f;
+    border-color: #5b6078;
+    color: #cad3f5;
+  }
+
+  :global([data-theme="dark"]) .gutter-arrow:hover {
+    background: #414559;
+    border-color: #6e738d;
+  }
+
+  :global([data-theme="dark"]) .left-arrow {
+    color: #a6da95;
+  }
+
+  :global([data-theme="dark"]) .left-arrow:hover {
+    color: #a6da95;
+    background: #1e3a2e;
+    border-color: #a6da95;
+  }
+
+  :global([data-theme="dark"]) .right-arrow {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .right-arrow:hover {
+    color: #ed8796;
+    background: #3e2723;
+    border-color: #ed8796;
+  }
+
+  /* Custom syntax highlighting for our theme */
+  .line-text :global(.syntax-keyword) {
+    color: #8839ef;
+    font-weight: 600;
+  }
+
+  .line-text :global(.syntax-string) {
+    color: #40a02b;
+  }
+
+  .line-text :global(.syntax-comment) {
+    color: #6c6f85;
+    font-style: italic;
+  }
+
+  .line-text :global(.syntax-number) {
+    color: #d20f39;
+  }
+
+  .line-text :global(.syntax-function) {
+    color: #1e66f5;
+    font-weight: 500;
+  }
+
+  /* Dark mode syntax highlighting */
+  :global([data-theme="dark"]) .line-text :global(.syntax-keyword) {
+    color: #c6a0f6;
+    font-weight: 600;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.syntax-string) {
+    color: #a6da95;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.syntax-comment) {
+    color: #6e738d;
+    font-style: italic;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.syntax-number) {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.syntax-function) {
+    color: #8aadf4;
+    font-weight: 500;
+  }
+
+  /* Syntax highlighting overrides */
+  .line-text :global(.token.comment),
+  .line-text :global(.token.prolog),
+  .line-text :global(.token.doctype),
+  .line-text :global(.token.cdata) {
+    color: #6a737d !important;
+  }
+
+  .line-text :global(.token.punctuation) {
+    color: #586069 !important;
+  }
+
+  .line-text :global(.token.property),
+  .line-text :global(.token.tag),
+  .line-text :global(.token.boolean),
+  .line-text :global(.token.number),
+  .line-text :global(.token.constant),
+  .line-text :global(.token.symbol),
+  .line-text :global(.token.deleted) {
+    color: #d73a49 !important;
+  }
+
+  .line-text :global(.token.selector),
+  .line-text :global(.token.attr-name),
+  .line-text :global(.token.string),
+  .line-text :global(.token.char),
+  .line-text :global(.token.builtin),
+  .line-text :global(.token.inserted) {
+    color: #032f62 !important;
+  }
+
+  .line-text :global(.token.operator),
+  .line-text :global(.token.entity),
+  .line-text :global(.token.url),
+  .line-text :global(.language-css .token.string),
+  .line-text :global(.style .token.string) {
+    color: #24292e !important;
+  }
+
+  .line-text :global(.token.atrule),
+  .line-text :global(.token.attr-value),
+  .line-text :global(.token.keyword) {
+    color: #d73a49 !important;
+  }
+
+  .line-text :global(.token.function),
+  .line-text :global(.token.class-name) {
+    color: #6f42c1 !important;
+  }
+
+  /* Dark mode syntax highlighting */
+  :global([data-theme="dark"]) .line-text :global(.token.comment),
+  :global([data-theme="dark"]) .line-text :global(.token.prolog),
+  :global([data-theme="dark"]) .line-text :global(.token.doctype),
+  :global([data-theme="dark"]) .line-text :global(.token.cdata) {
+    color: #6e738d !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.punctuation) {
+    color: #a5adcb !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.property),
+  :global([data-theme="dark"]) .line-text :global(.token.tag),
+  :global([data-theme="dark"]) .line-text :global(.token.boolean),
+  :global([data-theme="dark"]) .line-text :global(.token.number),
+  :global([data-theme="dark"]) .line-text :global(.token.constant),
+  :global([data-theme="dark"]) .line-text :global(.token.symbol),
+  :global([data-theme="dark"]) .line-text :global(.token.deleted) {
+    color: #ed8796 !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.selector),
+  :global([data-theme="dark"]) .line-text :global(.token.attr-name),
+  :global([data-theme="dark"]) .line-text :global(.token.string),
+  :global([data-theme="dark"]) .line-text :global(.token.char),
+  :global([data-theme="dark"]) .line-text :global(.token.builtin),
+  :global([data-theme="dark"]) .line-text :global(.token.inserted) {
+    color: #a6da95 !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.operator),
+  :global([data-theme="dark"]) .line-text :global(.token.entity),
+  :global([data-theme="dark"]) .line-text :global(.token.url),
+  :global([data-theme="dark"]) .line-text :global(.language-css .token.string),
+  :global([data-theme="dark"]) .line-text :global(.style .token.string) {
+    color: #cad3f5 !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.atrule),
+  :global([data-theme="dark"]) .line-text :global(.token.attr-value),
+  :global([data-theme="dark"]) .line-text :global(.token.keyword) {
+    color: #c6a0f6 !important;
+  }
+
+  :global([data-theme="dark"]) .line-text :global(.token.function),
+  :global([data-theme="dark"]) .line-text :global(.token.class-name) {
+    color: #8aadf4 !important;
   }
 </style>
