@@ -6,6 +6,7 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "icon": "assets/icons/appicon.png",
   "author": {
     "name": "Rob Wilkerson",
     "email": ""
