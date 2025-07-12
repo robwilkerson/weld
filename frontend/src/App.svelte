@@ -369,11 +369,11 @@
 
 <main>
   <div class="header">
-    <button class="theme-toggle" on:click={toggleDarkMode} title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}>
+    <button class="theme-toggle" on:click={toggleDarkMode} title={isDarkMode ? "Switch to ☀️ mode" : "Switch to 🌜 mode"}>
       {#if isDarkMode}
-        ☀️
+        🌜
       {:else}
-        🌙
+        ☀️
       {/if}
     </button>
     <div class="file-selectors">
