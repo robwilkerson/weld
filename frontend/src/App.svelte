@@ -31,7 +31,8 @@
   let rightPane: HTMLElement
   let isScrollSyncing: boolean = false
   let isDarkMode: boolean = true
-  let hasUnsavedChanges: boolean = false
+  let hasUnsavedLeftChanges: boolean = false
+  let hasUnsavedRightChanges: boolean = false
   
   $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath
   
@@ -39,7 +40,7 @@
   $: areFilesIdentical = diffResult && diffResult.lines && diffResult.lines.length > 0 && 
       diffResult.lines.every(line => line.type === 'same') && 
       leftFilePath !== rightFilePath &&
-      !hasUnsavedChanges
+      !hasUnsavedLeftChanges && !hasUnsavedRightChanges
 
   $: lineNumberWidth = getLineNumberWidth()
 
@@ -51,7 +52,8 @@
       if (path) {
         leftFilePath = path
         leftFileName = path.split('/').pop() || path
-        hasUnsavedChanges = false // Reset unsaved changes when selecting new files
+        hasUnsavedLeftChanges = false // Reset unsaved changes when selecting new files
+        hasUnsavedRightChanges = false
         errorMessage = `Left file selected: ${leftFileName}`
         diffResult = null // Clear previous results
       } else {
@@ -71,7 +73,8 @@
       if (path) {
         rightFilePath = path
         rightFileName = path.split('/').pop() || path
-        hasUnsavedChanges = false // Reset unsaved changes when selecting new files
+        hasUnsavedLeftChanges = false // Reset unsaved changes when selecting new files
+        hasUnsavedRightChanges = false
         errorMessage = `Right file selected: ${rightFileName}`
         diffResult = null // Clear previous results
       } else {
@@ -211,7 +214,7 @@
       await CopyLineToFile(leftFilePath, rightFilePath, line.leftNumber, line.leftLine)
       
       // Mark as having unsaved changes
-      hasUnsavedChanges = true
+      hasUnsavedRightChanges = true
       
       // Refresh the diff to show the changes
       await compareBothFiles()
@@ -236,7 +239,7 @@
       await CopyLineToFile(rightFilePath, leftFilePath, line.rightNumber, line.rightLine)
       
       // Mark as having unsaved changes
-      hasUnsavedChanges = true
+      hasUnsavedLeftChanges = true
       
       // Refresh the diff to show the changes
       await compareBothFiles()
@@ -256,10 +259,64 @@
     await copyLineToRight(lineIndex)
   }
 
+  async function deleteLineFromRight(lineIndex: number): Promise<void> {
+    if (!diffResult || !diffResult.lines[lineIndex]) return
+    
+    const line = diffResult.lines[lineIndex]
+    if (line.type !== 'added') return
+    
+    try {
+      // Remove the line from the right file content
+      const rightLines = rightFileContent.split('\n')
+      if (line.rightLineNumber !== null && line.rightLineNumber > 0) {
+        rightLines.splice(line.rightLineNumber - 1, 1)
+        rightFileContent = rightLines.join('\n')
+        
+        // Mark as having unsaved changes
+        hasUnsavedRightChanges = true
+      }
+      
+      // Refresh the diff to show the changes
+      await compareBothFiles()
+      
+      errorMessage = "Line deleted successfully"
+    } catch (error) {
+      console.error("Error deleting line from right:", error)
+      errorMessage = `Error deleting line: ${error}`
+    }
+  }
+
+  async function deleteLineFromLeft(lineIndex: number): Promise<void> {
+    if (!diffResult || !diffResult.lines[lineIndex]) return
+    
+    const line = diffResult.lines[lineIndex]
+    if (line.type !== 'removed') return
+    
+    try {
+      // Remove the line from the left file content
+      const leftLines = leftFileContent.split('\n')
+      if (line.leftLineNumber !== null && line.leftLineNumber > 0) {
+        leftLines.splice(line.leftLineNumber - 1, 1)
+        leftFileContent = leftLines.join('\n')
+        
+        // Mark as having unsaved changes
+        hasUnsavedLeftChanges = true
+      }
+      
+      // Refresh the diff to show the changes
+      await compareBothFiles()
+      
+      errorMessage = "Line deleted successfully"
+    } catch (error) {
+      console.error("Error deleting line from left:", error)
+      errorMessage = `Error deleting line: ${error}`
+    }
+  }
+
   async function saveLeftFile(): Promise<void> {
     try {
       await SaveFile(leftFilePath)
-      hasUnsavedChanges = false
+      hasUnsavedLeftChanges = false
       errorMessage = "Left file saved successfully"
     } catch (error) {
       console.error("Error saving left file:", error)
@@ -270,7 +327,7 @@
   async function saveRightFile(): Promise<void> {
     try {
       await SaveFile(rightFilePath)
-      hasUnsavedChanges = false
+      hasUnsavedRightChanges = false
       errorMessage = "Right file saved successfully"
     } catch (error) {
       console.error("Error saving right file:", error)
@@ -490,8 +547,17 @@
   <div class="diff-container">
     {#if diffResult}
       <div class="file-header" style="--line-number-width: {lineNumberWidth}">
-        <div class="file-info left">{getDisplayPath(leftFilePath, rightFilePath, true)}</div>
-        <div class="file-info right">{getDisplayPath(leftFilePath, rightFilePath, false)}</div>
+        <div class="file-info left">
+          <button class="save-btn" disabled={!hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
+          <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
+        </div>
+        <div class="action-gutter-header">
+          <!-- Empty header space above action gutter -->
+        </div>
+        <div class="file-info right">
+          <button class="save-btn" disabled={!hasUnsavedRightChanges} on:click={saveRightFile} title="Save right file">💾</button>
+          <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, false)}</span>
+        </div>
       </div>
       
       {#if isSameFile}
@@ -526,12 +592,20 @@
           {#each diffResult.lines as line, index}
             <div class="gutter-line">
               {#if line.type === 'added'}
-                <button class="gutter-arrow left-arrow" on:click={() => copyLineToLeft(index)} title="Copy left">
+                <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
                   ←
                 </button>
               {:else if line.type === 'removed'}
-                <button class="gutter-arrow right-arrow" on:click={() => copyLineToRight(index)} title="Copy right">
+                <!-- Content exists in LEFT pane, so put copy arrow on LEFT side and delete arrow on RIGHT side -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy to right">
                   →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => deleteLineFromLeft(index)} title="Delete from left to align">
+                  ←
                 </button>
               {/if}
             </div>
@@ -626,6 +700,28 @@
   :global([data-theme="dark"]) .file-info {
     border-right-color: #363a4f;
     color: #cad3f5;
+  }
+
+  :global([data-theme="dark"]) .save-btn {
+    background: #494d64;
+    border-color: #5b6078;
+  }
+
+  :global([data-theme="dark"]) .save-btn:disabled {
+    background: #3c4043;
+    border-color: #494d64;
+    opacity: 0.5;
+  }
+
+  :global([data-theme="dark"]) .save-btn:not(:disabled):hover {
+    background: #5b6078;
+    border-color: #6e738d;
+  }
+
+  :global([data-theme="dark"]) .action-gutter-header {
+    background: #1e2030;
+    border-left-color: #363a4f;
+    border-right-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .left-pane,
@@ -808,23 +904,72 @@
   }
 
   .file-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 72px 1fr;
     border-bottom: 1px solid #dce0e8;
     background: #e6e9ef;
   }
 
+  .action-gutter-header {
+    border-left: 1px solid #dce0e8;
+    border-right: 1px solid #dce0e8;
+    background: #e6e9ef;
+  }
+
   .file-info {
-    flex: 1;
-    padding: 0.5rem 0.5rem 0.5rem calc(var(--line-number-width, 32px) + 0.5rem + 1px);
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.5rem 0.5rem calc(var(--line-number-width, 32px) + 24px);
     font-weight: 400;
     color: #4c4f69;
     text-align: left;
-    border-right: 1px solid #dce0e8;
+    position: relative;
   }
 
-  .file-info.right {
-    border-right: none;
+  .save-btn {
+    width: 24px;
+    height: 24px;
+    background: #bcc0cc;
+    border: 1px solid #acb0be;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    margin-right: 16px;
+    position: absolute;
+    left: 1rem;
   }
+
+  .file-path {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .save-btn:disabled {
+    background: #e0e4ea;
+    border-color: #ccd0da;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .save-btn:not(:disabled):hover {
+    background: #a6adc8;
+    border-color: #9ca0b0;
+  }
+
+  .file-path {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
 
   .diff-content {
     flex: 1;
@@ -844,7 +989,7 @@
   }
 
   .center-gutter {
-    width: 50px;
+    width: 72px;
     background: #e6e9ef;
     border-left: 1px solid #dce0e8;
     border-right: 1px solid #dce0e8;
@@ -886,6 +1031,17 @@
     white-space: pre;
     align-items: flex-start;
     width: 100%;
+    position: relative;
+  }
+
+  .pane-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    font-size: 8px;
   }
 
   .line-number {
@@ -1121,11 +1277,11 @@
   }
 
   .gutter-arrow {
-    background: #fff;
-    border: 1px solid #dce0e8;
+    background: transparent;
+    border: none;
     border-radius: 4px;
-    width: 32px;
-    height: 24px;
+    width: 24px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1137,10 +1293,7 @@
   }
 
   .gutter-arrow:hover {
-    background: #f8f9fa;
-    border-color: #acb0be;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    transform: scale(1.05);
+    transform: scale(1.1);
   }
 
   .left-arrow {
@@ -1149,8 +1302,6 @@
 
   .left-arrow:hover {
     color: #15803d;
-    background: #f0fdf4;
-    border-color: #16a34a;
   }
 
   .right-arrow {
@@ -1159,8 +1310,38 @@
 
   .right-arrow:hover {
     color: #b91c1c;
-    background: #fef2f2;
-    border-color: #dc2626;
+  }
+
+  .delete-arrow {
+    color: #dc2626;
+  }
+
+  .delete-arrow:hover {
+    color: #b91c1c;
+  }
+
+  .left-side-arrow {
+    position: absolute;
+    left: 4px;
+    color: #dc2626;
+  }
+
+  .left-side-arrow:hover {
+    color: #b91c1c;
+  }
+
+  .right-side-arrow {
+    position: absolute;
+    right: 4px;
+    color: #16a34a;
+  }
+
+  .right-side-arrow:hover {
+    color: #15803d;
+  }
+
+  .gutter-line {
+    position: relative;
   }
 
   /* Dark mode gutter arrows */
@@ -1171,14 +1352,12 @@
   }
 
   :global([data-theme="dark"]) .gutter-arrow {
-    background: #363a4f;
-    border-color: #5b6078;
+    background: transparent;
     color: #cad3f5;
   }
 
   :global([data-theme="dark"]) .gutter-arrow:hover {
-    background: #414559;
-    border-color: #6e738d;
+    /* No background/border changes in dark mode either */
   }
 
   :global([data-theme="dark"]) .left-arrow {
@@ -1187,8 +1366,6 @@
 
   :global([data-theme="dark"]) .left-arrow:hover {
     color: #a6da95;
-    background: #1e3a2e;
-    border-color: #a6da95;
   }
 
   :global([data-theme="dark"]) .right-arrow {
@@ -1197,8 +1374,30 @@
 
   :global([data-theme="dark"]) .right-arrow:hover {
     color: #ed8796;
-    background: #3e2723;
-    border-color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .delete-arrow {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .delete-arrow:hover {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .left-side-arrow {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .left-side-arrow:hover {
+    color: #ed8796;
+  }
+
+  :global([data-theme="dark"]) .right-side-arrow {
+    color: #a6da95;
+  }
+
+  :global([data-theme="dark"]) .right-side-arrow:hover {
+    color: #a6da95;
   }
 
   /* Custom syntax highlighting for our theme */
