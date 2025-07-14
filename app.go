@@ -41,17 +41,17 @@ func (a *App) startup(ctx context.Context) {
 // SelectFile opens a file dialog and returns the selected file path
 func (a *App) SelectFile() (string, error) {
 	fmt.Println("SelectFile called")
-	
+
 	// Use the full path to the sample files directory
 	defaultDir := "/Users/54695/Development/lookout-software/weld/tests/sample-files"
 	fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
-	
+
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:                      "Select File to Compare",
 		DefaultDirectory:           defaultDir,
-		ShowHiddenFiles:           true,
-		CanCreateDirectories:      false,
-		ResolvesAliases:           true,
+		ShowHiddenFiles:            true,
+		CanCreateDirectories:       false,
+		ResolvesAliases:            true,
 		TreatPackagesAsDirectories: false,
 	})
 	fmt.Printf("File dialog result: file='%s', err=%v\n", file, err)
@@ -82,7 +82,7 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 // CompareFiles compares two files and returns diff results
 func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 	fmt.Printf("Comparing files: %s vs %s\n", leftPath, rightPath)
-	
+
 	leftLines, err := a.ReadFileContentWithCache(leftPath)
 	if err != nil {
 		fmt.Printf("Error reading left file: %v\n", err)
@@ -99,17 +99,17 @@ func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 
 	result := a.computeDiff(leftLines, rightLines)
 	fmt.Printf("Diff result has %d lines\n", len(result.Lines))
-	
+
 	return result, nil
 }
 
 func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
 	fmt.Printf("Starting LCS-based diff computation: %d vs %d lines\n", len(leftLines), len(rightLines))
 	result := &DiffResult{Lines: []DiffLine{}}
-	
+
 	// Use a simplified diff approach that handles insertions/deletions properly
 	leftIdx, rightIdx := 0, 0
-	
+
 	for leftIdx < len(leftLines) || rightIdx < len(rightLines) {
 		if leftIdx >= len(leftLines) {
 			// Only right lines remain - all are added
@@ -146,7 +146,7 @@ func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
 			// Lines don't match - look ahead to see if it's an insertion or deletion
 			rightMatchIdx := a.findNextMatch(rightLines, rightIdx+1, leftLines[leftIdx])
 			leftMatchIdx := a.findNextMatch(leftLines, leftIdx+1, rightLines[rightIdx])
-			
+
 			if rightMatchIdx != -1 && (leftMatchIdx == -1 || rightMatchIdx-rightIdx <= leftMatchIdx-leftIdx) {
 				// Found the left line later in right - treat current right line as added
 				result.Lines = append(result.Lines, DiffLine{
@@ -199,13 +199,13 @@ func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
 // CopyLineToFile copies a line from one file to another in memory
 func (a *App) CopyLineToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
 	fmt.Printf("CopyLineToFile: from %s to %s, line %d: %s\n", sourceFile, targetFile, lineNumber, lineContent)
-	
+
 	// Read target file
 	targetLines, err := a.ReadFileContent(targetFile)
 	if err != nil {
 		return fmt.Errorf("failed to read target file: %w", err)
 	}
-	
+
 	// Insert line at specified position (1-based line numbers)
 	insertIndex := lineNumber - 1
 	if insertIndex < 0 {
@@ -214,13 +214,13 @@ func (a *App) CopyLineToFile(sourceFile, targetFile string, lineNumber int, line
 	if insertIndex > len(targetLines) {
 		insertIndex = len(targetLines)
 	}
-	
+
 	// Create new slice with inserted line
 	newLines := make([]string, 0, len(targetLines)+1)
 	newLines = append(newLines, targetLines[:insertIndex]...)
 	newLines = append(newLines, lineContent)
 	newLines = append(newLines, targetLines[insertIndex:]...)
-	
+
 	// Store in memory (we'll implement a cache for unsaved changes)
 	return a.storeFileInMemory(targetFile, newLines)
 }
@@ -228,24 +228,24 @@ func (a *App) CopyLineToFile(sourceFile, targetFile string, lineNumber int, line
 // RemoveLineFromFile removes a line from a file in memory
 func (a *App) RemoveLineFromFile(targetFile string, lineNumber int) error {
 	fmt.Printf("RemoveLineFromFile: from %s, line %d\n", targetFile, lineNumber)
-	
+
 	// Read target file
 	targetLines, err := a.ReadFileContent(targetFile)
 	if err != nil {
 		return fmt.Errorf("failed to read target file: %w", err)
 	}
-	
+
 	// Remove line at specified position (1-based line numbers)
 	removeIndex := lineNumber - 1
 	if removeIndex < 0 || removeIndex >= len(targetLines) {
 		return fmt.Errorf("line number %d is out of range", lineNumber)
 	}
-	
+
 	// Create new slice without the line
 	newLines := make([]string, 0, len(targetLines)-1)
 	newLines = append(newLines, targetLines[:removeIndex]...)
 	newLines = append(newLines, targetLines[removeIndex+1:]...)
-	
+
 	// Store in memory
 	return a.storeFileInMemory(targetFile, newLines)
 }
@@ -266,7 +266,7 @@ func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 		fmt.Printf("Reading %d lines from cache for %s\n", len(cachedLines), filepath)
 		return cachedLines, nil
 	}
-	
+
 	// Fall back to reading from disk
 	return a.ReadFileContent(filepath)
 }
@@ -277,14 +277,14 @@ func (a *App) SaveFile(filepath string) error {
 	if !exists {
 		return fmt.Errorf("no unsaved changes for file: %s", filepath)
 	}
-	
+
 	// Write to file
 	file, err := os.Create(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer file.Close()
-	
+
 	for i, line := range cachedLines {
 		if i > 0 {
 			if _, err := file.WriteString("\n"); err != nil {
@@ -295,10 +295,10 @@ func (a *App) SaveFile(filepath string) error {
 			return fmt.Errorf("failed to write line: %w", err)
 		}
 	}
-	
+
 	// Remove from cache after successful save
 	delete(fileCache, filepath)
 	fmt.Printf("Saved file %s and removed from cache\n", filepath)
-	
+
 	return nil
 }
