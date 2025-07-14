@@ -1,515 +1,591 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { SelectFile, CompareFiles, CopyLineToFile, SaveFile, type DiffResult, type DiffLine } from '../wailsjs/go/main/App.js'
-  import Prism from 'prismjs'
-  
-  // Import core languages
-  import 'prismjs/components/prism-javascript'
-  import 'prismjs/components/prism-typescript'
-  import 'prismjs/components/prism-java'
-  import 'prismjs/components/prism-go'
-  import 'prismjs/components/prism-python'
-  import 'prismjs/components/prism-php'
-  import 'prismjs/components/prism-ruby'
-  import 'prismjs/components/prism-csharp'
-  import 'prismjs/components/prism-css'
-  import 'prismjs/components/prism-json'
-  import 'prismjs/components/prism-markdown'
-  import 'prismjs/components/prism-bash'
-  
-  // Import Prism CSS theme - try different approach
-  import 'prismjs/themes/prism-tomorrow.css'
+import Prism from "prismjs";
+import { onMount } from "svelte";
+import {
+	CompareFiles,
+	CopyLineToFile,
+	type DiffLine,
+	type DiffResult,
+	SaveFile,
+	SelectFile,
+} from "../wailsjs/go/main/App.js";
 
-  let leftFilePath: string = ""
-  let rightFilePath: string = ""
-  let leftFileName: string = "Select left file..."
-  let rightFileName: string = "Select right file..."
-  let diffResult: DiffResult | null = null
-  let isComparing: boolean = false
-  let errorMessage: string = ""
-  let leftPane: HTMLElement
-  let rightPane: HTMLElement
-  let isScrollSyncing: boolean = false
-  let isDarkMode: boolean = true
-  let hasUnsavedLeftChanges: boolean = false
-  let hasUnsavedRightChanges: boolean = false
-  
-  $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath
-  
-  // Only show "files are identical" banner if they're identical on disk (no unsaved changes)
-  $: areFilesIdentical = diffResult && diffResult.lines && diffResult.lines.length > 0 && 
-      diffResult.lines.every(line => line.type === 'same') && 
-      leftFilePath !== rightFilePath &&
-      !hasUnsavedLeftChanges && !hasUnsavedRightChanges
+// Import core languages
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-php";
+import "prismjs/components/prism-ruby";
+import "prismjs/components/prism-csharp";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-markdown";
+import "prismjs/components/prism-bash";
 
-  $: lineNumberWidth = getLineNumberWidth()
+// Import Prism CSS theme - try different approach
+import "prismjs/themes/prism-tomorrow.css";
 
-  async function selectLeftFile(): Promise<void> {
-    try {
-      console.log("Selecting left file...")
-      const path = await SelectFile()
-      console.log("Left file selected:", path)
-      if (path) {
-        leftFilePath = path
-        leftFileName = path.split('/').pop() || path
-        hasUnsavedLeftChanges = false // Reset unsaved changes when selecting new files
-        hasUnsavedRightChanges = false
-        errorMessage = `Left file selected: ${leftFileName}`
-        diffResult = null // Clear previous results
-      } else {
-        errorMessage = "No left file selected"
-      }
-    } catch (error) {
-      console.error("Error selecting left file:", error)
-      errorMessage = `Error selecting left file: ${error}`
-    }
-  }
+let leftFilePath: string = "";
+let rightFilePath: string = "";
+let leftFileName: string = "Select left file...";
+let rightFileName: string = "Select right file...";
+let diffResult: DiffResult | null = null;
+let isComparing: boolean = false;
+let errorMessage: string = "";
+let leftPane: HTMLElement;
+let rightPane: HTMLElement;
+let isScrollSyncing: boolean = false;
+let isDarkMode: boolean = true;
+let hasUnsavedLeftChanges: boolean = false;
+let hasUnsavedRightChanges: boolean = false;
 
-  async function selectRightFile(): Promise<void> {
-    try {
-      console.log("Selecting right file...")
-      const path = await SelectFile()
-      console.log("Right file selected:", path)
-      if (path) {
-        rightFilePath = path
-        rightFileName = path.split('/').pop() || path
-        hasUnsavedLeftChanges = false // Reset unsaved changes when selecting new files
-        hasUnsavedRightChanges = false
-        errorMessage = `Right file selected: ${rightFileName}`
-        diffResult = null // Clear previous results
-      } else {
-        errorMessage = "No right file selected"
-      }
-    } catch (error) {
-      console.error("Error selecting right file:", error)
-      errorMessage = `Error selecting right file: ${error}`
-    }
-  }
+$: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
-  async function compareBothFiles(): Promise<void> {
-    if (!leftFilePath || !rightFilePath) {
-      errorMessage = "Please select both files before comparing"
-      return
-    }
-    
-    try {
-      isComparing = true
-      errorMessage = ""
-      console.log("Starting comparison of:", leftFilePath, "vs", rightFilePath)
-      
-      diffResult = await CompareFiles(leftFilePath, rightFilePath)
-      console.log("Comparison result:", diffResult)
-      if (diffResult && diffResult.lines && diffResult.lines.length > 0) {
-        console.log("First line sample:", diffResult.lines[0])
-      }
-      
-      if (!diffResult || !diffResult.lines) {
-        errorMessage = "No comparison result received"
-        diffResult = null
-      } else if (diffResult.lines.length === 0) {
-        errorMessage = "Files are identical"
-      }
-    } catch (error) {
-      console.error("Comparison error:", error)
-      errorMessage = `Error comparing files: ${error}`
-      diffResult = null
-    } finally {
-      isComparing = false
-    }
-  }
+// Only show "files are identical" banner if they're identical on disk (no unsaved changes)
+$: areFilesIdentical =
+	diffResult &&
+	diffResult.lines &&
+	diffResult.lines.length > 0 &&
+	diffResult.lines.every((line) => line.type === "same") &&
+	leftFilePath !== rightFilePath &&
+	!hasUnsavedLeftChanges &&
+	!hasUnsavedRightChanges;
 
-  function getLineClass(type: string): string {
-    switch (type) {
-      case 'added': return 'line-added'
-      case 'removed': return 'line-removed'
-      case 'modified': return 'line-modified'
-      default: return 'line-same'
-    }
-  }
+$: lineNumberWidth = getLineNumberWidth();
 
+async function selectLeftFile(): Promise<void> {
+	try {
+		console.log("Selecting left file...");
+		const path = await SelectFile();
+		console.log("Left file selected:", path);
+		if (path) {
+			leftFilePath = path;
+			leftFileName = path.split("/").pop() || path;
+			hasUnsavedLeftChanges = false; // Reset unsaved changes when selecting new files
+			hasUnsavedRightChanges = false;
+			errorMessage = `Left file selected: ${leftFileName}`;
+			diffResult = null; // Clear previous results
+		} else {
+			errorMessage = "No left file selected";
+		}
+	} catch (error) {
+		console.error("Error selecting left file:", error);
+		errorMessage = `Error selecting left file: ${error}`;
+	}
+}
 
-  function syncLeftScroll() {
-    if (isScrollSyncing || !leftPane || !rightPane) return
-    isScrollSyncing = true
-    // Sync both vertical and horizontal scrolling from left to right pane
-    rightPane.scrollTop = leftPane.scrollTop
-    rightPane.scrollLeft = leftPane.scrollLeft
-    setTimeout(() => isScrollSyncing = false, 10)
-  }
+async function selectRightFile(): Promise<void> {
+	try {
+		console.log("Selecting right file...");
+		const path = await SelectFile();
+		console.log("Right file selected:", path);
+		if (path) {
+			rightFilePath = path;
+			rightFileName = path.split("/").pop() || path;
+			hasUnsavedLeftChanges = false; // Reset unsaved changes when selecting new files
+			hasUnsavedRightChanges = false;
+			errorMessage = `Right file selected: ${rightFileName}`;
+			diffResult = null; // Clear previous results
+		} else {
+			errorMessage = "No right file selected";
+		}
+	} catch (error) {
+		console.error("Error selecting right file:", error);
+		errorMessage = `Error selecting right file: ${error}`;
+	}
+}
 
-  function syncRightScroll() {
-    if (isScrollSyncing || !leftPane || !rightPane) return
-    isScrollSyncing = true
-    // Sync both vertical and horizontal scrolling from right to left pane
-    leftPane.scrollTop = rightPane.scrollTop
-    leftPane.scrollLeft = rightPane.scrollLeft
-    setTimeout(() => isScrollSyncing = false, 10)
-  }
+async function compareBothFiles(): Promise<void> {
+	if (!leftFilePath || !rightFilePath) {
+		errorMessage = "Please select both files before comparing";
+		return;
+	}
 
-  function expandTildePath(path: string): string {
-    if (path.startsWith('~/')) {
-      const home = process.env.HOME || process.env.USERPROFILE || ''
-      return path.replace('~', home)
-    }
-    return path
-  }
+	try {
+		isComparing = true;
+		errorMessage = "";
+		console.log("Starting comparison of:", leftFilePath, "vs", rightFilePath);
 
-  function getDisplayPath(leftPath: string, rightPath: string, isLeft: boolean): string {
-    const targetPath = isLeft ? leftPath : rightPath
-    const otherPath = isLeft ? rightPath : leftPath
-    
-    if (!targetPath || !otherPath) return targetPath || ''
-    
-    const targetSegments = targetPath.split('/').filter(s => s !== '')
-    const otherSegments = otherPath.split('/').filter(s => s !== '')
-    
-    if (targetSegments.length === 0) return targetPath
-    
-    // Always show exactly 4 segments (3 directories + filename) when possible
-    const totalSegmentsToShow = 4
-    
-    // If we have 4 or fewer segments, show them all
-    if (targetSegments.length <= totalSegmentsToShow) {
-      return targetSegments.join('/')
-    }
-    
-    // Show the last 4 segments (3 directories + filename)
-    const segments = targetSegments.slice(-totalSegmentsToShow)
-    return '.../' + segments.join('/')
-  }
+		diffResult = await CompareFiles(leftFilePath, rightFilePath);
+		console.log("Comparison result:", diffResult);
+		if (diffResult && diffResult.lines && diffResult.lines.length > 0) {
+			console.log("First line sample:", diffResult.lines[0]);
+		}
 
-  async function initializeDefaultFiles(): Promise<void> {
-    try {
-      const leftPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-1.js'
-      const rightPath = '/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-2.js'
-      
-      leftFilePath = leftPath
-      leftFileName = leftPath.split('/').pop() || leftPath
-      
-      rightFilePath = rightPath
-      rightFileName = rightPath.split('/').pop() || rightPath
-      
-      errorMessage = `Default files loaded: ${leftFileName} and ${rightFileName}`
-    } catch (error) {
-      console.error('Error initializing default files:', error)
-      errorMessage = `Error loading default files: ${error}`
-    }
-  }
+		if (!diffResult || !diffResult.lines) {
+			errorMessage = "No comparison result received";
+			diffResult = null;
+		} else if (diffResult.lines.length === 0) {
+			errorMessage = "Files are identical";
+		}
+	} catch (error) {
+		console.error("Comparison error:", error);
+		errorMessage = `Error comparing files: ${error}`;
+		diffResult = null;
+	} finally {
+		isComparing = false;
+	}
+}
 
-  function toggleDarkMode(): void {
-    isDarkMode = !isDarkMode
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
-  }
+function getLineClass(type: string): string {
+	switch (type) {
+		case "added":
+			return "line-added";
+		case "removed":
+			return "line-removed";
+		case "modified":
+			return "line-modified";
+		default:
+			return "line-same";
+	}
+}
 
-  async function copyLineToRight(lineIndex: number): Promise<void> {
-    if (!diffResult || !diffResult.lines[lineIndex]) return
-    
-    const line = diffResult.lines[lineIndex]
-    if (line.type !== 'removed') return
-    
-    try {
-      errorMessage = "Copying line to right file..."
-      
-      // Copy the line from left to right file at the appropriate position
-      await CopyLineToFile(leftFilePath, rightFilePath, line.leftNumber, line.leftLine)
-      
-      // Mark as having unsaved changes
-      hasUnsavedRightChanges = true
-      
-      // Refresh the diff to show the changes
-      await compareBothFiles()
-      
-      errorMessage = "Line copied successfully"
-    } catch (error) {
-      console.error("Error copying line to right:", error)
-      errorMessage = `Error copying line: ${error}`
-    }
-  }
+function syncLeftScroll() {
+	if (isScrollSyncing || !leftPane || !rightPane) return;
+	isScrollSyncing = true;
+	// Sync both vertical and horizontal scrolling from left to right pane
+	rightPane.scrollTop = leftPane.scrollTop;
+	rightPane.scrollLeft = leftPane.scrollLeft;
+	setTimeout(() => (isScrollSyncing = false), 10);
+}
 
-  async function copyLineToLeft(lineIndex: number): Promise<void> {
-    if (!diffResult || !diffResult.lines[lineIndex]) return
-    
-    const line = diffResult.lines[lineIndex]
-    if (line.type !== 'added') return
-    
-    try {
-      errorMessage = "Copying line to left file..."
-      
-      // Copy the line from right to left file at the appropriate position
-      await CopyLineToFile(rightFilePath, leftFilePath, line.rightNumber, line.rightLine)
-      
-      // Mark as having unsaved changes
-      hasUnsavedLeftChanges = true
-      
-      // Refresh the diff to show the changes
-      await compareBothFiles()
-      
-      errorMessage = "Line copied successfully"
-    } catch (error) {
-      console.error("Error copying line to left:", error)
-      errorMessage = `Error copying line: ${error}`
-    }
-  }
+function syncRightScroll() {
+	if (isScrollSyncing || !leftPane || !rightPane) return;
+	isScrollSyncing = true;
+	// Sync both vertical and horizontal scrolling from right to left pane
+	leftPane.scrollTop = rightPane.scrollTop;
+	leftPane.scrollLeft = rightPane.scrollLeft;
+	setTimeout(() => (isScrollSyncing = false), 10);
+}
 
-  async function copyLineFromRight(lineIndex: number): Promise<void> {
-    await copyLineToLeft(lineIndex)
-  }
+function expandTildePath(path: string): string {
+	if (path.startsWith("~/")) {
+		const home = process.env.HOME || process.env.USERPROFILE || "";
+		return path.replace("~", home);
+	}
+	return path;
+}
 
-  async function copyLineFromLeft(lineIndex: number): Promise<void> {
-    await copyLineToRight(lineIndex)
-  }
+function getDisplayPath(
+	leftPath: string,
+	rightPath: string,
+	isLeft: boolean,
+): string {
+	const targetPath = isLeft ? leftPath : rightPath;
+	const otherPath = isLeft ? rightPath : leftPath;
 
-  async function deleteLineFromRight(lineIndex: number): Promise<void> {
-    if (!diffResult || !diffResult.lines[lineIndex]) return
-    
-    const line = diffResult.lines[lineIndex]
-    if (line.type !== 'added') return
-    
-    try {
-      // Remove the line from the right file content
-      const rightLines = rightFileContent.split('\n')
-      if (line.rightLineNumber !== null && line.rightLineNumber > 0) {
-        rightLines.splice(line.rightLineNumber - 1, 1)
-        rightFileContent = rightLines.join('\n')
-        
-        // Mark as having unsaved changes
-        hasUnsavedRightChanges = true
-      }
-      
-      // Refresh the diff to show the changes
-      await compareBothFiles()
-      
-      errorMessage = "Line deleted successfully"
-    } catch (error) {
-      console.error("Error deleting line from right:", error)
-      errorMessage = `Error deleting line: ${error}`
-    }
-  }
+	if (!targetPath || !otherPath) return targetPath || "";
 
-  async function deleteLineFromLeft(lineIndex: number): Promise<void> {
-    if (!diffResult || !diffResult.lines[lineIndex]) return
-    
-    const line = diffResult.lines[lineIndex]
-    if (line.type !== 'removed') return
-    
-    try {
-      // Remove the line from the left file content
-      const leftLines = leftFileContent.split('\n')
-      if (line.leftLineNumber !== null && line.leftLineNumber > 0) {
-        leftLines.splice(line.leftLineNumber - 1, 1)
-        leftFileContent = leftLines.join('\n')
-        
-        // Mark as having unsaved changes
-        hasUnsavedLeftChanges = true
-      }
-      
-      // Refresh the diff to show the changes
-      await compareBothFiles()
-      
-      errorMessage = "Line deleted successfully"
-    } catch (error) {
-      console.error("Error deleting line from left:", error)
-      errorMessage = `Error deleting line: ${error}`
-    }
-  }
+	const targetSegments = targetPath.split("/").filter((s) => s !== "");
+	const otherSegments = otherPath.split("/").filter((s) => s !== "");
 
-  async function saveLeftFile(): Promise<void> {
-    try {
-      await SaveFile(leftFilePath)
-      hasUnsavedLeftChanges = false
-      errorMessage = "Left file saved successfully"
-    } catch (error) {
-      console.error("Error saving left file:", error)
-      errorMessage = `Error saving left file: ${error}`
-    }
-  }
+	if (targetSegments.length === 0) return targetPath;
 
-  async function saveRightFile(): Promise<void> {
-    try {
-      await SaveFile(rightFilePath)
-      hasUnsavedRightChanges = false
-      errorMessage = "Right file saved successfully"
-    } catch (error) {
-      console.error("Error saving right file:", error)
-      errorMessage = `Error saving right file: ${error}`
-    }
-  }
+	// Always show exactly 4 segments (3 directories + filename) when possible
+	const totalSegmentsToShow = 4;
 
-  function handleKeydown(event: KeyboardEvent): void {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-    const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey
-    
-    if (isCtrlOrCmd && event.key === 's') {
-      event.preventDefault()
-      
-      // Save both files if they have changes
-      if (leftFilePath) {
-        saveLeftFile()
-      }
-      if (rightFilePath) {
-        saveRightFile()
-      }
-    }
-  }
+	// If we have 4 or fewer segments, show them all
+	if (targetSegments.length <= totalSegmentsToShow) {
+		return targetSegments.join("/");
+	}
 
-  function getLineNumberWidth(): string {
-    if (!diffResult || !diffResult.lines.length) return '32px'
-    
-    // Find the highest line number
-    const maxLineNumber = Math.max(
-      ...diffResult.lines.map(line => Math.max(line.leftNumber || 0, line.rightNumber || 0))
-    )
-    
-    // Calculate width based on number of digits - much tighter calculation
-    const digits = Math.max(2, maxLineNumber.toString().length)
-    const width = digits * 6 + 8 // ~6px per digit + minimal 8px padding (4px each side)
-    
-    return `${width}px`
-  }
+	// Show the last 4 segments (3 directories + filename)
+	const segments = targetSegments.slice(-totalSegmentsToShow);
+	return ".../" + segments.join("/");
+}
 
-  function getLanguageFromFilename(filename: string): string {
-    if (!filename) return 'markup'
-    
-    const ext = filename.split('.').pop()?.toLowerCase()
-    console.log('Language detection:', filename, 'extension:', ext)
-    
-    const languageMap: Record<string, string> = {
-      'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
-      'java': 'java',
-      'go': 'go',
-      'py': 'python',
-      'php': 'php',
-      'rb': 'ruby',
-      'cs': 'csharp',
-      'css': 'css',
-      'scss': 'css',
-      'sass': 'css',
-      'json': 'json',
-      'md': 'markdown',
-      'sh': 'bash',
-      'bash': 'bash',
-      'zsh': 'bash',
-      'c': 'c',
-      'cpp': 'cpp',
-      'h': 'c',
-      'hpp': 'cpp'
-    }
-    
-    const language = languageMap[ext] || 'markup'
-    console.log('Detected language:', language)
-    return language
-  }
+async function initializeDefaultFiles(): Promise<void> {
+	try {
+		const leftPath =
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-1.js";
+		const rightPath =
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-2.js";
 
-  function highlightCode(code: string, language: string): string {
-    if (!code.trim()) return code
-    
-    console.log('Highlighting code:', code.substring(0, 50), 'with language:', language)
-    console.log('Available languages:', Object.keys(Prism.languages))
-    
-    try {
-      const grammar = Prism.languages[language]
-      console.log('Grammar found for', language, ':', !!grammar)
-      
-      if (grammar) {
-        const highlighted = Prism.highlight(code, grammar, language)
-        console.log('Original:', code.substring(0, 30))
-        console.log('Highlighted:', highlighted.substring(0, 50))
-        return highlighted
-      } else {
-        console.warn('No grammar found for language:', language)
-      }
-    } catch (error) {
-      console.warn('Syntax highlighting error:', error)
-    }
-    
-    return code
-  }
+		leftFilePath = leftPath;
+		leftFileName = leftPath.split("/").pop() || leftPath;
 
-  function getHighlightedLine(line: string, filename: string): string {
-    if (!line.trim()) return line
-    
-    let highlighted = line
-    
-    // Store original positions to avoid double-highlighting
-    const protectedRanges: Array<{start: number, end: number}> = []
-    
-    function addProtection(match: RegExpMatchArray) {
-      if (match.index !== undefined) {
-        protectedRanges.push({
-          start: match.index,
-          end: match.index + match[0].length
-        })
-      }
-    }
-    
-    function isProtected(start: number, end: number): boolean {
-      return protectedRanges.some(range => 
-        (start >= range.start && start < range.end) ||
-        (end > range.start && end <= range.end) ||
-        (start <= range.start && end >= range.end)
-      )
-    }
-    
-    // 1. Comments first
-    highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
-      const fullMatch = args[args.length - 1] as RegExpMatchArray
-      addProtection(fullMatch)
-      return `<span class="syntax-comment">${match}</span>`
-    })
-    
-    // 2. Strings
-    highlighted = highlighted.replace(/(["'`])([^"'`]*?)\1/g, (match, ...args) => {
-      const fullMatch = args[args.length - 1] as RegExpMatchArray
-      addProtection(fullMatch)
-      return `<span class="syntax-string">${match}</span>`
-    })
-    
-    // 3. Keywords (simpler approach)
-    const keywords = ['function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'class', 'export', 'import', 'new', 'this', 'true', 'false', 'null', 'undefined']
-    keywords.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'g')
-      let match
-      while ((match = regex.exec(line)) !== null) {
-        if (!isProtected(match.index, match.index + match[0].length)) {
-          highlighted = highlighted.replace(match[0], `<span class="syntax-keyword">${match[0]}</span>`)
-        }
-      }
-    })
-    
-    // 4. Numbers
-    highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, '<span class="syntax-number">$1</span>')
-    
-    // 5. Function calls
-    highlighted = highlighted.replace(/\b([a-zA-Z_$]\w*)\s*(?=\()/g, '<span class="syntax-function">$1</span>')
-    
-    return highlighted
-  }
+		rightFilePath = rightPath;
+		rightFileName = rightPath.split("/").pop() || rightPath;
 
-  onMount(() => {
-    initializeDefaultFiles()
-    document.documentElement.setAttribute('data-theme', 'dark')
-    
-    // Add keyboard event listener
-    document.addEventListener('keydown', handleKeydown)
-    
-    // Test Prism.js
-    console.log('Testing Prism.js...')
-    console.log('Prism object:', Prism)
-    console.log('Available languages:', Object.keys(Prism.languages))
-    
-    // Test basic JavaScript highlighting
-    const testCode = 'function test() { return "hello"; }'
-    const testResult = Prism.highlight(testCode, Prism.languages.javascript, 'javascript')
-    console.log('Test highlighting result:', testResult)
-    
-    // Cleanup on destroy
-    return () => {
-      document.removeEventListener('keydown', handleKeydown)
-    }
-  })
+		errorMessage = `Default files loaded: ${leftFileName} and ${rightFileName}`;
+	} catch (error) {
+		console.error("Error initializing default files:", error);
+		errorMessage = `Error loading default files: ${error}`;
+	}
+}
+
+function toggleDarkMode(): void {
+	isDarkMode = !isDarkMode;
+	document.documentElement.setAttribute(
+		"data-theme",
+		isDarkMode ? "dark" : "light",
+	);
+}
+
+async function copyLineToRight(lineIndex: number): Promise<void> {
+	if (!diffResult || !diffResult.lines[lineIndex]) return;
+
+	const line = diffResult.lines[lineIndex];
+	if (line.type !== "removed") return;
+
+	try {
+		errorMessage = "Copying line to right file...";
+
+		// Copy the line from left to right file at the appropriate position
+		await CopyLineToFile(
+			leftFilePath,
+			rightFilePath,
+			line.leftNumber,
+			line.leftLine,
+		);
+
+		// Mark as having unsaved changes
+		hasUnsavedRightChanges = true;
+
+		// Refresh the diff to show the changes
+		await compareBothFiles();
+
+		errorMessage = "Line copied successfully";
+	} catch (error) {
+		console.error("Error copying line to right:", error);
+		errorMessage = `Error copying line: ${error}`;
+	}
+}
+
+async function copyLineToLeft(lineIndex: number): Promise<void> {
+	if (!diffResult || !diffResult.lines[lineIndex]) return;
+
+	const line = diffResult.lines[lineIndex];
+	if (line.type !== "added") return;
+
+	try {
+		errorMessage = "Copying line to left file...";
+
+		// Copy the line from right to left file at the appropriate position
+		await CopyLineToFile(
+			rightFilePath,
+			leftFilePath,
+			line.rightNumber,
+			line.rightLine,
+		);
+
+		// Mark as having unsaved changes
+		hasUnsavedLeftChanges = true;
+
+		// Refresh the diff to show the changes
+		await compareBothFiles();
+
+		errorMessage = "Line copied successfully";
+	} catch (error) {
+		console.error("Error copying line to left:", error);
+		errorMessage = `Error copying line: ${error}`;
+	}
+}
+
+async function copyLineFromRight(lineIndex: number): Promise<void> {
+	await copyLineToLeft(lineIndex);
+}
+
+async function copyLineFromLeft(lineIndex: number): Promise<void> {
+	await copyLineToRight(lineIndex);
+}
+
+async function deleteLineFromRight(lineIndex: number): Promise<void> {
+	if (!diffResult || !diffResult.lines[lineIndex]) return;
+
+	const line = diffResult.lines[lineIndex];
+	if (line.type !== "added") return;
+
+	try {
+		// Remove the line from the right file content
+		const rightLines = rightFileContent.split("\n");
+		if (line.rightLineNumber !== null && line.rightLineNumber > 0) {
+			rightLines.splice(line.rightLineNumber - 1, 1);
+			rightFileContent = rightLines.join("\n");
+
+			// Mark as having unsaved changes
+			hasUnsavedRightChanges = true;
+		}
+
+		// Refresh the diff to show the changes
+		await compareBothFiles();
+
+		errorMessage = "Line deleted successfully";
+	} catch (error) {
+		console.error("Error deleting line from right:", error);
+		errorMessage = `Error deleting line: ${error}`;
+	}
+}
+
+async function deleteLineFromLeft(lineIndex: number): Promise<void> {
+	if (!diffResult || !diffResult.lines[lineIndex]) return;
+
+	const line = diffResult.lines[lineIndex];
+	if (line.type !== "removed") return;
+
+	try {
+		// Remove the line from the left file content
+		const leftLines = leftFileContent.split("\n");
+		if (line.leftLineNumber !== null && line.leftLineNumber > 0) {
+			leftLines.splice(line.leftLineNumber - 1, 1);
+			leftFileContent = leftLines.join("\n");
+
+			// Mark as having unsaved changes
+			hasUnsavedLeftChanges = true;
+		}
+
+		// Refresh the diff to show the changes
+		await compareBothFiles();
+
+		errorMessage = "Line deleted successfully";
+	} catch (error) {
+		console.error("Error deleting line from left:", error);
+		errorMessage = `Error deleting line: ${error}`;
+	}
+}
+
+async function saveLeftFile(): Promise<void> {
+	try {
+		await SaveFile(leftFilePath);
+		hasUnsavedLeftChanges = false;
+		errorMessage = "Left file saved successfully";
+	} catch (error) {
+		console.error("Error saving left file:", error);
+		errorMessage = `Error saving left file: ${error}`;
+	}
+}
+
+async function saveRightFile(): Promise<void> {
+	try {
+		await SaveFile(rightFilePath);
+		hasUnsavedRightChanges = false;
+		errorMessage = "Right file saved successfully";
+	} catch (error) {
+		console.error("Error saving right file:", error);
+		errorMessage = `Error saving right file: ${error}`;
+	}
+}
+
+function handleKeydown(event: KeyboardEvent): void {
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
+
+	if (isCtrlOrCmd && event.key === "s") {
+		event.preventDefault();
+
+		// Save both files if they have changes
+		if (leftFilePath) {
+			saveLeftFile();
+		}
+		if (rightFilePath) {
+			saveRightFile();
+		}
+	}
+}
+
+function getLineNumberWidth(): string {
+	if (!diffResult || !diffResult.lines.length) return "32px";
+
+	// Find the highest line number
+	const maxLineNumber = Math.max(
+		...diffResult.lines.map((line) =>
+			Math.max(line.leftNumber || 0, line.rightNumber || 0),
+		),
+	);
+
+	// Calculate width based on number of digits - much tighter calculation
+	const digits = Math.max(2, maxLineNumber.toString().length);
+	const width = digits * 6 + 8; // ~6px per digit + minimal 8px padding (4px each side)
+
+	return `${width}px`;
+}
+
+function getLanguageFromFilename(filename: string): string {
+	if (!filename) return "markup";
+
+	const ext = filename.split(".").pop()?.toLowerCase();
+	console.log("Language detection:", filename, "extension:", ext);
+
+	const languageMap: Record<string, string> = {
+		js: "javascript",
+		jsx: "javascript",
+		ts: "typescript",
+		tsx: "typescript",
+		java: "java",
+		go: "go",
+		py: "python",
+		php: "php",
+		rb: "ruby",
+		cs: "csharp",
+		css: "css",
+		scss: "css",
+		sass: "css",
+		json: "json",
+		md: "markdown",
+		sh: "bash",
+		bash: "bash",
+		zsh: "bash",
+		c: "c",
+		cpp: "cpp",
+		h: "c",
+		hpp: "cpp",
+	};
+
+	const language = languageMap[ext] || "markup";
+	console.log("Detected language:", language);
+	return language;
+}
+
+function highlightCode(code: string, language: string): string {
+	if (!code.trim()) return code;
+
+	console.log(
+		"Highlighting code:",
+		code.substring(0, 50),
+		"with language:",
+		language,
+	);
+	console.log("Available languages:", Object.keys(Prism.languages));
+
+	try {
+		const grammar = Prism.languages[language];
+		console.log("Grammar found for", language, ":", !!grammar);
+
+		if (grammar) {
+			const highlighted = Prism.highlight(code, grammar, language);
+			console.log("Original:", code.substring(0, 30));
+			console.log("Highlighted:", highlighted.substring(0, 50));
+			return highlighted;
+		} else {
+			console.warn("No grammar found for language:", language);
+		}
+	} catch (error) {
+		console.warn("Syntax highlighting error:", error);
+	}
+
+	return code;
+}
+
+function getHighlightedLine(line: string, filename: string): string {
+	if (!line.trim()) return line;
+
+	let highlighted = line;
+
+	// Store original positions to avoid double-highlighting
+	const protectedRanges: Array<{ start: number; end: number }> = [];
+
+	function addProtection(match: RegExpMatchArray) {
+		if (match.index !== undefined) {
+			protectedRanges.push({
+				start: match.index,
+				end: match.index + match[0].length,
+			});
+		}
+	}
+
+	function isProtected(start: number, end: number): boolean {
+		return protectedRanges.some(
+			(range) =>
+				(start >= range.start && start < range.end) ||
+				(end > range.start && end <= range.end) ||
+				(start <= range.start && end >= range.end),
+		);
+	}
+
+	// 1. Comments first
+	highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
+		const fullMatch = args[args.length - 1] as RegExpMatchArray;
+		addProtection(fullMatch);
+		return `<span class="syntax-comment">${match}</span>`;
+	});
+
+	// 2. Strings
+	highlighted = highlighted.replace(
+		/(["'`])([^"'`]*?)\1/g,
+		(match, ...args) => {
+			const fullMatch = args[args.length - 1] as RegExpMatchArray;
+			addProtection(fullMatch);
+			return `<span class="syntax-string">${match}</span>`;
+		},
+	);
+
+	// 3. Keywords (simpler approach)
+	const keywords = [
+		"function",
+		"const",
+		"let",
+		"var",
+		"return",
+		"if",
+		"else",
+		"for",
+		"while",
+		"class",
+		"export",
+		"import",
+		"new",
+		"this",
+		"true",
+		"false",
+		"null",
+		"undefined",
+	];
+	keywords.forEach((keyword) => {
+		const regex = new RegExp(`\\b${keyword}\\b`, "g");
+		let match;
+		while ((match = regex.exec(line)) !== null) {
+			if (!isProtected(match.index, match.index + match[0].length)) {
+				highlighted = highlighted.replace(
+					match[0],
+					`<span class="syntax-keyword">${match[0]}</span>`,
+				);
+			}
+		}
+	});
+
+	// 4. Numbers
+	highlighted = highlighted.replace(
+		/\b(\d+\.?\d*)\b/g,
+		'<span class="syntax-number">$1</span>',
+	);
+
+	// 5. Function calls
+	highlighted = highlighted.replace(
+		/\b([a-zA-Z_$]\w*)\s*(?=\()/g,
+		'<span class="syntax-function">$1</span>',
+	);
+
+	return highlighted;
+}
+
+onMount(() => {
+	initializeDefaultFiles();
+	document.documentElement.setAttribute("data-theme", "dark");
+
+	// Add keyboard event listener
+	document.addEventListener("keydown", handleKeydown);
+
+	// Test Prism.js
+	console.log("Testing Prism.js...");
+	console.log("Prism object:", Prism);
+	console.log("Available languages:", Object.keys(Prism.languages));
+
+	// Test basic JavaScript highlighting
+	const testCode = 'function test() { return "hello"; }';
+	const testResult = Prism.highlight(
+		testCode,
+		Prism.languages.javascript,
+		"javascript",
+	);
+	console.log("Test highlighting result:", testResult);
+
+	// Cleanup on destroy
+	return () => {
+		document.removeEventListener("keydown", handleKeydown);
+	};
+});
 </script>
 
 <main>
