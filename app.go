@@ -196,8 +196,8 @@ func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
 	return -1
 }
 
-// CopyLineToFile copies a line from one file to another in memory
-func (a *App) CopyLineToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
+// CopyToFile copies a line from one file to another in memory
+func (a *App) CopyToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
 	fmt.Printf("CopyLineToFile: from %s to %s, line %d: %s\n", sourceFile, targetFile, lineNumber, lineContent)
 
 	// Read target file
@@ -271,8 +271,8 @@ func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 	return a.ReadFileContent(filepath)
 }
 
-// SaveFile saves the in-memory changes to disk
-func (a *App) SaveFile(filepath string) error {
+// SaveChanges saves the in-memory changes to disk
+func (a *App) SaveChanges(filepath string) error {
 	cachedLines, exists := fileCache[filepath]
 	if !exists {
 		return fmt.Errorf("no unsaved changes for file: %s", filepath)

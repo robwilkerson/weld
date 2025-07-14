@@ -3,10 +3,10 @@ import Prism from "prismjs";
 import { onMount } from "svelte";
 import {
 	CompareFiles,
-	CopyLineToFile,
+	CopyToFile,
 	type DiffLine,
 	type DiffResult,
-	SaveFile,
+	SaveChanges,
 	SelectFile,
 } from "../wailsjs/go/main/App.js";
 
@@ -199,9 +199,9 @@ function getDisplayPath(
 async function initializeDefaultFiles(): Promise<void> {
 	try {
 		const leftPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-1.js";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/same-1.js";
 		const rightPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/js-same-2.js";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/same-2.js";
 
 		leftFilePath = leftPath;
 		leftFileName = leftPath.split("/").pop() || leftPath;
@@ -234,7 +234,7 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 		errorMessage = "Copying line to right file...";
 
 		// Copy the line from left to right file at the appropriate position
-		await CopyLineToFile(
+		await CopyToFile(
 			leftFilePath,
 			rightFilePath,
 			line.leftNumber,
@@ -264,7 +264,7 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 		errorMessage = "Copying line to left file...";
 
 		// Copy the line from right to left file at the appropriate position
-		await CopyLineToFile(
+		await CopyToFile(
 			rightFilePath,
 			leftFilePath,
 			line.rightNumber,
@@ -348,7 +348,7 @@ async function deleteLineFromLeft(lineIndex: number): Promise<void> {
 
 async function saveLeftFile(): Promise<void> {
 	try {
-		await SaveFile(leftFilePath);
+		await SaveChanges(leftFilePath);
 		hasUnsavedLeftChanges = false;
 		errorMessage = "Left file saved successfully";
 	} catch (error) {
@@ -359,7 +359,7 @@ async function saveLeftFile(): Promise<void> {
 
 async function saveRightFile(): Promise<void> {
 	try {
-		await SaveFile(rightFilePath);
+		await SaveChanges(rightFilePath);
 		hasUnsavedRightChanges = false;
 		errorMessage = "Right file saved successfully";
 	} catch (error) {
