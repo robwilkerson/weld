@@ -911,8 +911,6 @@
   }
 
   .action-gutter-header {
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
     background: #e6e9ef;
   }
 
@@ -924,6 +922,14 @@
     color: #4c4f69;
     text-align: left;
     position: relative;
+  }
+
+  .file-info:first-child {
+    border-right: none;
+  }
+
+  .file-info:last-child {
+    border-left: none;
   }
 
   .save-btn {
