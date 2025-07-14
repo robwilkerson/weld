@@ -65,7 +65,14 @@ after frontend changes
 ## Testing
 
 Backend: Use `go test ./... -v --cover` for Go unit tests with coverage
-Frontend: Use the Vitest test runner
+Frontend: Use `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
+
+### Frontend Test Commands
+
+* `bun run test` - Run tests once
+* `bun run test:coverage` - Run tests with coverage report
+* `bun run test:watch` - Run tests in watch mode (automatically re-runs on file changes)
+* `bun run test:ui` - Run tests with interactive UI
 
 In the tests/ directory, there's a sample_files/ subdirectory that contains physical files that can be used to manually test very specific scenarios.
 
@@ -105,7 +112,7 @@ Test files - primarily used for manual testing - are located in `tests/sample-fi
 
 * Test manually using sample files in `tests/sample-files/`
 * Run `go test ./... -v --cover` for backend unit tests with coverage
-* Run `bun test` for frontend tests (when available); tests should be run using the vitest test runner
+* Run `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
 * Verify app builds successfully with `wails build`
 
 ## Common Issues
