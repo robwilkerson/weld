@@ -1,14 +1,14 @@
 {
-  "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Weld",
-  "outputfilename": "Weld",
-  "frontend:install": "npm install",
-  "frontend:build": "npm run build",
-  "frontend:dev:watcher": "npm run dev",
-  "frontend:dev:serverUrl": "auto",
-  "icon": "assets/icons/appicon.png",
-  "author": {
-    "name": "Rob Wilkerson",
-    "email": ""
-  }
+	"$schema": "https://wails.io/schemas/config.v2.json",
+	"name": "Weld",
+	"outputfilename": "Weld",
+	"frontend:install": "bun install",
+	"frontend:build": "bun run build",
+	"frontend:dev:watcher": "bun run dev",
+	"frontend:dev:serverUrl": "auto",
+	"icon": "assets/icons/appicon.icns",
+	"author": {
+		"name": "Rob Wilkerson",
+		"email": ""
+	}
 }

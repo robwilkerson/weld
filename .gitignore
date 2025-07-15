@@ -5,3 +5,6 @@ frontend/dist
 
 # Test coverage reports
 coverage/
+
+# Vite temporary files
+*.timestamp-*.mjs

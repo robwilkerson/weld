@@ -18,6 +18,10 @@ import { EventsOn, Quit } from "../wailsjs/runtime/runtime.js";
 // Shiki highlighter instance
 let highlighter: any = null;
 
+// Cache for highlighted lines to avoid re-processing
+const highlightCache: Map<string, string> = new Map();
+
+
 let leftFilePath: string = "";
 let rightFilePath: string = "";
 let leftFileName: string = "Select left file...";
@@ -32,6 +36,7 @@ let isScrollSyncing: boolean = false;
 let isDarkMode: boolean = true;
 let hasUnsavedLeftChanges: boolean = false;
 let hasUnsavedRightChanges: boolean = false;
+let hasHorizontalScrollbar: boolean = false;
 
 // Quit dialog state
 let showQuitDialog: boolean = false;
@@ -62,18 +67,13 @@ type HighlightedDiffResult = {
 // Highlighted diff result for template rendering
 let highlightedDiffResult: HighlightedDiffResult | null = null;
 
+// Track if we're currently processing to avoid re-entrancy
+let isProcessingHighlight = false;
+
 // Process highlighting when diffResult changes
-$: if (diffResult && highlighter) {
-	console.log(
-		"Reactive statement triggered - diffResult exists with",
-		diffResult.lines?.length,
-		"lines",
-	);
+$: if (diffResult && highlighter && !isProcessingHighlight) {
 	processHighlighting(diffResult);
 } else if (diffResult && !highlighter) {
-	console.log(
-		"Reactive statement triggered - diffResult exists but highlighter not ready",
-	);
 	// Set result without highlighting for now
 	highlightedDiffResult = {
 		lines: diffResult.lines.map((line) => ({
@@ -82,20 +82,8 @@ $: if (diffResult && highlighter) {
 			rightLineHighlighted: escapeHtml(line.rightLine || ""),
 		})),
 	};
-} else {
-	console.log("Reactive statement triggered - no diffResult");
+} else if (!diffResult) {
 	highlightedDiffResult = null;
-}
-
-// Re-process when highlighter becomes available
-$: if (
-	highlighter &&
-	diffResult &&
-	highlightedDiffResult &&
-	!highlightedDiffResult.lines[0]?.leftLineHighlighted?.includes("<")
-) {
-	console.log("Highlighter now available, re-processing diff result");
-	processHighlighting(diffResult);
 }
 
 // Chunk information for grouping consecutive lines
@@ -111,30 +99,19 @@ let lineChunks: LineChunk[] = [];
 // Process chunks when highlightedDiffResult changes
 $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
-	console.log("Detected chunks:", lineChunks);
 }
 
 async function processHighlighting(result: DiffResult): Promise<void> {
-	console.log(
-		"processHighlighting called with result:",
-		result?.lines?.length,
-		"lines",
-	);
-	console.log(
-		"Highlighter status:",
-		highlighter ? "initialized" : "not initialized",
-	);
+	// Set flag to prevent re-entrancy
+	isProcessingHighlight = true;
 
 	if (!result) {
-		console.log("No result, setting highlightedDiffResult to null");
 		highlightedDiffResult = result;
+		isProcessingHighlight = false;
 		return;
 	}
 
 	if (!highlighter) {
-		console.log(
-			"Highlighter not initialized, setting result without highlighting",
-		);
 		highlightedDiffResult = {
 			lines: result.lines.map((line) => ({
 				...line,
@@ -142,68 +119,40 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 				rightLineHighlighted: escapeHtml(line.rightLine || ""),
 			})),
 		};
+		isProcessingHighlight = false;
 		return;
 	}
 
 	try {
-		console.log("Starting to process lines for highlighting...");
-		console.log("Original diff result sample line:", result.lines[0]);
-		console.log(
-			"Original line types:",
-			result.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10),
-		);
-
-		// Process each line individually to avoid index misalignment
-		const processedLines = await Promise.all(
-			result.lines.map(async (line, index) => {
-				let leftLineHighlighted = "";
-				let rightLineHighlighted = "";
-
-				if (line.leftLine !== null) {
-					leftLineHighlighted = await getHighlightedLine(
-						line.leftLine,
-						leftFilePath,
-					);
-				}
-
-				if (line.rightLine !== null) {
-					rightLineHighlighted = await getHighlightedLine(
-						line.rightLine,
-						rightFilePath,
-					);
-				}
-
-				return {
-					...line,
-					leftLineHighlighted,
-					rightLineHighlighted,
-				};
-			}),
-		);
-
-		console.log(
-			"Setting highlightedDiffResult with",
-			processedLines.length,
-			"processed lines",
-		);
-		console.log("Sample processed line:", processedLines[0]);
-		console.log(
-			"Line types in processed result:",
-			processedLines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10),
-		);
+		// For now, disable syntax highlighting to avoid lockups
+		// TODO: Implement with web workers or lazy loading
 		highlightedDiffResult = {
-			lines: processedLines,
+			lines: result.lines.map((line) => ({
+				...line,
+				leftLineHighlighted: escapeHtml(line.leftLine || ""),
+				rightLineHighlighted: escapeHtml(line.rightLine || ""),
+			})),
 		};
-		console.log(
-			"highlightedDiffResult set:",
-			highlightedDiffResult?.lines?.length,
-		);
 		
 		// After highlighting is done, scroll to first diff
-		setTimeout(() => scrollToFirstDiff(), 100);
+		setTimeout(() => scrollToFirstDiff(), 200);
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
-		highlightedDiffResult = result;
+		// Fallback to non-highlighted version
+		highlightedDiffResult = {
+			lines: result.lines.map((line) => ({
+				...line,
+				leftLineHighlighted: escapeHtml(line.leftLine || ""),
+				rightLineHighlighted: escapeHtml(line.rightLine || ""),
+			})),
+		};
+		
+		// Check for horizontal scrollbar after content is rendered
+		setTimeout(() => {
+			checkHorizontalScrollbar();
+		}, 0);
+	} finally {
+		isProcessingHighlight = false;
 	}
 }
 
@@ -262,11 +211,46 @@ function escapeHtml(text: string): string {
 	return div.innerHTML;
 }
 
+function extractHighlightedLines(html: string): string[] {
+	// Create a temporary div to parse the HTML
+	const div = document.createElement("div");
+	div.innerHTML = html;
+	
+	// Find the code element
+	const codeElement = div.querySelector("code");
+	if (!codeElement) return [];
+	
+	// Split by line breaks and extract the HTML for each line
+	const lines: string[] = [];
+	const innerHTML = codeElement.innerHTML;
+	
+	// Split by <br> or newline characters while preserving the content
+	const parts = innerHTML.split(/(?=<br>)|(?=\n)/);
+	let currentLine = "";
+	
+	for (const part of parts) {
+		if (part.startsWith("<br>")) {
+			lines.push(currentLine);
+			currentLine = part.substring(4); // Skip the <br>
+		} else if (part.startsWith("\n")) {
+			lines.push(currentLine);
+			currentLine = part.substring(1); // Skip the newline
+		} else {
+			currentLine += part;
+		}
+	}
+	
+	// Don't forget the last line
+	if (currentLine) {
+		lines.push(currentLine);
+	}
+	
+	return lines;
+}
+
 async function selectLeftFile(): Promise<void> {
 	try {
-		console.log("Selecting left file...");
 		const path = await SelectFile();
-		console.log("Left file selected:", path);
 		if (path) {
 			leftFilePath = path;
 			leftFileName = path.split("/").pop() || path;
@@ -284,9 +268,7 @@ async function selectLeftFile(): Promise<void> {
 
 async function selectRightFile(): Promise<void> {
 	try {
-		console.log("Selecting right file...");
 		const path = await SelectFile();
-		console.log("Right file selected:", path);
 		if (path) {
 			rightFilePath = path;
 			rightFileName = path.split("/").pop() || path;
@@ -311,31 +293,20 @@ async function compareBothFiles(): Promise<void> {
 	try {
 		isComparing = true;
 		errorMessage = "";
-		console.log("Starting comparison of:", leftFilePath, "vs", rightFilePath);
 
 		diffResult = await CompareFiles(leftFilePath, rightFilePath);
-		console.log("Comparison result:", diffResult);
-		if (diffResult && diffResult.lines && diffResult.lines.length > 0) {
-			console.log("First line sample:", diffResult.lines[0]);
-			console.log(
-				"Line types found:",
-				diffResult.lines
-					.map((line, idx) => `${idx}: ${line.type}`)
-					.slice(0, 10),
-			);
-			const typeCounts = diffResult.lines.reduce((counts, line) => {
-				counts[line.type] = (counts[line.type] || 0) + 1;
-				return counts;
-			}, {});
-			console.log("Line type counts:", typeCounts);
-		}
-
+		
 		if (!diffResult || !diffResult.lines) {
 			errorMessage = "No comparison result received";
 			diffResult = null;
 		} else if (diffResult.lines.length === 0) {
 			errorMessage = "Files are identical";
 		}
+		
+		// Check for horizontal scrollbar after diff is loaded
+		setTimeout(() => {
+			checkHorizontalScrollbar();
+		}, 100);
 	} catch (error) {
 		console.error("Comparison error:", error);
 		errorMessage = `Error comparing files: ${error}`;
@@ -359,27 +330,31 @@ function getLineClass(type: string): string {
 }
 
 function syncLeftScroll() {
-	if (isScrollSyncing || !leftPane || !rightPane) return;
+	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
-	// Sync both vertical and horizontal scrolling from left to right pane and center gutter
-	rightPane.scrollTop = leftPane.scrollTop;
+	// Sync vertical scrolling to all panes
+	const scrollTop = leftPane.scrollTop;
+	rightPane.scrollTop = scrollTop;
+	centerGutter.scrollTop = scrollTop;
+	// Only sync horizontal scroll between content panes
 	rightPane.scrollLeft = leftPane.scrollLeft;
-	if (centerGutter) {
-		centerGutter.scrollTop = leftPane.scrollTop;
-	}
-	setTimeout(() => (isScrollSyncing = false), 10);
+	requestAnimationFrame(() => {
+		isScrollSyncing = false;
+	});
 }
 
 function syncRightScroll() {
-	if (isScrollSyncing || !leftPane || !rightPane) return;
+	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
-	// Sync both vertical and horizontal scrolling from right to left pane and center gutter
-	leftPane.scrollTop = rightPane.scrollTop;
+	// Sync vertical scrolling to all panes
+	const scrollTop = rightPane.scrollTop;
+	leftPane.scrollTop = scrollTop;
+	centerGutter.scrollTop = scrollTop;
+	// Only sync horizontal scroll between content panes
 	leftPane.scrollLeft = rightPane.scrollLeft;
-	if (centerGutter) {
-		centerGutter.scrollTop = rightPane.scrollTop;
-	}
-	setTimeout(() => (isScrollSyncing = false), 10);
+	requestAnimationFrame(() => {
+		isScrollSyncing = false;
+	});
 }
 
 function syncCenterScroll() {
@@ -428,37 +403,8 @@ function getDisplayPath(
 }
 
 async function initializeDefaultFiles(): Promise<void> {
-	try {
-		const leftPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addmiddle-1.go";
-		const rightPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addmiddle-2.go";
-
-		console.log("Initializing default files:", leftPath, rightPath);
-
-		leftFilePath = leftPath;
-		leftFileName = leftPath.split("/").pop() || leftPath;
-
-		rightFilePath = rightPath;
-		rightFileName = rightPath.split("/").pop() || rightPath;
-
-		console.log("Files set, running comparison...");
-
-		// Clear any existing results to force fresh highlighting
-		diffResult = null;
-		highlightedDiffResult = null;
-
-		// Auto-compare the files after loading them
-		await updateUnsavedChangesStatus();
-		await compareBothFiles();
-
-		console.log("Comparison complete, diffResult:", diffResult?.lines?.length);
-
-		errorMessage = `Default files loaded: ${leftFileName} and ${rightFileName}`;
-	} catch (error) {
-		console.error("Error initializing default files:", error);
-		errorMessage = `Error loading default files: ${error}`;
-	}
+	// Removed automatic file loading to prevent crashes
+	// Users should manually select files to compare
 }
 
 function toggleDarkMode(): void {
@@ -759,8 +705,6 @@ function getLineNumberWidth(): string {
 	return `${width}px`;
 }
 
-// Cache for highlighted lines to avoid re-processing
-const highlightCache: Map<string, string> = new Map();
 
 async function highlightFileContent(
 	content: string,
@@ -805,11 +749,19 @@ async function getHighlightedLine(
 	try {
 		const ext = filename.split(".").pop()?.toLowerCase();
 		const language = getLanguageFromExtension(ext || "");
-
-		const highlighted = await highlighter.codeToHtml(line, {
+		
+		// Create a timeout promise
+		const timeoutPromise = new Promise<string>((_, reject) => {
+			setTimeout(() => reject(new Error("Highlighting timeout")), 1000);
+		});
+		
+		// Race between highlighting and timeout
+		const highlightPromise = highlighter.codeToHtml(line, {
 			lang: language,
 			theme: isDarkMode ? "catppuccin-macchiato" : "catppuccin-latte",
 		});
+		
+		const highlighted = await Promise.race([highlightPromise, timeoutPromise]);
 
 		// Extract just the content from the <pre><code> wrapper
 		const match = highlighted.match(
@@ -817,7 +769,7 @@ async function getHighlightedLine(
 		);
 		return match ? match[1] : highlighted;
 	} catch (error) {
-		console.warn("Error highlighting line:", error);
+		console.warn("Error highlighting line:", error, "Line:", line.substring(0, 50));
 		return escapeHtml(line);
 	}
 }
@@ -859,6 +811,14 @@ function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
 		chunks.push(currentChunk);
 	}
 
+	console.log('Detected line chunks:', chunks.map(chunk => ({
+		type: chunk.type,
+		startIndex: chunk.startIndex,
+		endIndex: chunk.endIndex,
+		lines: chunk.lines,
+		lineNumbers: `${chunk.startIndex + 1}-${chunk.endIndex + 1}`
+	})));
+
 	return chunks;
 }
 
@@ -875,38 +835,54 @@ function getChunkForLine(lineIndex: number): LineChunk | null {
 }
 
 function scrollToFirstDiff(): void {
-	if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) return;
-	
-	// Find the first line that's not "same"
-	const firstDiffIndex = highlightedDiffResult.lines.findIndex(
-		line => line.type !== 'same'
-	);
-	
-	if (firstDiffIndex === -1) return; // No diffs found
-	
-	// Calculate the line height (using the CSS value)
-	const lineHeight = 1.3; // em
-	const fontSize = 13; // Approximate px value
-	const lineHeightPx = lineHeight * fontSize;
-	
-	// Calculate the position of the first diff
-	const firstDiffPosition = firstDiffIndex * lineHeightPx;
-	
-	// Get the viewport height
-	const viewportHeight = leftPane.clientHeight;
-	const middleOfViewport = viewportHeight / 2;
-	
-	// Only scroll if the first diff is below the middle of the viewport
-	if (firstDiffPosition > middleOfViewport) {
+	try {
+		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
+			return;
+		}
+		
+		// Find the first line that's not "same"
+		const firstDiffIndex = highlightedDiffResult.lines.findIndex(
+			line => line.type !== 'same'
+		);
+		
+		if (firstDiffIndex === -1) {
+			return;
+		}
+		
+		// Calculate the line height from CSS variable
+		const computedStyle = window.getComputedStyle(document.documentElement);
+		const lineHeightValue = computedStyle.getPropertyValue('--line-height');
+		const fontSize = 13; // Approximate px value
+		// Parse the em value and convert to px
+		const lineHeight = parseFloat(lineHeightValue) || 1.5;
+		const lineHeightPx = lineHeight * fontSize;
+		
+		// Calculate the position of the first diff
+		const firstDiffPosition = firstDiffIndex * lineHeightPx;
+		
+		// Get the viewport height
+		const viewportHeight = leftPane.clientHeight;
+		const middleOfViewport = viewportHeight / 2;
+		
+		
+		// Always scroll to center the first diff in the viewport
 		// Calculate scroll position to center the first diff
-		const scrollTo = firstDiffPosition - middleOfViewport;
+		const scrollTo = Math.max(0, firstDiffPosition - middleOfViewport);
 		
-		console.log(`Scrolling to first diff at line ${firstDiffIndex}, position: ${scrollTo}px`);
-		
-		// Scroll all panes together
-		leftPane.scrollTop = scrollTo;
-		rightPane.scrollTop = scrollTo;
-		centerGutter.scrollTop = scrollTo;
+		// Ensure all panes are ready and synced
+		requestAnimationFrame(() => {
+			// Set scroll position on all panes simultaneously
+			isScrollSyncing = true;
+			leftPane.scrollTop = scrollTo;
+			rightPane.scrollTop = scrollTo;
+			centerGutter.scrollTop = scrollTo;
+			// Allow sync to resume after a frame
+			requestAnimationFrame(() => {
+				isScrollSyncing = false;
+			});
+		});
+	} catch (error) {
+		console.error("Error in scrollToFirstDiff:", error);
 	}
 }
 
@@ -964,7 +940,7 @@ onMount(async () => {
 		highlightedDiffResult = null;
 	});
 
-	initializeDefaultFiles();
+	// Removed automatic file loading on startup
 	document.documentElement.setAttribute("data-theme", "dark");
 
 	// Add event listeners
@@ -973,7 +949,6 @@ onMount(async () => {
 
 	// Initialize Shiki highlighter with Catppuccin themes
 	try {
-		console.log("Initializing Shiki highlighter...");
 		highlighter = await createHighlighter({
 			themes: ["catppuccin-macchiato", "catppuccin-latte"],
 			langs: [
@@ -1007,11 +982,22 @@ onMount(async () => {
 				"vim",
 			],
 		});
-		console.log("Shiki highlighter initialized successfully");
 	} catch (error) {
 		console.error("Failed to initialize Shiki:", error);
 		highlighter = null;
 	}
+
+	// Set up ResizeObserver to detect scrollbar changes
+	const resizeObserver = new ResizeObserver(() => {
+		checkHorizontalScrollbar();
+	});
+	
+	// Wait for next tick to ensure elements are mounted
+	setTimeout(() => {
+		if (leftPane) resizeObserver.observe(leftPane);
+		if (rightPane) resizeObserver.observe(rightPane);
+		checkHorizontalScrollbar();
+	}, 0);
 
 	// Cleanup on destroy
 	return () => {
@@ -1019,8 +1005,18 @@ onMount(async () => {
 		if (highlighter) {
 			highlighter.dispose?.();
 		}
+		resizeObserver.disconnect();
 	};
 });
+
+function checkHorizontalScrollbar() {
+	if (leftPane && rightPane) {
+		// Check if either pane has horizontal overflow
+		const leftHasScroll = leftPane.scrollWidth > leftPane.clientWidth;
+		const rightHasScroll = rightPane.scrollWidth > rightPane.clientWidth;
+		hasHorizontalScrollbar = leftHasScroll || rightHasScroll;
+	}
+}
 </script>
 
 <main>
@@ -1057,7 +1053,7 @@ onMount(async () => {
 
   <div class="diff-container">
     {#if diffResult}
-      <div class="file-header" style="--line-number-width: {lineNumberWidth}">
+      <div class="file-header {highlightedDiffResult?.lines?.[0]?.type !== 'same' ? 'first-line-diff' : ''}" style="--line-number-width: {lineNumberWidth}">
         <div class="file-info left">
           <button class="save-btn" disabled={!hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
@@ -1089,9 +1085,12 @@ onMount(async () => {
       
       <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
         <div class="left-pane" bind:this={leftPane} on:scroll={syncLeftScroll}>
-          <div class="pane-content">
+          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              <div class="line {getLineClass(line.type)}">
+              {@const chunk = getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
                 <span class="line-number">{line.leftNumber || ''}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1100,18 +1099,16 @@ onMount(async () => {
         </div>
         
         <div class="center-gutter" bind:this={centerGutter} on:scroll={syncCenterScroll}>
-          <div class="gutter-content">
+          <div class="gutter-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px); padding-bottom: {hasHorizontalScrollbar ? '42px' : '30px'};">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
-              {@const chunkLineCount = chunk ? chunk.lines : 0}
-              {@const chunkMiddle = chunk ? Math.floor(chunk.lines / 2) : 0}
-              {@const linePositionInChunk = chunk ? index - chunk.startIndex : 0}
+              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               
-              <div class="gutter-line" style="--chunk-lines: {chunkLineCount}; --chunk-position: {linePositionInChunk}">
-              {#if chunk && linePositionInChunk === Math.floor(chunk.lines / 2)}
-                <!-- Show chunk arrows only on the middle line of the chunk -->
-                <div class="chunk-actions">
+              <div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
+              {#if chunk && isFirstInChunk}
+                <!-- Show chunk arrows only on the first line of the chunk, but position them in the middle -->
+                <div class="chunk-actions" style="--chunk-height: {chunk.lines};">
                   {#if chunk.type === 'added'}
                     <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
                     <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => deleteChunkFromRight(chunk)} title="Delete chunk from right ({chunk.lines} lines)">
@@ -1147,15 +1144,20 @@ onMount(async () => {
                   ←
                 </button>
               {/if}
+              <!-- Invisible content to match line structure -->
+              <span style="visibility: hidden; font-size: var(--font-size);">​</span>
             </div>
           {/each}
           </div>
         </div>
         
         <div class="right-pane" bind:this={rightPane} on:scroll={syncRightScroll}>
-          <div class="pane-content">
+          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              <div class="line {getLineClass(line.type)}">
+              {@const chunk = getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
                 <span class="line-number">{line.rightNumber || ''}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
@@ -1230,6 +1232,15 @@ onMount(async () => {
 <style>
   :global(html) {
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  *, *::before, *::after {
+  }
+  
+  :root {
+    --line-height: 1.5em;
+    --font-size: 0.8rem;
+    --gutter-width: 72px;
   }
 
   main {
@@ -1501,6 +1512,10 @@ onMount(async () => {
     border-bottom: 1px solid #dce0e8;
     background: #e6e9ef;
   }
+  
+  .file-header.first-line-diff {
+    padding-bottom: 8px;
+  }
 
   .action-gutter-header {
     background: #e6e9ef;
@@ -1579,52 +1594,92 @@ onMount(async () => {
     flex: 1;
     min-width: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    font-size: 0.8rem;
-    line-height: 1.3;
+    font-size: var(--font-size);
+    line-height: var(--line-height);
     overflow: auto;
     background: #eff1f5;
     position: relative;
   }
 
   .center-gutter {
-    width: 72px;
+    width: var(--gutter-width);
     background: #e6e9ef;
     border-left: 1px solid #dce0e8;
     border-right: 1px solid #dce0e8;
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    font-size: 0.8rem;
-    line-height: 1.3;
-    /* Hide scrollbar but keep functionality */
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    /* Hide vertical scrollbar but keep functionality */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
   }
 
   .gutter-content {
-    padding-bottom: 20px; /* Match content pane padding */
+    display: inline-block;
+    min-width: 100%;
+    width: fit-content;
+    position: relative;
+    /* padding-bottom handled dynamically based on horizontal scrollbar */
+    line-height: var(--line-height);
+    min-height: 100%; /* Ensure minimum height matches container */
   }
 
-  .center-gutter::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+  /* Hide vertical scrollbar in gutter but keep track space for alignment */
+  .center-gutter::-webkit-scrollbar:vertical {
+    width: 0; /* Chrome, Safari, Opera */
+  }
+  
+  .center-gutter::-webkit-scrollbar:horizontal {
+    height: 12px; /* Match the main scrollbar height */
+  }
+  
+  /* Ensure panes also have consistent scrollbar sizing */
+  .left-pane::-webkit-scrollbar,
+  .right-pane::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .left-pane::-webkit-scrollbar-track,
+  .right-pane::-webkit-scrollbar-track,
+  .center-gutter::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .left-pane::-webkit-scrollbar-thumb,
+  .right-pane::-webkit-scrollbar-thumb,
+  .center-gutter::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 6px;
+  }
+  
+  .left-pane::-webkit-scrollbar-thumb:hover,
+  .right-pane::-webkit-scrollbar-thumb:hover,
+  .center-gutter::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
 
   .gutter-line {
-    min-height: 1.3em;
     display: flex;
-    align-items: flex-start;
+    height: var(--line-height);
+    min-height: var(--line-height);
+    align-items: stretch;
     justify-content: center;
     position: relative;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
     white-space: pre;
     width: 100%;
+    font-size: var(--font-size); /* Ensure same font size */
+    line-height: var(--line-height); /* Ensure same line height */
+    border-bottom: 1px solid rgba(255, 0, 255, 0.3); /* Magenta border for visibility */
   }
 
-  .gutter-arrow {
-    margin-top: 0;
-    align-self: flex-start;
+  /* Special styling for chunk start lines */
+  .gutter-line.chunk-start {
+    position: relative;
   }
   
   /* Chunk-based arrow styling */
@@ -1632,29 +1687,28 @@ onMount(async () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    height: 100%;
+    gap: 6px;
+    position: absolute;
+    /* Dynamic positioning based on chunk size */
+    top: calc((var(--chunk-height) - 1) * var(--line-height) / 2);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    height: var(--line-height);
   }
   
   .chunk-arrow {
-    position: relative;
-    margin-top: 0;
-    align-self: center;
-    background: rgba(0, 0, 0, 0.05);
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 14px !important;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .chunk-arrow:hover {
-    background: rgba(0, 0, 0, 0.1);
     transform: scale(1.15);
-  }
-  
-  :global([data-theme="dark"]) .chunk-arrow {
-    background: rgba(255, 255, 255, 0.05);
-  }
-  
-  :global([data-theme="dark"]) .chunk-arrow:hover {
-    background: rgba(255, 255, 255, 0.1);
   }
 
   .pane-content {
@@ -1662,8 +1716,9 @@ onMount(async () => {
     min-width: 100%;
     width: fit-content;
     position: relative;
-    padding-bottom: 20px; /* Add space above horizontal scrollbar */
-    line-height: 1.3;
+    padding-bottom: 30px; /* Add some padding for visual comfort */
+    line-height: var(--line-height);
+    min-height: 100%; /* Ensure minimum height matches container */
   }
 
   .pane-content::after {
@@ -1681,16 +1736,30 @@ onMount(async () => {
 
   .line {
     display: flex;
-    height: 1.3em;
-    min-height: 1.3em;
+    height: var(--line-height);
+    min-height: var(--line-height);
     white-space: pre;
     align-items: stretch;
     width: 100%;
     position: relative;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    border-bottom: 1px solid rgba(255, 0, 255, 0.3); /* Magenta border for visibility */
   }
+  
+  
+  /* Spacer line for breathing room */
+  .line-spacer {
+    height: 1.3em;
+    min-height: 1.3em;
+    background: transparent;
+  }
+  
+  .line-spacer .line-number {
+    background: transparent !important;
+    border-right: 1px solid #dce0e8;
+  }
+  
 
   .pane-action {
     position: absolute;
@@ -1720,7 +1789,6 @@ onMount(async () => {
     align-items: center;
     justify-content: flex-end;
     height: 100%;
-    box-sizing: border-box;
   }
 
   .line-text {
@@ -1944,20 +2012,22 @@ onMount(async () => {
     background: transparent;
     border: none;
     border-radius: 4px;
-    width: 24px;
+    width: 20px;
     height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
   }
 
   .gutter-arrow:hover {
     transform: scale(1.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.05);
   }
 
   .left-arrow {
@@ -1985,8 +2055,6 @@ onMount(async () => {
   }
 
   .left-side-arrow {
-    position: absolute;
-    left: 4px;
     color: #dc2626;
   }
 
@@ -1995,8 +2063,6 @@ onMount(async () => {
   }
 
   .right-side-arrow {
-    position: absolute;
-    right: 4px;
     color: #16a34a;
   }
 
@@ -2021,7 +2087,7 @@ onMount(async () => {
   }
 
   :global([data-theme="dark"]) .gutter-arrow:hover {
-    /* No background/border changes in dark mode either */
+    background: rgba(255, 255, 255, 0.05);
   }
 
   :global([data-theme="dark"]) .left-arrow {

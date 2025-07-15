@@ -6,6 +6,7 @@
  */
 function calculateTotal(items) {
 	return items.reduce((sum, item) => {
+		// Added comment for visual comparison
 		const price = parseFloat(item.price) || 0;
 		const quantity = parseInt(item.quantity) || 0;
 		return sum + price * quantity;
