@@ -1,4 +1,5 @@
 <script lang="ts">
+import { createHighlighter } from "shiki";
 import { onMount } from "svelte";
 import {
 	CompareFiles,
@@ -13,7 +14,6 @@ import {
 	SelectFile,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn, Quit } from "../wailsjs/runtime/runtime.js";
-import { createHighlighter } from 'shiki';
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -63,56 +63,141 @@ type HighlightedDiffResult = {
 let highlightedDiffResult: HighlightedDiffResult | null = null;
 
 // Process highlighting when diffResult changes
-$: if (diffResult) {
-	console.log("Reactive statement triggered - diffResult exists with", diffResult.lines?.length, "lines");
+$: if (diffResult && highlighter) {
+	console.log(
+		"Reactive statement triggered - diffResult exists with",
+		diffResult.lines?.length,
+		"lines",
+	);
 	processHighlighting(diffResult);
+} else if (diffResult && !highlighter) {
+	console.log(
+		"Reactive statement triggered - diffResult exists but highlighter not ready",
+	);
+	// Set result without highlighting for now
+	highlightedDiffResult = {
+		lines: diffResult.lines.map((line) => ({
+			...line,
+			leftLineHighlighted: escapeHtml(line.leftLine || ""),
+			rightLineHighlighted: escapeHtml(line.rightLine || ""),
+		})),
+	};
 } else {
 	console.log("Reactive statement triggered - no diffResult");
+	highlightedDiffResult = null;
+}
+
+// Re-process when highlighter becomes available
+$: if (
+	highlighter &&
+	diffResult &&
+	highlightedDiffResult &&
+	!highlightedDiffResult.lines[0]?.leftLineHighlighted?.includes("<")
+) {
+	console.log("Highlighter now available, re-processing diff result");
+	processHighlighting(diffResult);
+}
+
+// Chunk information for grouping consecutive lines
+interface LineChunk {
+	startIndex: number;
+	endIndex: number;
+	type: string;
+	lines: number;
+}
+
+let lineChunks: LineChunk[] = [];
+
+// Process chunks when highlightedDiffResult changes
+$: if (highlightedDiffResult) {
+	lineChunks = detectLineChunks(highlightedDiffResult.lines);
+	console.log("Detected chunks:", lineChunks);
 }
 
 async function processHighlighting(result: DiffResult): Promise<void> {
-	console.log("processHighlighting called with result:", result?.lines?.length, "lines");
-	
+	console.log(
+		"processHighlighting called with result:",
+		result?.lines?.length,
+		"lines",
+	);
+	console.log(
+		"Highlighter status:",
+		highlighter ? "initialized" : "not initialized",
+	);
+
 	if (!result) {
 		console.log("No result, setting highlightedDiffResult to null");
 		highlightedDiffResult = result;
 		return;
 	}
 
+	if (!highlighter) {
+		console.log(
+			"Highlighter not initialized, setting result without highlighting",
+		);
+		highlightedDiffResult = {
+			lines: result.lines.map((line) => ({
+				...line,
+				leftLineHighlighted: escapeHtml(line.leftLine || ""),
+				rightLineHighlighted: escapeHtml(line.rightLine || ""),
+			})),
+		};
+		return;
+	}
+
 	try {
 		console.log("Starting to process lines for highlighting...");
 		console.log("Original diff result sample line:", result.lines[0]);
-		console.log("Original line types:", result.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
-		
+		console.log(
+			"Original line types:",
+			result.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10),
+		);
+
 		// Process each line individually to avoid index misalignment
 		const processedLines = await Promise.all(
 			result.lines.map(async (line, index) => {
 				let leftLineHighlighted = "";
 				let rightLineHighlighted = "";
-				
+
 				if (line.leftLine !== null) {
-					leftLineHighlighted = await getHighlightedLine(line.leftLine, leftFilePath);
+					leftLineHighlighted = await getHighlightedLine(
+						line.leftLine,
+						leftFilePath,
+					);
 				}
-				
+
 				if (line.rightLine !== null) {
-					rightLineHighlighted = await getHighlightedLine(line.rightLine, rightFilePath);
+					rightLineHighlighted = await getHighlightedLine(
+						line.rightLine,
+						rightFilePath,
+					);
 				}
-				
+
 				return {
 					...line,
 					leftLineHighlighted,
 					rightLineHighlighted,
 				};
-			})
+			}),
 		);
 
-		console.log("Setting highlightedDiffResult with", processedLines.length, "processed lines");
+		console.log(
+			"Setting highlightedDiffResult with",
+			processedLines.length,
+			"processed lines",
+		);
 		console.log("Sample processed line:", processedLines[0]);
-		console.log("Line types in processed result:", processedLines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
+		console.log(
+			"Line types in processed result:",
+			processedLines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10),
+		);
 		highlightedDiffResult = {
 			lines: processedLines,
 		};
-		console.log("highlightedDiffResult set:", highlightedDiffResult?.lines?.length);
+		console.log(
+			"highlightedDiffResult set:",
+			highlightedDiffResult?.lines?.length,
+		);
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
 		highlightedDiffResult = result;
@@ -169,7 +254,7 @@ function getDisplayFileName(filepath: string): string {
 }
 
 function escapeHtml(text: string): string {
-	const div = document.createElement('div');
+	const div = document.createElement("div");
 	div.textContent = text;
 	return div.innerHTML;
 }
@@ -229,7 +314,12 @@ async function compareBothFiles(): Promise<void> {
 		console.log("Comparison result:", diffResult);
 		if (diffResult && diffResult.lines && diffResult.lines.length > 0) {
 			console.log("First line sample:", diffResult.lines[0]);
-			console.log("Line types found:", diffResult.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
+			console.log(
+				"Line types found:",
+				diffResult.lines
+					.map((line, idx) => `${idx}: ${line.type}`)
+					.slice(0, 10),
+			);
 			const typeCounts = diffResult.lines.reduce((counts, line) => {
 				counts[line.type] = (counts[line.type] || 0) + 1;
 				return counts;
@@ -298,7 +388,6 @@ function syncCenterScroll() {
 	setTimeout(() => (isScrollSyncing = false), 10);
 }
 
-
 function expandTildePath(path: string): string {
 	if (path.startsWith("~/")) {
 		const home = process.env.HOME || process.env.USERPROFILE || "";
@@ -338,12 +427,12 @@ function getDisplayPath(
 async function initializeDefaultFiles(): Promise<void> {
 	try {
 		const leftPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addend-1.py";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addmiddle-1.go";
 		const rightPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addend-2.py";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addmiddle-2.go";
 
 		console.log("Initializing default files:", leftPath, rightPath);
-		
+
 		leftFilePath = leftPath;
 		leftFileName = leftPath.split("/").pop() || leftPath;
 
@@ -351,17 +440,17 @@ async function initializeDefaultFiles(): Promise<void> {
 		rightFileName = rightPath.split("/").pop() || rightPath;
 
 		console.log("Files set, running comparison...");
-		
+
 		// Clear any existing results to force fresh highlighting
 		diffResult = null;
 		highlightedDiffResult = null;
-		
+
 		// Auto-compare the files after loading them
 		await updateUnsavedChangesStatus();
 		await compareBothFiles();
-		
+
 		console.log("Comparison complete, diffResult:", diffResult?.lines?.length);
-		
+
 		errorMessage = `Default files loaded: ${leftFileName} and ${rightFileName}`;
 	} catch (error) {
 		console.error("Error initializing default files:", error);
@@ -445,6 +534,120 @@ async function copyLineFromRight(lineIndex: number): Promise<void> {
 
 async function copyLineFromLeft(lineIndex: number): Promise<void> {
 	await copyLineToRight(lineIndex);
+}
+
+async function copyChunkToRight(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Copying chunk to right file...";
+
+		// Copy all lines in the chunk from left to right
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "removed" && line.leftNumber !== null) {
+				await CopyToFile(
+					leftFilePath,
+					rightFilePath,
+					line.leftNumber,
+					line.leftLine,
+				);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Chunk copied successfully";
+	} catch (error) {
+		console.error("Error copying chunk to right:", error);
+		errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
+async function copyChunkToLeft(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Copying chunk to left file...";
+
+		// Copy all lines in the chunk from right to left
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "added" && line.rightNumber !== null) {
+				await CopyToFile(
+					rightFilePath,
+					leftFilePath,
+					line.rightNumber,
+					line.rightLine,
+				);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Chunk copied successfully";
+	} catch (error) {
+		console.error("Error copying chunk to left:", error);
+		errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
+async function deleteChunkFromRight(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Deleting chunk from right file...";
+
+		// Delete all lines in the chunk from right file (in reverse order to maintain line numbers)
+		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
+			const line = diffResult.lines[i];
+			if (
+				line.type === "added" &&
+				line.rightNumber !== null &&
+				line.rightNumber > 0
+			) {
+				await RemoveLineFromFile(rightFilePath, line.rightNumber);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Chunk deleted successfully";
+	} catch (error) {
+		console.error("Error deleting chunk from right:", error);
+		errorMessage = `Error deleting chunk: ${error}`;
+	}
+}
+
+async function deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Deleting chunk from left file...";
+
+		// Delete all lines in the chunk from left file (in reverse order to maintain line numbers)
+		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
+			const line = diffResult.lines[i];
+			if (
+				line.type === "removed" &&
+				line.leftNumber !== null &&
+				line.leftNumber > 0
+			) {
+				await RemoveLineFromFile(leftFilePath, line.leftNumber);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Chunk deleted successfully";
+	} catch (error) {
+		console.error("Error deleting chunk from left:", error);
+		errorMessage = `Error deleting chunk: ${error}`;
+	}
 }
 
 async function deleteLineFromRight(lineIndex: number): Promise<void> {
@@ -553,54 +756,62 @@ function getLineNumberWidth(): string {
 	return `${width}px`;
 }
 
-
-
 // Cache for highlighted lines to avoid re-processing
 const highlightCache: Map<string, string> = new Map();
 
-async function highlightFileContent(content: string, filename: string): Promise<string[]> {
+async function highlightFileContent(
+	content: string,
+	filename: string,
+): Promise<string[]> {
 	if (!content.trim()) return [];
-	if (!highlighter) return content.split('\n').map(escapeHtml);
+	if (!highlighter) return content.split("\n").map(escapeHtml);
 
 	try {
-		const ext = filename.split('.').pop()?.toLowerCase();
-		const language = getLanguageFromExtension(ext || '');
-		
+		const ext = filename.split(".").pop()?.toLowerCase();
+		const language = getLanguageFromExtension(ext || "");
+
 		const highlighted = await highlighter.codeToHtml(content, {
 			lang: language,
-			theme: isDarkMode ? 'catppuccin-macchiato' : 'catppuccin-latte'
+			theme: isDarkMode ? "catppuccin-macchiato" : "catppuccin-latte",
 		});
 
 		// Extract lines from the highlighted content
-		const match = highlighted.match(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s);
+		const match = highlighted.match(
+			/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s,
+		);
 		if (match) {
 			// Split by line breaks and clean up
-			const lines = match[1].split('\n');
+			const lines = match[1].split("\n");
 			return lines;
 		}
-		
-		return content.split('\n').map(escapeHtml);
+
+		return content.split("\n").map(escapeHtml);
 	} catch (error) {
 		console.warn("Error highlighting content:", error);
-		return content.split('\n').map(escapeHtml);
+		return content.split("\n").map(escapeHtml);
 	}
 }
 
-async function getHighlightedLine(line: string, filename: string): Promise<string> {
+async function getHighlightedLine(
+	line: string,
+	filename: string,
+): Promise<string> {
 	if (!line.trim()) return line;
 	if (!highlighter) return escapeHtml(line);
 
 	try {
-		const ext = filename.split('.').pop()?.toLowerCase();
-		const language = getLanguageFromExtension(ext || '');
-		
+		const ext = filename.split(".").pop()?.toLowerCase();
+		const language = getLanguageFromExtension(ext || "");
+
 		const highlighted = await highlighter.codeToHtml(line, {
 			lang: language,
-			theme: isDarkMode ? 'catppuccin-macchiato' : 'catppuccin-latte'
+			theme: isDarkMode ? "catppuccin-macchiato" : "catppuccin-latte",
 		});
 
 		// Extract just the content from the <pre><code> wrapper
-		const match = highlighted.match(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s);
+		const match = highlighted.match(
+			/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s,
+		);
 		return match ? match[1] : highlighted;
 	} catch (error) {
 		console.warn("Error highlighting line:", error);
@@ -608,60 +819,112 @@ async function getHighlightedLine(line: string, filename: string): Promise<strin
 	}
 }
 
+function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
+	const chunks: LineChunk[] = [];
+	let currentChunk: LineChunk | null = null;
+
+	lines.forEach((line, index) => {
+		// Only create chunks for added/removed lines
+		if (line.type === "added" || line.type === "removed") {
+			if (currentChunk && currentChunk.type === line.type) {
+				// Extend current chunk
+				currentChunk.endIndex = index;
+				currentChunk.lines++;
+			} else {
+				// Start new chunk
+				if (currentChunk) {
+					chunks.push(currentChunk);
+				}
+				currentChunk = {
+					startIndex: index,
+					endIndex: index,
+					type: line.type,
+					lines: 1,
+				};
+			}
+		} else {
+			// End current chunk if any
+			if (currentChunk) {
+				chunks.push(currentChunk);
+				currentChunk = null;
+			}
+		}
+	});
+
+	// Don't forget the last chunk
+	if (currentChunk) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
+}
+
+function isLineInChunk(lineIndex: number, chunk: LineChunk): boolean {
+	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+}
+
+function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
+	return lineIndex === chunk.startIndex;
+}
+
+function getChunkForLine(lineIndex: number): LineChunk | null {
+	return lineChunks.find((chunk) => isLineInChunk(lineIndex, chunk)) || null;
+}
+
 function getLanguageFromExtension(ext: string): string {
 	const languageMap: Record<string, string> = {
-		'js': 'javascript',
-		'jsx': 'jsx',
-		'ts': 'typescript',
-		'tsx': 'tsx',
-		'py': 'python',
-		'java': 'java',
-		'go': 'go',
-		'php': 'php',
-		'rb': 'ruby',
-		'cs': 'csharp',
-		'css': 'css',
-		'scss': 'scss',
-		'sass': 'sass',
-		'json': 'json',
-		'md': 'markdown',
-		'sh': 'bash',
-		'bash': 'bash',
-		'zsh': 'bash',
-		'c': 'c',
-		'cpp': 'cpp',
-		'h': 'c',
-		'hpp': 'cpp',
-		'rs': 'rust',
-		'kt': 'kotlin',
-		'swift': 'swift',
-		'dart': 'dart',
-		'html': 'html',
-		'xml': 'xml',
-		'yaml': 'yaml',
-		'yml': 'yaml',
-		'toml': 'toml',
-		'sql': 'sql',
-		'r': 'r',
-		'lua': 'lua',
-		'vim': 'vim',
-		'dockerfile': 'dockerfile'
+		js: "javascript",
+		jsx: "jsx",
+		ts: "typescript",
+		tsx: "tsx",
+		py: "python",
+		java: "java",
+		go: "go",
+		php: "php",
+		rb: "ruby",
+		cs: "csharp",
+		css: "css",
+		scss: "scss",
+		sass: "sass",
+		json: "json",
+		md: "markdown",
+		sh: "bash",
+		bash: "bash",
+		zsh: "bash",
+		c: "c",
+		cpp: "cpp",
+		h: "c",
+		hpp: "cpp",
+		rs: "rust",
+		kt: "kotlin",
+		swift: "swift",
+		dart: "dart",
+		html: "html",
+		xml: "xml",
+		yaml: "yaml",
+		yml: "yaml",
+		toml: "toml",
+		sql: "sql",
+		r: "r",
+		lua: "lua",
+		vim: "vim",
+		dockerfile: "dockerfile",
 	};
-	
-	return languageMap[ext] || 'text';
+
+	return languageMap[ext] || "text";
 }
 
 onMount(async () => {
 	// Clear any corrupted cache
 	highlightCache.clear();
 	highlightedDiffResult = null; // Force refresh of highlighted content
-	
+
 	// Also clear cache when theme changes
-	document.addEventListener('themeChange', () => {
+	document.addEventListener("themeChange", () => {
 		highlightCache.clear();
 		highlightedDiffResult = null;
 	});
-	
+
 	initializeDefaultFiles();
 	document.documentElement.setAttribute("data-theme", "dark");
 
@@ -673,8 +936,37 @@ onMount(async () => {
 	try {
 		console.log("Initializing Shiki highlighter...");
 		highlighter = await createHighlighter({
-			themes: ['catppuccin-macchiato', 'catppuccin-latte'],
-			langs: ['python', 'javascript', 'typescript', 'java', 'go', 'php', 'ruby', 'csharp', 'css', 'scss', 'sass', 'json', 'markdown', 'bash', 'c', 'cpp', 'rust', 'kotlin', 'swift', 'dart', 'html', 'xml', 'yaml', 'toml', 'sql', 'r', 'lua', 'vim']
+			themes: ["catppuccin-macchiato", "catppuccin-latte"],
+			langs: [
+				"python",
+				"javascript",
+				"typescript",
+				"java",
+				"go",
+				"php",
+				"ruby",
+				"csharp",
+				"css",
+				"scss",
+				"sass",
+				"json",
+				"markdown",
+				"bash",
+				"c",
+				"cpp",
+				"rust",
+				"kotlin",
+				"swift",
+				"dart",
+				"html",
+				"xml",
+				"yaml",
+				"toml",
+				"sql",
+				"r",
+				"lua",
+				"vim",
+			],
 		});
 		console.log("Shiki highlighter initialized successfully");
 	} catch (error) {
@@ -771,77 +1063,48 @@ onMount(async () => {
         <div class="center-gutter" bind:this={centerGutter} on:scroll={syncCenterScroll}>
           <div class="gutter-content">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              <div class="gutter-line">
-              {#if line.type === 'added'}
-                <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
-                  ←
-                </button>
-              {:else if line.type === 'removed'}
-                <!-- Content exists in LEFT pane, so put copy arrow on LEFT side and delete arrow on RIGHT side -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy to right">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => deleteLineFromLeft(index)} title="Delete from left to align">
-                  ←
-                </button>
+              {@const chunk = getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const chunkLineCount = chunk ? chunk.lines : 0}
+              {@const chunkMiddle = chunk ? Math.floor(chunk.lines / 2) : 0}
+              {@const linePositionInChunk = chunk ? index - chunk.startIndex : 0}
+              
+              <div class="gutter-line" style="--chunk-lines: {chunkLineCount}; --chunk-position: {linePositionInChunk}">
+              {#if chunk && linePositionInChunk === Math.floor(chunk.lines / 2)}
+                <!-- Show chunk arrows only on the middle line of the chunk -->
+                <div class="chunk-actions">
+                  {#if chunk.type === 'added'}
+                    <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
+                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => deleteChunkFromRight(chunk)} title="Delete chunk from right ({chunk.lines} lines)">
+                      →
+                    </button>
+                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => copyChunkToLeft(chunk)} title="Copy chunk to left ({chunk.lines} lines)">
+                      ←
+                    </button>
+                  {:else if chunk.type === 'removed'}
+                    <!-- Content exists in LEFT pane, so put copy arrow on LEFT side and delete arrow on RIGHT side -->
+                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => copyChunkToRight(chunk)} title="Copy chunk to right ({chunk.lines} lines)">
+                      →
+                    </button>
+                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => deleteChunkFromLeft(chunk)} title="Delete chunk from left ({chunk.lines} lines)">
+                      ←
+                    </button>
+                  {/if}
+                </div>
               {:else if line.type === 'modified'}
-                <!-- Content exists in BOTH panes, allow copying in either direction -->
+                <!-- Modified lines stay as single-line operations -->
                 <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
                   →
                 </button>
                 <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
                   ←
                 </button>
-              {:else if line.type === 'same' && line.leftLine && line.rightLine && line.leftLine !== line.rightLine}
+              {:else if !chunk && line.type === 'same' && line.leftLine && line.rightLine && line.leftLine !== line.rightLine}
                 <!-- Backend marked as 'same' but content actually differs - treat as modified -->
                 <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
                   →
                 </button>
                 <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
-                  ←
-                </button>
-              {:else if line.type === 'same' && (!line.leftLine || line.leftLine.trim() === '') && (line.rightLine && line.rightLine.trim() !== '')}
-                <!-- Backend marked as 'same' but only right side has content - treat as added -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
-                  ←
-                </button>
-              {:else if line.type === 'same' && line.rightLine && line.rightLine.trim() !== '' && line.rightNumber > line.leftNumber}
-                <!-- Detect end-of-file additions: right has content and higher line number -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
-                  ←
-                </button>
-              {:else if line.type === 'same' && (line.leftLine && line.leftLine.trim() !== '') && (!line.rightLine || line.rightLine.trim() === '')}
-                <!-- Backend marked as 'same' but only left side has content - treat as removed -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy to right">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => deleteLineFromLeft(index)} title="Delete from left to align">
-                  ←
-                </button>
-              {:else if line.type === 'same' && line.leftLine === '' && line.rightLine && line.rightLine.trim() !== ''}
-                <!-- Backend bug: empty left line but content in right line, same line numbers -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
-                  ←
-                </button>
-              {:else if line.type === 'same' && line.rightNumber >= 150 && line.rightNumber <= 152}
-                <!-- Force arrows for known problematic lines 150-152 -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
                   ←
                 </button>
               {/if}
@@ -1324,6 +1587,36 @@ onMount(async () => {
     margin-top: 0;
     align-self: flex-start;
   }
+  
+  /* Chunk-based arrow styling */
+  .chunk-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 100%;
+  }
+  
+  .chunk-arrow {
+    position: relative;
+    margin-top: 0;
+    align-self: center;
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+  }
+  
+  .chunk-arrow:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: scale(1.15);
+  }
+  
+  :global([data-theme="dark"]) .chunk-arrow {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  :global([data-theme="dark"]) .chunk-arrow:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 
   .pane-content {
     display: inline-block;
@@ -1331,6 +1624,7 @@ onMount(async () => {
     width: fit-content;
     position: relative;
     padding-bottom: 20px; /* Add space above horizontal scrollbar */
+    line-height: 1.3;
   }
 
   .pane-content::after {
@@ -1348,11 +1642,15 @@ onMount(async () => {
 
   .line {
     display: flex;
+    height: 1.3em;
     min-height: 1.3em;
     white-space: pre;
-    align-items: flex-start;
+    align-items: stretch;
     width: 100%;
     position: relative;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
   .pane-action {
@@ -1378,6 +1676,12 @@ onMount(async () => {
     left: 0;
     z-index: 1;
     font-size: 0.75rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    box-sizing: border-box;
   }
 
   .line-text {
