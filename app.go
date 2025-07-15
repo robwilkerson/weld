@@ -187,8 +187,8 @@ func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
 }
 
 func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
-	// Look ahead up to 10 lines to find a match
-	for i := startIdx; i < len(lines) && i < startIdx+10; i++ {
+	// Look ahead up to 50 lines to find a match (increased from 10 to handle larger insertions)
+	for i := startIdx; i < len(lines) && i < startIdx+50; i++ {
 		if strings.TrimSpace(lines[i]) == strings.TrimSpace(target) {
 			return i
 		}
