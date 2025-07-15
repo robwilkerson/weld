@@ -198,6 +198,9 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 			"highlightedDiffResult set:",
 			highlightedDiffResult?.lines?.length,
 		);
+		
+		// After highlighting is done, scroll to first diff
+		setTimeout(() => scrollToFirstDiff(), 100);
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
 		highlightedDiffResult = result;
@@ -869,6 +872,42 @@ function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
 
 function getChunkForLine(lineIndex: number): LineChunk | null {
 	return lineChunks.find((chunk) => isLineInChunk(lineIndex, chunk)) || null;
+}
+
+function scrollToFirstDiff(): void {
+	if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) return;
+	
+	// Find the first line that's not "same"
+	const firstDiffIndex = highlightedDiffResult.lines.findIndex(
+		line => line.type !== 'same'
+	);
+	
+	if (firstDiffIndex === -1) return; // No diffs found
+	
+	// Calculate the line height (using the CSS value)
+	const lineHeight = 1.3; // em
+	const fontSize = 13; // Approximate px value
+	const lineHeightPx = lineHeight * fontSize;
+	
+	// Calculate the position of the first diff
+	const firstDiffPosition = firstDiffIndex * lineHeightPx;
+	
+	// Get the viewport height
+	const viewportHeight = leftPane.clientHeight;
+	const middleOfViewport = viewportHeight / 2;
+	
+	// Only scroll if the first diff is below the middle of the viewport
+	if (firstDiffPosition > middleOfViewport) {
+		// Calculate scroll position to center the first diff
+		const scrollTo = firstDiffPosition - middleOfViewport;
+		
+		console.log(`Scrolling to first diff at line ${firstDiffIndex}, position: ${scrollTo}px`);
+		
+		// Scroll all panes together
+		leftPane.scrollTop = scrollTo;
+		rightPane.scrollTop = scrollTo;
+		centerGutter.scrollTop = scrollTo;
+	}
 }
 
 function getLanguageFromExtension(ext: string): string {
