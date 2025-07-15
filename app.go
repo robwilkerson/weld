@@ -302,3 +302,62 @@ func (a *App) SaveChanges(filepath string) error {
 
 	return nil
 }
+
+// OnBeforeClose is called when the application is about to quit
+// Returns true to prevent closing, false to allow normal shutdown
+func (a *App) OnBeforeClose(ctx context.Context) (prevent bool) {
+	// Check if there are unsaved changes in memory cache
+	if len(fileCache) > 0 {
+		// Emit event to frontend to show custom dialog
+		runtime.EventsEmit(ctx, "show-quit-dialog", a.GetUnsavedFilesList())
+		// Always prevent closing initially - frontend will handle quit after user decision
+		return true
+	}
+	// No unsaved changes, allow normal quit
+	return false
+}
+
+// HasUnsavedChanges checks if a file has unsaved changes in the cache
+func (a *App) HasUnsavedChanges(filepath string) bool {
+	_, exists := fileCache[filepath]
+	return exists
+}
+
+// GetUnsavedFilesList returns a list of files with unsaved changes
+func (a *App) GetUnsavedFilesList() []string {
+	files := make([]string, 0, len(fileCache))
+	for filepath := range fileCache {
+		files = append(files, filepath)
+	}
+	return files
+}
+
+// SaveSelectedFilesAndQuit saves the specified files and then quits the application
+func (a *App) SaveSelectedFilesAndQuit(filesToSave []string) error {
+	// Save each selected file
+	for _, filepath := range filesToSave {
+		if err := a.SaveChanges(filepath); err != nil {
+			return fmt.Errorf("failed to save %s: %w", filepath, err)
+		}
+	}
+
+	// Clear any remaining unsaved files from cache if user chose not to save them
+	for filepath := range fileCache {
+		delete(fileCache, filepath)
+	}
+
+	// Quit the application
+	runtime.Quit(a.ctx)
+	return nil
+}
+
+// QuitWithoutSaving clears the cache and quits without saving
+func (a *App) QuitWithoutSaving() {
+	// Clear all unsaved changes
+	for filepath := range fileCache {
+		delete(fileCache, filepath)
+	}
+
+	// Quit the application
+	runtime.Quit(a.ctx)
+}

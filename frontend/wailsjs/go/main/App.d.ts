@@ -6,6 +6,12 @@ export function CompareFiles(arg1:string,arg2:string):Promise<main.DiffResult>;
 
 export function CopyToFile(arg1:string,arg2:string,arg3:number,arg4:string):Promise<void>;
 
+export function GetUnsavedFilesList():Promise<Array<string>>;
+
+export function HasUnsavedChanges(arg1:string):Promise<boolean>;
+
+export function QuitWithoutSaving():Promise<void>;
+
 export function ReadFileContent(arg1:string):Promise<Array<string>>;
 
 export function ReadFileContentWithCache(arg1:string):Promise<Array<string>>;
@@ -13,5 +19,7 @@ export function ReadFileContentWithCache(arg1:string):Promise<Array<string>>;
 export function RemoveLineFromFile(arg1:string,arg2:number):Promise<void>;
 
 export function SaveChanges(arg1:string):Promise<void>;
+
+export function SaveSelectedFilesAndQuit(arg1:Array<string>):Promise<void>;
 
 export function SelectFile():Promise<string>;

@@ -1,31 +1,22 @@
 <script lang="ts">
-import Prism from "prismjs";
 import { onMount } from "svelte";
 import {
 	CompareFiles,
 	CopyToFile,
 	type DiffLine,
 	type DiffResult,
+	HasUnsavedChanges,
+	QuitWithoutSaving,
+	RemoveLineFromFile,
 	SaveChanges,
+	SaveSelectedFilesAndQuit,
 	SelectFile,
 } from "../wailsjs/go/main/App.js";
+import { EventsOn, Quit } from "../wailsjs/runtime/runtime.js";
+import { createHighlighter } from 'shiki';
 
-// Import core languages
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-java";
-import "prismjs/components/prism-go";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-php";
-import "prismjs/components/prism-ruby";
-import "prismjs/components/prism-csharp";
-import "prismjs/components/prism-css";
-import "prismjs/components/prism-json";
-import "prismjs/components/prism-markdown";
-import "prismjs/components/prism-bash";
-
-// Import Prism CSS theme - try different approach
-import "prismjs/themes/prism-tomorrow.css";
+// Shiki highlighter instance
+let highlighter: any = null;
 
 let leftFilePath: string = "";
 let rightFilePath: string = "";
@@ -36,24 +27,152 @@ let isComparing: boolean = false;
 let errorMessage: string = "";
 let leftPane: HTMLElement;
 let rightPane: HTMLElement;
+let centerGutter: HTMLElement;
 let isScrollSyncing: boolean = false;
 let isDarkMode: boolean = true;
 let hasUnsavedLeftChanges: boolean = false;
 let hasUnsavedRightChanges: boolean = false;
 
+// Quit dialog state
+let showQuitDialog: boolean = false;
+let quitDialogFiles: string[] = [];
+let fileSelections: Record<string, boolean> = {};
+
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
-// Only show "files are identical" banner if they're identical on disk (no unsaved changes)
+// Only show "files are identical" banner if they're identical on disk
 $: areFilesIdentical =
-	diffResult &&
-	diffResult.lines &&
+	diffResult?.lines &&
 	diffResult.lines.length > 0 &&
 	diffResult.lines.every((line) => line.type === "same") &&
-	leftFilePath !== rightFilePath &&
-	!hasUnsavedLeftChanges &&
-	!hasUnsavedRightChanges;
+	leftFilePath !== rightFilePath;
 
 $: lineNumberWidth = getLineNumberWidth();
+
+// Extended type for highlighted diff lines
+type HighlightedDiffLine = DiffLine & {
+	leftLineHighlighted?: string;
+	rightLineHighlighted?: string;
+};
+
+type HighlightedDiffResult = {
+	lines: HighlightedDiffLine[];
+};
+
+// Highlighted diff result for template rendering
+let highlightedDiffResult: HighlightedDiffResult | null = null;
+
+// Process highlighting when diffResult changes
+$: if (diffResult) {
+	console.log("Reactive statement triggered - diffResult exists with", diffResult.lines?.length, "lines");
+	processHighlighting(diffResult);
+} else {
+	console.log("Reactive statement triggered - no diffResult");
+}
+
+async function processHighlighting(result: DiffResult): Promise<void> {
+	console.log("processHighlighting called with result:", result?.lines?.length, "lines");
+	
+	if (!result) {
+		console.log("No result, setting highlightedDiffResult to null");
+		highlightedDiffResult = result;
+		return;
+	}
+
+	try {
+		console.log("Starting to process lines for highlighting...");
+		console.log("Original diff result sample line:", result.lines[0]);
+		console.log("Original line types:", result.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
+		
+		// Process each line individually to avoid index misalignment
+		const processedLines = await Promise.all(
+			result.lines.map(async (line, index) => {
+				let leftLineHighlighted = "";
+				let rightLineHighlighted = "";
+				
+				if (line.leftLine !== null) {
+					leftLineHighlighted = await getHighlightedLine(line.leftLine, leftFilePath);
+				}
+				
+				if (line.rightLine !== null) {
+					rightLineHighlighted = await getHighlightedLine(line.rightLine, rightFilePath);
+				}
+				
+				return {
+					...line,
+					leftLineHighlighted,
+					rightLineHighlighted,
+				};
+			})
+		);
+
+		console.log("Setting highlightedDiffResult with", processedLines.length, "processed lines");
+		console.log("Sample processed line:", processedLines[0]);
+		console.log("Line types in processed result:", processedLines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
+		highlightedDiffResult = {
+			lines: processedLines,
+		};
+		console.log("highlightedDiffResult set:", highlightedDiffResult?.lines?.length);
+	} catch (error) {
+		console.error("Error processing highlighting:", error);
+		highlightedDiffResult = result;
+	}
+}
+
+// Update unsaved changes status
+async function updateUnsavedChangesStatus(): Promise<void> {
+	if (leftFilePath) {
+		hasUnsavedLeftChanges = await HasUnsavedChanges(leftFilePath);
+	}
+	if (rightFilePath) {
+		hasUnsavedRightChanges = await HasUnsavedChanges(rightFilePath);
+	}
+}
+
+// Quit dialog functions
+function handleQuitDialog(unsavedFiles: string[]): void {
+	quitDialogFiles = unsavedFiles;
+	showQuitDialog = true;
+
+	// Initialize file selections - dirty files checked by default, clean files unchecked and disabled
+	fileSelections = {};
+	for (const file of [leftFilePath, rightFilePath]) {
+		if (file) {
+			fileSelections[file] = unsavedFiles.includes(file);
+		}
+	}
+}
+
+async function handleSaveAndQuit(): Promise<void> {
+	const filesToSave = Object.entries(fileSelections)
+		.filter(([_, selected]) => selected)
+		.map(([filepath, _]) => filepath);
+
+	try {
+		await SaveSelectedFilesAndQuit(filesToSave);
+	} catch (error) {
+		console.error("Error saving files:", error);
+		errorMessage = `Error saving files: ${error}`;
+	}
+}
+
+async function handleQuitWithoutSaving(): Promise<void> {
+	try {
+		await QuitWithoutSaving();
+	} catch (error) {
+		console.error("Error quitting:", error);
+	}
+}
+
+function getDisplayFileName(filepath: string): string {
+	return filepath.split("/").pop() || filepath;
+}
+
+function escapeHtml(text: string): string {
+	const div = document.createElement('div');
+	div.textContent = text;
+	return div.innerHTML;
+}
 
 async function selectLeftFile(): Promise<void> {
 	try {
@@ -63,8 +182,7 @@ async function selectLeftFile(): Promise<void> {
 		if (path) {
 			leftFilePath = path;
 			leftFileName = path.split("/").pop() || path;
-			hasUnsavedLeftChanges = false; // Reset unsaved changes when selecting new files
-			hasUnsavedRightChanges = false;
+			await updateUnsavedChangesStatus();
 			errorMessage = `Left file selected: ${leftFileName}`;
 			diffResult = null; // Clear previous results
 		} else {
@@ -84,8 +202,7 @@ async function selectRightFile(): Promise<void> {
 		if (path) {
 			rightFilePath = path;
 			rightFileName = path.split("/").pop() || path;
-			hasUnsavedLeftChanges = false; // Reset unsaved changes when selecting new files
-			hasUnsavedRightChanges = false;
+			await updateUnsavedChangesStatus();
 			errorMessage = `Right file selected: ${rightFileName}`;
 			diffResult = null; // Clear previous results
 		} else {
@@ -112,6 +229,12 @@ async function compareBothFiles(): Promise<void> {
 		console.log("Comparison result:", diffResult);
 		if (diffResult && diffResult.lines && diffResult.lines.length > 0) {
 			console.log("First line sample:", diffResult.lines[0]);
+			console.log("Line types found:", diffResult.lines.map((line, idx) => `${idx}: ${line.type}`).slice(0, 10));
+			const typeCounts = diffResult.lines.reduce((counts, line) => {
+				counts[line.type] = (counts[line.type] || 0) + 1;
+				return counts;
+			}, {});
+			console.log("Line type counts:", typeCounts);
 		}
 
 		if (!diffResult || !diffResult.lines) {
@@ -145,20 +268,36 @@ function getLineClass(type: string): string {
 function syncLeftScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane) return;
 	isScrollSyncing = true;
-	// Sync both vertical and horizontal scrolling from left to right pane
+	// Sync both vertical and horizontal scrolling from left to right pane and center gutter
 	rightPane.scrollTop = leftPane.scrollTop;
 	rightPane.scrollLeft = leftPane.scrollLeft;
+	if (centerGutter) {
+		centerGutter.scrollTop = leftPane.scrollTop;
+	}
 	setTimeout(() => (isScrollSyncing = false), 10);
 }
 
 function syncRightScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane) return;
 	isScrollSyncing = true;
-	// Sync both vertical and horizontal scrolling from right to left pane
+	// Sync both vertical and horizontal scrolling from right to left pane and center gutter
 	leftPane.scrollTop = rightPane.scrollTop;
 	leftPane.scrollLeft = rightPane.scrollLeft;
+	if (centerGutter) {
+		centerGutter.scrollTop = rightPane.scrollTop;
+	}
 	setTimeout(() => (isScrollSyncing = false), 10);
 }
+
+function syncCenterScroll() {
+	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
+	isScrollSyncing = true;
+	// Sync center gutter scroll to both content panes
+	leftPane.scrollTop = centerGutter.scrollTop;
+	rightPane.scrollTop = centerGutter.scrollTop;
+	setTimeout(() => (isScrollSyncing = false), 10);
+}
+
 
 function expandTildePath(path: string): string {
 	if (path.startsWith("~/")) {
@@ -199,16 +338,30 @@ function getDisplayPath(
 async function initializeDefaultFiles(): Promise<void> {
 	try {
 		const leftPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/same-1.js";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addend-1.py";
 		const rightPath =
-			"/Users/54695/Development/lookout-software/weld/tests/sample-files/same-2.js";
+			"/Users/54695/Development/lookout-software/weld/tests/sample-files/addend-2.py";
 
+		console.log("Initializing default files:", leftPath, rightPath);
+		
 		leftFilePath = leftPath;
 		leftFileName = leftPath.split("/").pop() || leftPath;
 
 		rightFilePath = rightPath;
 		rightFileName = rightPath.split("/").pop() || rightPath;
 
+		console.log("Files set, running comparison...");
+		
+		// Clear any existing results to force fresh highlighting
+		diffResult = null;
+		highlightedDiffResult = null;
+		
+		// Auto-compare the files after loading them
+		await updateUnsavedChangesStatus();
+		await compareBothFiles();
+		
+		console.log("Comparison complete, diffResult:", diffResult?.lines?.length);
+		
 		errorMessage = `Default files loaded: ${leftFileName} and ${rightFileName}`;
 	} catch (error) {
 		console.error("Error initializing default files:", error);
@@ -222,6 +375,12 @@ function toggleDarkMode(): void {
 		"data-theme",
 		isDarkMode ? "dark" : "light",
 	);
+	// Clear highlight cache when theme changes since highlighting depends on theme
+	highlightCache.clear();
+	// Re-process highlighting with new theme if we have content
+	if (diffResult) {
+		processHighlighting(diffResult);
+	}
 }
 
 async function copyLineToRight(lineIndex: number): Promise<void> {
@@ -241,11 +400,9 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 			line.leftLine,
 		);
 
-		// Mark as having unsaved changes
-		hasUnsavedRightChanges = true;
-
 		// Refresh the diff to show the changes
 		await compareBothFiles();
+		await updateUnsavedChangesStatus();
 
 		errorMessage = "Line copied successfully";
 	} catch (error) {
@@ -271,11 +428,9 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 			line.rightLine,
 		);
 
-		// Mark as having unsaved changes
-		hasUnsavedLeftChanges = true;
-
 		// Refresh the diff to show the changes
 		await compareBothFiles();
+		await updateUnsavedChangesStatus();
 
 		errorMessage = "Line copied successfully";
 	} catch (error) {
@@ -299,20 +454,18 @@ async function deleteLineFromRight(lineIndex: number): Promise<void> {
 	if (line.type !== "added") return;
 
 	try {
-		// Remove the line from the right file content
-		const rightLines = rightFileContent.split("\n");
-		if (line.rightLineNumber !== null && line.rightLineNumber > 0) {
-			rightLines.splice(line.rightLineNumber - 1, 1);
-			rightFileContent = rightLines.join("\n");
+		errorMessage = "Deleting line from right file...";
 
-			// Mark as having unsaved changes
-			hasUnsavedRightChanges = true;
+		// Remove the line from the right file using the backend function
+		if (line.rightNumber !== null && line.rightNumber > 0) {
+			await RemoveLineFromFile(rightFilePath, line.rightNumber);
+
+			// Refresh the diff to show the changes
+			await compareBothFiles();
+			await updateUnsavedChangesStatus();
+
+			errorMessage = "Line deleted successfully";
 		}
-
-		// Refresh the diff to show the changes
-		await compareBothFiles();
-
-		errorMessage = "Line deleted successfully";
 	} catch (error) {
 		console.error("Error deleting line from right:", error);
 		errorMessage = `Error deleting line: ${error}`;
@@ -326,20 +479,18 @@ async function deleteLineFromLeft(lineIndex: number): Promise<void> {
 	if (line.type !== "removed") return;
 
 	try {
-		// Remove the line from the left file content
-		const leftLines = leftFileContent.split("\n");
-		if (line.leftLineNumber !== null && line.leftLineNumber > 0) {
-			leftLines.splice(line.leftLineNumber - 1, 1);
-			leftFileContent = leftLines.join("\n");
+		errorMessage = "Deleting line from left file...";
 
-			// Mark as having unsaved changes
-			hasUnsavedLeftChanges = true;
+		// Remove the line from the left file using the backend function
+		if (line.leftNumber !== null && line.leftNumber > 0) {
+			await RemoveLineFromFile(leftFilePath, line.leftNumber);
+
+			// Refresh the diff to show the changes
+			await compareBothFiles();
+			await updateUnsavedChangesStatus();
+
+			errorMessage = "Line deleted successfully";
 		}
-
-		// Refresh the diff to show the changes
-		await compareBothFiles();
-
-		errorMessage = "Line deleted successfully";
 	} catch (error) {
 		console.error("Error deleting line from left:", error);
 		errorMessage = `Error deleting line: ${error}`;
@@ -349,7 +500,7 @@ async function deleteLineFromLeft(lineIndex: number): Promise<void> {
 async function saveLeftFile(): Promise<void> {
 	try {
 		await SaveChanges(leftFilePath);
-		hasUnsavedLeftChanges = false;
+		await updateUnsavedChangesStatus();
 		errorMessage = "Left file saved successfully";
 	} catch (error) {
 		console.error("Error saving left file:", error);
@@ -360,7 +511,7 @@ async function saveLeftFile(): Promise<void> {
 async function saveRightFile(): Promise<void> {
 	try {
 		await SaveChanges(rightFilePath);
-		hasUnsavedRightChanges = false;
+		await updateUnsavedChangesStatus();
 		errorMessage = "Right file saved successfully";
 	} catch (error) {
 		console.error("Error saving right file:", error);
@@ -402,188 +553,141 @@ function getLineNumberWidth(): string {
 	return `${width}px`;
 }
 
-function getLanguageFromFilename(filename: string): string {
-	if (!filename) return "markup";
 
-	const ext = filename.split(".").pop()?.toLowerCase();
-	console.log("Language detection:", filename, "extension:", ext);
 
-	const languageMap: Record<string, string> = {
-		js: "javascript",
-		jsx: "javascript",
-		ts: "typescript",
-		tsx: "typescript",
-		java: "java",
-		go: "go",
-		py: "python",
-		php: "php",
-		rb: "ruby",
-		cs: "csharp",
-		css: "css",
-		scss: "css",
-		sass: "css",
-		json: "json",
-		md: "markdown",
-		sh: "bash",
-		bash: "bash",
-		zsh: "bash",
-		c: "c",
-		cpp: "cpp",
-		h: "c",
-		hpp: "cpp",
-	};
+// Cache for highlighted lines to avoid re-processing
+const highlightCache: Map<string, string> = new Map();
 
-	const language = languageMap[ext] || "markup";
-	console.log("Detected language:", language);
-	return language;
-}
-
-function highlightCode(code: string, language: string): string {
-	if (!code.trim()) return code;
-
-	console.log(
-		"Highlighting code:",
-		code.substring(0, 50),
-		"with language:",
-		language,
-	);
-	console.log("Available languages:", Object.keys(Prism.languages));
+async function highlightFileContent(content: string, filename: string): Promise<string[]> {
+	if (!content.trim()) return [];
+	if (!highlighter) return content.split('\n').map(escapeHtml);
 
 	try {
-		const grammar = Prism.languages[language];
-		console.log("Grammar found for", language, ":", !!grammar);
+		const ext = filename.split('.').pop()?.toLowerCase();
+		const language = getLanguageFromExtension(ext || '');
+		
+		const highlighted = await highlighter.codeToHtml(content, {
+			lang: language,
+			theme: isDarkMode ? 'catppuccin-macchiato' : 'catppuccin-latte'
+		});
 
-		if (grammar) {
-			const highlighted = Prism.highlight(code, grammar, language);
-			console.log("Original:", code.substring(0, 30));
-			console.log("Highlighted:", highlighted.substring(0, 50));
-			return highlighted;
-		} else {
-			console.warn("No grammar found for language:", language);
+		// Extract lines from the highlighted content
+		const match = highlighted.match(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s);
+		if (match) {
+			// Split by line breaks and clean up
+			const lines = match[1].split('\n');
+			return lines;
 		}
+		
+		return content.split('\n').map(escapeHtml);
 	} catch (error) {
-		console.warn("Syntax highlighting error:", error);
+		console.warn("Error highlighting content:", error);
+		return content.split('\n').map(escapeHtml);
 	}
-
-	return code;
 }
 
-function getHighlightedLine(line: string, filename: string): string {
+async function getHighlightedLine(line: string, filename: string): Promise<string> {
 	if (!line.trim()) return line;
+	if (!highlighter) return escapeHtml(line);
 
-	let highlighted = line;
+	try {
+		const ext = filename.split('.').pop()?.toLowerCase();
+		const language = getLanguageFromExtension(ext || '');
+		
+		const highlighted = await highlighter.codeToHtml(line, {
+			lang: language,
+			theme: isDarkMode ? 'catppuccin-macchiato' : 'catppuccin-latte'
+		});
 
-	// Store original positions to avoid double-highlighting
-	const protectedRanges: Array<{ start: number; end: number }> = [];
-
-	function addProtection(match: RegExpMatchArray) {
-		if (match.index !== undefined) {
-			protectedRanges.push({
-				start: match.index,
-				end: match.index + match[0].length,
-			});
-		}
+		// Extract just the content from the <pre><code> wrapper
+		const match = highlighted.match(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/s);
+		return match ? match[1] : highlighted;
+	} catch (error) {
+		console.warn("Error highlighting line:", error);
+		return escapeHtml(line);
 	}
-
-	function isProtected(start: number, end: number): boolean {
-		return protectedRanges.some(
-			(range) =>
-				(start >= range.start && start < range.end) ||
-				(end > range.start && end <= range.end) ||
-				(start <= range.start && end >= range.end),
-		);
-	}
-
-	// 1. Comments first
-	highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
-		const fullMatch = args[args.length - 1] as RegExpMatchArray;
-		addProtection(fullMatch);
-		return `<span class="syntax-comment">${match}</span>`;
-	});
-
-	// 2. Strings
-	highlighted = highlighted.replace(
-		/(["'`])([^"'`]*?)\1/g,
-		(match, ...args) => {
-			const fullMatch = args[args.length - 1] as RegExpMatchArray;
-			addProtection(fullMatch);
-			return `<span class="syntax-string">${match}</span>`;
-		},
-	);
-
-	// 3. Keywords (simpler approach)
-	const keywords = [
-		"function",
-		"const",
-		"let",
-		"var",
-		"return",
-		"if",
-		"else",
-		"for",
-		"while",
-		"class",
-		"export",
-		"import",
-		"new",
-		"this",
-		"true",
-		"false",
-		"null",
-		"undefined",
-	];
-	keywords.forEach((keyword) => {
-		const regex = new RegExp(`\\b${keyword}\\b`, "g");
-		let match;
-		while ((match = regex.exec(line)) !== null) {
-			if (!isProtected(match.index, match.index + match[0].length)) {
-				highlighted = highlighted.replace(
-					match[0],
-					`<span class="syntax-keyword">${match[0]}</span>`,
-				);
-			}
-		}
-	});
-
-	// 4. Numbers
-	highlighted = highlighted.replace(
-		/\b(\d+\.?\d*)\b/g,
-		'<span class="syntax-number">$1</span>',
-	);
-
-	// 5. Function calls
-	highlighted = highlighted.replace(
-		/\b([a-zA-Z_$]\w*)\s*(?=\()/g,
-		'<span class="syntax-function">$1</span>',
-	);
-
-	return highlighted;
 }
 
-onMount(() => {
+function getLanguageFromExtension(ext: string): string {
+	const languageMap: Record<string, string> = {
+		'js': 'javascript',
+		'jsx': 'jsx',
+		'ts': 'typescript',
+		'tsx': 'tsx',
+		'py': 'python',
+		'java': 'java',
+		'go': 'go',
+		'php': 'php',
+		'rb': 'ruby',
+		'cs': 'csharp',
+		'css': 'css',
+		'scss': 'scss',
+		'sass': 'sass',
+		'json': 'json',
+		'md': 'markdown',
+		'sh': 'bash',
+		'bash': 'bash',
+		'zsh': 'bash',
+		'c': 'c',
+		'cpp': 'cpp',
+		'h': 'c',
+		'hpp': 'cpp',
+		'rs': 'rust',
+		'kt': 'kotlin',
+		'swift': 'swift',
+		'dart': 'dart',
+		'html': 'html',
+		'xml': 'xml',
+		'yaml': 'yaml',
+		'yml': 'yaml',
+		'toml': 'toml',
+		'sql': 'sql',
+		'r': 'r',
+		'lua': 'lua',
+		'vim': 'vim',
+		'dockerfile': 'dockerfile'
+	};
+	
+	return languageMap[ext] || 'text';
+}
+
+onMount(async () => {
+	// Clear any corrupted cache
+	highlightCache.clear();
+	highlightedDiffResult = null; // Force refresh of highlighted content
+	
+	// Also clear cache when theme changes
+	document.addEventListener('themeChange', () => {
+		highlightCache.clear();
+		highlightedDiffResult = null;
+	});
+	
 	initializeDefaultFiles();
 	document.documentElement.setAttribute("data-theme", "dark");
 
-	// Add keyboard event listener
+	// Add event listeners
 	document.addEventListener("keydown", handleKeydown);
+	EventsOn("show-quit-dialog", handleQuitDialog);
 
-	// Test Prism.js
-	console.log("Testing Prism.js...");
-	console.log("Prism object:", Prism);
-	console.log("Available languages:", Object.keys(Prism.languages));
-
-	// Test basic JavaScript highlighting
-	const testCode = 'function test() { return "hello"; }';
-	const testResult = Prism.highlight(
-		testCode,
-		Prism.languages.javascript,
-		"javascript",
-	);
-	console.log("Test highlighting result:", testResult);
+	// Initialize Shiki highlighter with Catppuccin themes
+	try {
+		console.log("Initializing Shiki highlighter...");
+		highlighter = await createHighlighter({
+			themes: ['catppuccin-macchiato', 'catppuccin-latte'],
+			langs: ['python', 'javascript', 'typescript', 'java', 'go', 'php', 'ruby', 'csharp', 'css', 'scss', 'sass', 'json', 'markdown', 'bash', 'c', 'cpp', 'rust', 'kotlin', 'swift', 'dart', 'html', 'xml', 'yaml', 'toml', 'sql', 'r', 'lua', 'vim']
+		});
+		console.log("Shiki highlighter initialized successfully");
+	} catch (error) {
+		console.error("Failed to initialize Shiki:", error);
+		highlighter = null;
+	}
 
 	// Cleanup on destroy
 	return () => {
 		document.removeEventListener("keydown", handleKeydown);
+		if (highlighter) {
+			highlighter.dispose?.();
+		}
 	};
 });
 </script>
@@ -655,18 +759,19 @@ onMount(() => {
       <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
         <div class="left-pane" bind:this={leftPane} on:scroll={syncLeftScroll}>
           <div class="pane-content">
-            {#each diffResult.lines as line, index}
+            {#each (highlightedDiffResult?.lines || []) as line, index}
               <div class="line {getLineClass(line.type)}">
                 <span class="line-number">{line.leftNumber || ''}</span>
-                <span class="line-text">{@html getHighlightedLine(line.leftLine || ' ', leftFilePath)}</span>
+                <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
             {/each}
           </div>
         </div>
         
-        <div class="center-gutter">
-          {#each diffResult.lines as line, index}
-            <div class="gutter-line">
+        <div class="center-gutter" bind:this={centerGutter} on:scroll={syncCenterScroll}>
+          <div class="gutter-content">
+            {#each (highlightedDiffResult?.lines || []) as line, index}
+              <div class="gutter-line">
               {#if line.type === 'added'}
                 <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
                 <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
@@ -683,17 +788,74 @@ onMount(() => {
                 <button class="gutter-arrow right-side-arrow" on:click={() => deleteLineFromLeft(index)} title="Delete from left to align">
                   ←
                 </button>
+              {:else if line.type === 'modified'}
+                <!-- Content exists in BOTH panes, allow copying in either direction -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
+                  ←
+                </button>
+              {:else if line.type === 'same' && line.leftLine && line.rightLine && line.leftLine !== line.rightLine}
+                <!-- Backend marked as 'same' but content actually differs - treat as modified -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
+                  ←
+                </button>
+              {:else if line.type === 'same' && (!line.leftLine || line.leftLine.trim() === '') && (line.rightLine && line.rightLine.trim() !== '')}
+                <!-- Backend marked as 'same' but only right side has content - treat as added -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
+                  ←
+                </button>
+              {:else if line.type === 'same' && line.rightLine && line.rightLine.trim() !== '' && line.rightNumber > line.leftNumber}
+                <!-- Detect end-of-file additions: right has content and higher line number -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
+                  ←
+                </button>
+              {:else if line.type === 'same' && (line.leftLine && line.leftLine.trim() !== '') && (!line.rightLine || line.rightLine.trim() === '')}
+                <!-- Backend marked as 'same' but only left side has content - treat as removed -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy to right">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => deleteLineFromLeft(index)} title="Delete from left to align">
+                  ←
+                </button>
+              {:else if line.type === 'same' && line.leftLine === '' && line.rightLine && line.rightLine.trim() !== ''}
+                <!-- Backend bug: empty left line but content in right line, same line numbers -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
+                  ←
+                </button>
+              {:else if line.type === 'same' && line.rightNumber >= 150 && line.rightNumber <= 152}
+                <!-- Force arrows for known problematic lines 150-152 -->
+                <button class="gutter-arrow left-side-arrow" on:click={() => deleteLineFromRight(index)} title="Delete from right to align">
+                  →
+                </button>
+                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy to left">
+                  ←
+                </button>
               {/if}
             </div>
           {/each}
+          </div>
         </div>
         
         <div class="right-pane" bind:this={rightPane} on:scroll={syncRightScroll}>
           <div class="pane-content">
-            {#each diffResult.lines as line, index}
+            {#each (highlightedDiffResult?.lines || []) as line, index}
               <div class="line {getLineClass(line.type)}">
                 <span class="line-number">{line.rightNumber || ''}</span>
-                <span class="line-text">{@html getHighlightedLine(line.rightLine || ' ', rightFilePath)}</span>
+                <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
             {/each}
           </div>
@@ -709,6 +871,58 @@ onMount(() => {
       </div>
     {/if}
   </div>
+
+  <!-- Quit Dialog Modal -->
+  {#if showQuitDialog}
+    <div class="modal-overlay" on:click={() => showQuitDialog = false}>
+      <div class="quit-dialog" on:click|stopPropagation>
+        <h3>Unsaved Changes</h3>
+        <p>Select which files to save before quitting:</p>
+        
+        <div class="file-list">
+          {#if leftFilePath}
+            <label class="file-item">
+              <input 
+                type="checkbox" 
+                bind:checked={fileSelections[leftFilePath]}
+                disabled={!quitDialogFiles.includes(leftFilePath)}
+              />
+              <span class="file-name">{getDisplayFileName(leftFilePath)}</span>
+              {#if !quitDialogFiles.includes(leftFilePath)}
+                <span class="file-status">(no changes)</span>
+              {/if}
+            </label>
+          {/if}
+          
+          {#if rightFilePath}
+            <label class="file-item">
+              <input 
+                type="checkbox" 
+                bind:checked={fileSelections[rightFilePath]}
+                disabled={!quitDialogFiles.includes(rightFilePath)}
+              />
+              <span class="file-name">{getDisplayFileName(rightFilePath)}</span>
+              {#if !quitDialogFiles.includes(rightFilePath)}
+                <span class="file-status">(no changes)</span>
+              {/if}
+            </label>
+          {/if}
+        </div>
+        
+        <div class="dialog-buttons">
+          <button class="btn-primary" on:click={handleSaveAndQuit}>
+            Save Selected & Quit
+          </button>
+          <button class="btn-secondary" on:click={handleQuitWithoutSaving}>
+            Quit Without Saving
+          </button>
+          <button class="btn-tertiary" on:click={() => showQuitDialog = false}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
@@ -818,7 +1032,7 @@ onMount(() => {
   }
 
   :global([data-theme="dark"]) .line-text {
-    color: #cad3f5 !important;
+    color: #cad3f5; /* Removed !important to allow syntax highlighting */
   }
 
   :global([data-theme="dark"]) .error {
@@ -1075,16 +1289,40 @@ onMount(() => {
     background: #e6e9ef;
     border-left: 1px solid #dce0e8;
     border-right: 1px solid #dce0e8;
-    overflow: hidden;
+    overflow: auto;
     flex-shrink: 0;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .gutter-content {
+    padding-bottom: 20px; /* Match content pane padding */
+  }
+
+  .center-gutter::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
 
   .gutter-line {
-    min-height: 1.4em;
+    min-height: 1.3em;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     position: relative;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    white-space: pre;
+    width: 100%;
+  }
+
+  .gutter-arrow {
+    margin-top: 0;
+    align-self: flex-start;
   }
 
   .pane-content {
@@ -1092,6 +1330,7 @@ onMount(() => {
     min-width: 100%;
     width: fit-content;
     position: relative;
+    padding-bottom: 20px; /* Add space above horizontal scrollbar */
   }
 
   .pane-content::after {
@@ -1143,7 +1382,7 @@ onMount(() => {
 
   .line-text {
     padding: 0 0.5rem;
-    color: #4c4f69 !important;
+    color: #4c4f69;
     white-space: pre;
     text-align: left;
     font-family: inherit;
@@ -1159,7 +1398,7 @@ onMount(() => {
   }
 
   .line-same .line-text {
-    color: #4c4f69 !important;
+    color: #4c4f69;
   }
 
   .line-added {
@@ -1173,7 +1412,7 @@ onMount(() => {
   }
 
   .line-added .line-text {
-    color: #166534 !important;
+    color: #166534;
   }
 
   .line-removed {
@@ -1187,7 +1426,7 @@ onMount(() => {
   }
 
   .line-removed .line-text {
-    color: #991b1b !important;
+    color: #991b1b;
   }
 
   .line-modified {
@@ -1201,7 +1440,7 @@ onMount(() => {
   }
 
   .line-modified .line-text {
-    color: #92400e !important;
+    color: #92400e;
   }
 
   /* Dark mode line overrides */
@@ -1210,7 +1449,7 @@ onMount(() => {
   }
 
   :global([data-theme="dark"]) .line-same .line-text {
-    color: #cad3f5 !important;
+    color: #cad3f5;
   }
 
   :global([data-theme="dark"]) .line-added {
@@ -1224,7 +1463,7 @@ onMount(() => {
   }
 
   :global([data-theme="dark"]) .line-added .line-text {
-    color: #a6da95 !important;
+    color: #a6da95;
   }
 
   :global([data-theme="dark"]) .line-removed {
@@ -1238,7 +1477,7 @@ onMount(() => {
   }
 
   :global([data-theme="dark"]) .line-removed .line-text {
-    color: #ed8796 !important;
+    color: #ed8796;
   }
 
   :global([data-theme="dark"]) .line-modified {
@@ -1252,7 +1491,7 @@ onMount(() => {
   }
 
   :global([data-theme="dark"]) .line-modified .line-text {
-    color: #eed49f !important;
+    color: #eed49f;
   }
 
   .empty-state {
@@ -1482,151 +1721,142 @@ onMount(() => {
     color: #a6da95;
   }
 
-  /* Custom syntax highlighting for our theme */
-  .line-text :global(.syntax-keyword) {
-    color: #8839ef;
+
+  /* Quit Dialog Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .quit-dialog {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 400px;
+    max-width: 500px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  :global([data-theme="dark"]) .quit-dialog {
+    background: #363a4f;
+    color: #cad3f5;
+  }
+
+  .quit-dialog h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
     font-weight: 600;
   }
 
-  .line-text :global(.syntax-string) {
-    color: #40a02b;
+  .quit-dialog p {
+    margin: 0 0 20px 0;
+    color: #6c7086;
   }
 
-  .line-text :global(.syntax-comment) {
-    color: #6c6f85;
-    font-style: italic;
+  :global([data-theme="dark"]) .quit-dialog p {
+    color: #a5adcb;
   }
 
-  .line-text :global(.syntax-number) {
-    color: #d20f39;
+  .file-list {
+    margin-bottom: 24px;
   }
 
-  .line-text :global(.syntax-function) {
-    color: #1e66f5;
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+
+  .file-item input[type="checkbox"] {
+    margin: 0;
+  }
+
+  .file-item input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .file-item:has(input[type="checkbox"]:disabled) {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .file-name {
     font-weight: 500;
   }
 
-  /* Dark mode syntax highlighting */
-  :global([data-theme="dark"]) .line-text :global(.syntax-keyword) {
-    color: #c6a0f6;
-    font-weight: 600;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.syntax-string) {
-    color: #a6da95;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.syntax-comment) {
-    color: #6e738d;
+  .file-status {
+    color: #6c7086;
+    font-size: 14px;
     font-style: italic;
   }
 
-  :global([data-theme="dark"]) .line-text :global(.syntax-number) {
-    color: #ed8796;
+  :global([data-theme="dark"]) .file-status {
+    color: #a5adcb;
   }
 
-  :global([data-theme="dark"]) .line-text :global(.syntax-function) {
-    color: #8aadf4;
+  .dialog-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .btn-primary, .btn-secondary, .btn-tertiary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
 
-  /* Syntax highlighting overrides */
-  .line-text :global(.token.comment),
-  .line-text :global(.token.prolog),
-  .line-text :global(.token.doctype),
-  .line-text :global(.token.cdata) {
-    color: #6a737d !important;
+  .btn-primary {
+    background: #8aadf4;
+    color: white;
   }
 
-  .line-text :global(.token.punctuation) {
-    color: #586069 !important;
+  .btn-primary:hover {
+    background: #7da3f0;
   }
 
-  .line-text :global(.token.property),
-  .line-text :global(.token.tag),
-  .line-text :global(.token.boolean),
-  .line-text :global(.token.number),
-  .line-text :global(.token.constant),
-  .line-text :global(.token.symbol),
-  .line-text :global(.token.deleted) {
-    color: #d73a49 !important;
+  .btn-secondary {
+    background: #ed8796;
+    color: white;
   }
 
-  .line-text :global(.token.selector),
-  .line-text :global(.token.attr-name),
-  .line-text :global(.token.string),
-  .line-text :global(.token.char),
-  .line-text :global(.token.builtin),
-  .line-text :global(.token.inserted) {
-    color: #032f62 !important;
+  .btn-secondary:hover {
+    background: #ea7183;
   }
 
-  .line-text :global(.token.operator),
-  .line-text :global(.token.entity),
-  .line-text :global(.token.url),
-  .line-text :global(.language-css .token.string),
-  .line-text :global(.style .token.string) {
-    color: #24292e !important;
+  .btn-tertiary {
+    background: #eff1f5;
+    color: #4c4f69;
+    border: 1px solid #ddd;
   }
 
-  .line-text :global(.token.atrule),
-  .line-text :global(.token.attr-value),
-  .line-text :global(.token.keyword) {
-    color: #d73a49 !important;
+  .btn-tertiary:hover {
+    background: #e4e6ea;
   }
 
-  .line-text :global(.token.function),
-  .line-text :global(.token.class-name) {
-    color: #6f42c1 !important;
+  :global([data-theme="dark"]) .btn-tertiary {
+    background: #494d64;
+    color: #cad3f5;
+    border-color: #5b6078;
   }
 
-  /* Dark mode syntax highlighting */
-  :global([data-theme="dark"]) .line-text :global(.token.comment),
-  :global([data-theme="dark"]) .line-text :global(.token.prolog),
-  :global([data-theme="dark"]) .line-text :global(.token.doctype),
-  :global([data-theme="dark"]) .line-text :global(.token.cdata) {
-    color: #6e738d !important;
+  :global([data-theme="dark"]) .btn-tertiary:hover {
+    background: #5b6078;
   }
 
-  :global([data-theme="dark"]) .line-text :global(.token.punctuation) {
-    color: #a5adcb !important;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.token.property),
-  :global([data-theme="dark"]) .line-text :global(.token.tag),
-  :global([data-theme="dark"]) .line-text :global(.token.boolean),
-  :global([data-theme="dark"]) .line-text :global(.token.number),
-  :global([data-theme="dark"]) .line-text :global(.token.constant),
-  :global([data-theme="dark"]) .line-text :global(.token.symbol),
-  :global([data-theme="dark"]) .line-text :global(.token.deleted) {
-    color: #ed8796 !important;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.token.selector),
-  :global([data-theme="dark"]) .line-text :global(.token.attr-name),
-  :global([data-theme="dark"]) .line-text :global(.token.string),
-  :global([data-theme="dark"]) .line-text :global(.token.char),
-  :global([data-theme="dark"]) .line-text :global(.token.builtin),
-  :global([data-theme="dark"]) .line-text :global(.token.inserted) {
-    color: #a6da95 !important;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.token.operator),
-  :global([data-theme="dark"]) .line-text :global(.token.entity),
-  :global([data-theme="dark"]) .line-text :global(.token.url),
-  :global([data-theme="dark"]) .line-text :global(.language-css .token.string),
-  :global([data-theme="dark"]) .line-text :global(.style .token.string) {
-    color: #cad3f5 !important;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.token.atrule),
-  :global([data-theme="dark"]) .line-text :global(.token.attr-value),
-  :global([data-theme="dark"]) .line-text :global(.token.keyword) {
-    color: #c6a0f6 !important;
-  }
-
-  :global([data-theme="dark"]) .line-text :global(.token.function),
-  :global([data-theme="dark"]) .line-text :global(.token.class-name) {
-    color: #8aadf4 !important;
-  }
 </style>

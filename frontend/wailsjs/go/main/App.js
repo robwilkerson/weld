@@ -10,6 +10,18 @@ export function CopyToFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CopyToFile'](arg1, arg2, arg3, arg4);
 }
 
+export function GetUnsavedFilesList() {
+  return window['go']['main']['App']['GetUnsavedFilesList']();
+}
+
+export function HasUnsavedChanges(arg1) {
+  return window['go']['main']['App']['HasUnsavedChanges'](arg1);
+}
+
+export function QuitWithoutSaving() {
+  return window['go']['main']['App']['QuitWithoutSaving']();
+}
+
 export function ReadFileContent(arg1) {
   return window['go']['main']['App']['ReadFileContent'](arg1);
 }
@@ -24,6 +36,10 @@ export function RemoveLineFromFile(arg1, arg2) {
 
 export function SaveChanges(arg1) {
   return window['go']['main']['App']['SaveChanges'](arg1);
+}
+
+export function SaveSelectedFilesAndQuit(arg1) {
+  return window['go']['main']['App']['SaveSelectedFilesAndQuit'](arg1);
 }
 
 export function SelectFile() {

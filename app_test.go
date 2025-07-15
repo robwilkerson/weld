@@ -34,7 +34,7 @@ func TestApp_ReadFileContent(t *testing.T) {
 		// Create a temporary file
 		tempDir := t.TempDir()
 		tempFile := filepath.Join(tempDir, "test.txt")
-		
+
 		content := "line1\nline2\nline3"
 		err := os.WriteFile(tempFile, []byte(content), 0644)
 		if err != nil {
@@ -59,7 +59,7 @@ func TestApp_ReadFileContentWithCache(t *testing.T) {
 	// Create a temporary file
 	tempDir := t.TempDir()
 	tempFile := filepath.Join(tempDir, "test.txt")
-	
+
 	content := "line1\nline2\nline3"
 	err := os.WriteFile(tempFile, []byte(content), 0644)
 	if err != nil {
@@ -144,7 +144,7 @@ func TestApp_CompareFiles(t *testing.T) {
 	t.Run("files with additions", func(t *testing.T) {
 		content1 := "line1\nline2"
 		content2 := "line1\nline2\nline3"
-		
+
 		err := os.WriteFile(file1, []byte(content1), 0644)
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
