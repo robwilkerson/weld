@@ -1,278 +1,326 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import Prism from 'prismjs'
+import Prism from "prismjs";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Prism
-vi.mock('prismjs', () => ({
-  default: {
-    highlight: vi.fn(),
-    languages: {
-      javascript: {},
-      typescript: {},
-      markup: {},
-      python: {},
-      go: {},
-    }
-  }
-}))
+vi.mock("prismjs", () => ({
+	default: {
+		highlight: vi.fn(),
+		languages: {
+			javascript: {},
+			typescript: {},
+			markup: {},
+			python: {},
+			go: {},
+		},
+	},
+}));
 
-describe('Syntax Highlighting', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+describe("Syntax Highlighting", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
 
-  describe('highlightCode', () => {
-    it('should highlight code using Prism', () => {
-      const mockHighlight = vi.mocked(Prism.highlight)
-      mockHighlight.mockReturnValue('<span class="token keyword">function</span> test() {}')
-      
-      function highlightCode(code: string, language: string): string {
-        if (!code.trim()) return code
+	describe("highlightCode", () => {
+		it("should highlight code using Prism", () => {
+			const mockHighlight = vi.mocked(Prism.highlight);
+			mockHighlight.mockReturnValue(
+				'<span class="token keyword">function</span> test() {}',
+			);
 
-        try {
-          const grammar = Prism.languages[language]
-          if (grammar) {
-            return Prism.highlight(code, grammar, language)
-          }
-        } catch (error) {
-          console.warn('Syntax highlighting error:', error)
-        }
-        return code
-      }
+			function highlightCode(code: string, language: string): string {
+				if (!code.trim()) return code;
 
-      const result = highlightCode('function test() {}', 'javascript')
-      
-      expect(mockHighlight).toHaveBeenCalledWith('function test() {}', {}, 'javascript')
-      expect(result).toBe('<span class="token keyword">function</span> test() {}')
-    })
+				try {
+					const grammar = Prism.languages[language];
+					if (grammar) {
+						return Prism.highlight(code, grammar, language);
+					}
+				} catch (error) {
+					console.warn("Syntax highlighting error:", error);
+				}
+				return code;
+			}
 
-    it('should return original code if no grammar found', () => {
-      function highlightCode(code: string, language: string): string {
-        if (!code.trim()) return code
+			const result = highlightCode("function test() {}", "javascript");
 
-        try {
-          const grammar = Prism.languages[language]
-          if (grammar) {
-            return Prism.highlight(code, grammar, language)
-          }
-        } catch (error) {
-          console.warn('Syntax highlighting error:', error)
-        }
-        return code
-      }
+			expect(mockHighlight).toHaveBeenCalledWith(
+				"function test() {}",
+				{},
+				"javascript",
+			);
+			expect(result).toBe(
+				'<span class="token keyword">function</span> test() {}',
+			);
+		});
 
-      const result = highlightCode('some code', 'nonexistent')
-      expect(result).toBe('some code')
-    })
+		it("should return original code if no grammar found", () => {
+			function highlightCode(code: string, language: string): string {
+				if (!code.trim()) return code;
 
-    it('should return original code if empty', () => {
-      function highlightCode(code: string, language: string): string {
-        if (!code.trim()) return code
+				try {
+					const grammar = Prism.languages[language];
+					if (grammar) {
+						return Prism.highlight(code, grammar, language);
+					}
+				} catch (error) {
+					console.warn("Syntax highlighting error:", error);
+				}
+				return code;
+			}
 
-        try {
-          const grammar = Prism.languages[language]
-          if (grammar) {
-            return Prism.highlight(code, grammar, language)
-          }
-        } catch (error) {
-          console.warn('Syntax highlighting error:', error)
-        }
-        return code
-      }
+			const result = highlightCode("some code", "nonexistent");
+			expect(result).toBe("some code");
+		});
 
-      expect(highlightCode('', 'javascript')).toBe('')
-      expect(highlightCode('   ', 'javascript')).toBe('   ')
-    })
+		it("should return original code if empty", () => {
+			function highlightCode(code: string, language: string): string {
+				if (!code.trim()) return code;
 
-    it('should handle highlighting errors gracefully', () => {
-      const mockHighlight = vi.mocked(Prism.highlight)
-      mockHighlight.mockImplementation(() => {
-        throw new Error('Prism error')
-      })
-      
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      
-      function highlightCode(code: string, language: string): string {
-        if (!code.trim()) return code
+				try {
+					const grammar = Prism.languages[language];
+					if (grammar) {
+						return Prism.highlight(code, grammar, language);
+					}
+				} catch (error) {
+					console.warn("Syntax highlighting error:", error);
+				}
+				return code;
+			}
 
-        try {
-          const grammar = Prism.languages[language]
-          if (grammar) {
-            return Prism.highlight(code, grammar, language)
-          }
-        } catch (error) {
-          console.warn('Syntax highlighting error:', error)
-        }
-        return code
-      }
+			expect(highlightCode("", "javascript")).toBe("");
+			expect(highlightCode("   ", "javascript")).toBe("   ");
+		});
 
-      const result = highlightCode('function test() {}', 'javascript')
-      
-      expect(consoleSpy).toHaveBeenCalledWith('Syntax highlighting error:', expect.any(Error))
-      expect(result).toBe('function test() {}')
-      
-      consoleSpy.mockRestore()
-    })
-  })
+		it("should handle highlighting errors gracefully", () => {
+			const mockHighlight = vi.mocked(Prism.highlight);
+			mockHighlight.mockImplementation(() => {
+				throw new Error("Prism error");
+			});
 
-  describe('getHighlightedLine', () => {
-    it('should apply basic syntax highlighting', () => {
-      function getHighlightedLine(line: string, filename: string): string {
-        if (!line.trim()) return line
+			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        let highlighted = line
-        const protectedRanges: Array<{ start: number; end: number }> = []
+			function highlightCode(code: string, language: string): string {
+				if (!code.trim()) return code;
 
-        function addProtection(match: RegExpMatchArray) {
-          if (match.index !== undefined) {
-            protectedRanges.push({
-              start: match.index,
-              end: match.index + match[0].length
-            })
-          }
-        }
+				try {
+					const grammar = Prism.languages[language];
+					if (grammar) {
+						return Prism.highlight(code, grammar, language);
+					}
+				} catch (error) {
+					console.warn("Syntax highlighting error:", error);
+				}
+				return code;
+			}
 
-        function isProtected(start: number, end: number): boolean {
-          return protectedRanges.some(range =>
-            (start >= range.start && start < range.end) ||
-            (end > range.start && end <= range.end) ||
-            (start <= range.start && end >= range.end)
-          )
-        }
+			const result = highlightCode("function test() {}", "javascript");
 
-        // Comments
-        highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
-          const fullMatch = args[args.length - 1] as RegExpMatchArray
-          addProtection(fullMatch)
-          return `<span class="syntax-comment">${match}</span>`
-        })
+			expect(consoleSpy).toHaveBeenCalledWith(
+				"Syntax highlighting error:",
+				expect.any(Error),
+			);
+			expect(result).toBe("function test() {}");
 
-        // Strings
-        highlighted = highlighted.replace(/(["'`])([^"'`]*?)\1/g, (match, ...args) => {
-          const fullMatch = args[args.length - 1] as RegExpMatchArray
-          addProtection(fullMatch)
-          return `<span class="syntax-string">${match}</span>`
-        })
+			consoleSpy.mockRestore();
+		});
+	});
 
-        // Keywords
-        const keywords = ['function', 'const', 'let', 'var', 'return', 'if', 'else']
-        keywords.forEach(keyword => {
-          const regex = new RegExp(`\\b${keyword}\\b`, 'g')
-          let match
-          while ((match = regex.exec(line)) !== null) {
-            if (!isProtected(match.index, match.index + match[0].length)) {
-              highlighted = highlighted.replace(match[0], `<span class="syntax-keyword">${match[0]}</span>`)
-            }
-          }
-        })
+	describe("getHighlightedLine", () => {
+		it("should apply basic syntax highlighting", () => {
+			function getHighlightedLine(line: string, filename: string): string {
+				if (!line.trim()) return line;
 
-        return highlighted
-      }
+				let highlighted = line;
+				const protectedRanges: Array<{ start: number; end: number }> = [];
 
-      const result = getHighlightedLine('function test() { return "hello"; }', 'test.js')
-      
-      expect(result).toContain('<span class="syntax-keyword">function</span>')
-      expect(result).toContain('<span class="syntax-keyword">return</span>')
-      expect(result).toContain('<span class="syntax-string">"hello"</span>')
-    })
+				function addProtection(match: RegExpMatchArray) {
+					if (match.index !== undefined) {
+						protectedRanges.push({
+							start: match.index,
+							end: match.index + match[0].length,
+						});
+					}
+				}
 
-    it('should handle comments correctly', () => {
-      function getHighlightedLine(line: string, filename: string): string {
-        if (!line.trim()) return line
+				function isProtected(start: number, end: number): boolean {
+					return protectedRanges.some(
+						(range) =>
+							(start >= range.start && start < range.end) ||
+							(end > range.start && end <= range.end) ||
+							(start <= range.start && end >= range.end),
+					);
+				}
 
-        let highlighted = line
-        const protectedRanges: Array<{ start: number; end: number }> = []
+				// Comments
+				highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
+					const fullMatch = args[args.length - 1] as RegExpMatchArray;
+					addProtection(fullMatch);
+					return `<span class="syntax-comment">${match}</span>`;
+				});
 
-        function addProtection(match: RegExpMatchArray) {
-          if (match.index !== undefined) {
-            protectedRanges.push({
-              start: match.index,
-              end: match.index + match[0].length
-            })
-          }
-        }
+				// Strings
+				highlighted = highlighted.replace(
+					/(["'`])([^"'`]*?)\1/g,
+					(match, ...args) => {
+						const fullMatch = args[args.length - 1] as RegExpMatchArray;
+						addProtection(fullMatch);
+						return `<span class="syntax-string">${match}</span>`;
+					},
+				);
 
-        // Comments
-        highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
-          const fullMatch = args[args.length - 1] as RegExpMatchArray
-          addProtection(fullMatch)
-          return `<span class="syntax-comment">${match}</span>`
-        })
+				// Keywords
+				const keywords = [
+					"function",
+					"const",
+					"let",
+					"var",
+					"return",
+					"if",
+					"else",
+				];
+				keywords.forEach((keyword) => {
+					const regex = new RegExp(`\\b${keyword}\\b`, "g");
+					let match;
+					while ((match = regex.exec(line)) !== null) {
+						if (!isProtected(match.index, match.index + match[0].length)) {
+							highlighted = highlighted.replace(
+								match[0],
+								`<span class="syntax-keyword">${match[0]}</span>`,
+							);
+						}
+					}
+				});
 
-        return highlighted
-      }
+				return highlighted;
+			}
 
-      const result = getHighlightedLine('// This is a comment', 'test.js')
-      expect(result).toBe('<span class="syntax-comment">// This is a comment</span>')
-    })
+			const result = getHighlightedLine(
+				'function test() { return "hello"; }',
+				"test.js",
+			);
 
-    it('should handle strings correctly', () => {
-      function getHighlightedLine(line: string, filename: string): string {
-        if (!line.trim()) return line
+			expect(result).toContain('<span class="syntax-keyword">function</span>');
+			expect(result).toContain('<span class="syntax-keyword">return</span>');
+			expect(result).toContain('<span class="syntax-string">"hello"</span>');
+		});
 
-        let highlighted = line
-        const protectedRanges: Array<{ start: number; end: number }> = []
+		it("should handle comments correctly", () => {
+			function getHighlightedLine(line: string, filename: string): string {
+				if (!line.trim()) return line;
 
-        function addProtection(match: RegExpMatchArray) {
-          if (match.index !== undefined) {
-            protectedRanges.push({
-              start: match.index,
-              end: match.index + match[0].length
-            })
-          }
-        }
+				let highlighted = line;
+				const protectedRanges: Array<{ start: number; end: number }> = [];
 
-        // Strings
-        highlighted = highlighted.replace(/(["'`])([^"'`]*?)\1/g, (match, ...args) => {
-          const fullMatch = args[args.length - 1] as RegExpMatchArray
-          addProtection(fullMatch)
-          return `<span class="syntax-string">${match}</span>`
-        })
+				function addProtection(match: RegExpMatchArray) {
+					if (match.index !== undefined) {
+						protectedRanges.push({
+							start: match.index,
+							end: match.index + match[0].length,
+						});
+					}
+				}
 
-        return highlighted
-      }
+				// Comments
+				highlighted = highlighted.replace(/(\/\/.*$)/g, (match, ...args) => {
+					const fullMatch = args[args.length - 1] as RegExpMatchArray;
+					addProtection(fullMatch);
+					return `<span class="syntax-comment">${match}</span>`;
+				});
 
-      expect(getHighlightedLine('const str = "hello world"', 'test.js')).toContain('<span class="syntax-string">"hello world"</span>')
-      expect(getHighlightedLine("const str = 'hello world'", 'test.js')).toContain("<span class=\"syntax-string\">'hello world'</span>")
-      expect(getHighlightedLine('const str = `hello world`', 'test.js')).toContain('<span class="syntax-string">`hello world`</span>')
-    })
+				return highlighted;
+			}
 
-    it('should return original line if empty', () => {
-      function getHighlightedLine(line: string, filename: string): string {
-        if (!line.trim()) return line
-        return line
-      }
+			const result = getHighlightedLine("// This is a comment", "test.js");
+			expect(result).toBe(
+				'<span class="syntax-comment">// This is a comment</span>',
+			);
+		});
 
-      expect(getHighlightedLine('', 'test.js')).toBe('')
-      expect(getHighlightedLine('   ', 'test.js')).toBe('   ')
-    })
+		it("should handle strings correctly", () => {
+			function getHighlightedLine(line: string, filename: string): string {
+				if (!line.trim()) return line;
 
-    it('should handle mixed content correctly', () => {
-      function getHighlightedLine(line: string, filename: string): string {
-        if (!line.trim()) return line
+				let highlighted = line;
+				const protectedRanges: Array<{ start: number; end: number }> = [];
 
-        let highlighted = line
+				function addProtection(match: RegExpMatchArray) {
+					if (match.index !== undefined) {
+						protectedRanges.push({
+							start: match.index,
+							end: match.index + match[0].length,
+						});
+					}
+				}
 
-        // Comments first (they take precedence)
-        highlighted = highlighted.replace(/(\/\/.*$)/g, (match) => {
-          return `<span class="syntax-comment">${match}</span>`
-        })
+				// Strings
+				highlighted = highlighted.replace(
+					/(["'`])([^"'`]*?)\1/g,
+					(match, ...args) => {
+						const fullMatch = args[args.length - 1] as RegExpMatchArray;
+						addProtection(fullMatch);
+						return `<span class="syntax-string">${match}</span>`;
+					},
+				);
 
-        // Strings (only outside of comments)
-        highlighted = highlighted.replace(/(["'`])([^"'`]*?)\1/g, (match, quote, content) => {
-          // Don't highlight strings inside comments
-          if (match.includes('syntax-comment')) {
-            return match
-          }
-          return `<span class="syntax-string">${match}</span>`
-        })
+				return highlighted;
+			}
 
-        return highlighted
-      }
+			expect(
+				getHighlightedLine('const str = "hello world"', "test.js"),
+			).toContain('<span class="syntax-string">"hello world"</span>');
+			expect(
+				getHighlightedLine("const str = 'hello world'", "test.js"),
+			).toContain("<span class=\"syntax-string\">'hello world'</span>");
+			expect(
+				getHighlightedLine("const str = `hello world`", "test.js"),
+			).toContain('<span class="syntax-string">`hello world`</span>');
+		});
 
-      const result = getHighlightedLine('const str = "hello"; // comment', 'test.js')
-      
-      expect(result).toContain('<span class="syntax-string">"hello"</span>')
-      expect(result).toContain('<span class="syntax-comment">// comment</span>')
-    })
-  })
-})
+		it("should return original line if empty", () => {
+			function getHighlightedLine(line: string, filename: string): string {
+				if (!line.trim()) return line;
+				return line;
+			}
+
+			expect(getHighlightedLine("", "test.js")).toBe("");
+			expect(getHighlightedLine("   ", "test.js")).toBe("   ");
+		});
+
+		it("should handle mixed content correctly", () => {
+			function getHighlightedLine(line: string, filename: string): string {
+				if (!line.trim()) return line;
+
+				let highlighted = line;
+
+				// Comments first (they take precedence)
+				highlighted = highlighted.replace(/(\/\/.*$)/g, (match) => {
+					return `<span class="syntax-comment">${match}</span>`;
+				});
+
+				// Strings (only outside of comments)
+				highlighted = highlighted.replace(
+					/(["'`])([^"'`]*?)\1/g,
+					(match, quote, content) => {
+						// Don't highlight strings inside comments
+						if (match.includes("syntax-comment")) {
+							return match;
+						}
+						return `<span class="syntax-string">${match}</span>`;
+					},
+				);
+
+				return highlighted;
+			}
+
+			const result = getHighlightedLine(
+				'const str = "hello"; // comment',
+				"test.js",
+			);
+
+			expect(result).toContain('<span class="syntax-string">"hello"</span>');
+			expect(result).toContain(
+				'<span class="syntax-comment">// comment</span>',
+			);
+		});
+	});
+});

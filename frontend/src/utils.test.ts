@@ -1,321 +1,357 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from "vitest";
 
 // Test utility functions that would be extracted from App.svelte
-describe('Utility Functions', () => {
-  describe('expandTildePath', () => {
-    it('should expand tilde to home directory', () => {
-      const originalEnv = process.env.HOME
-      process.env.HOME = '/Users/testuser'
-      
-      function expandTildePath(path: string): string {
-        if (path.startsWith('~/')) {
-          const home = process.env.HOME || process.env.USERPROFILE || ''
-          return path.replace('~', home)
-        }
-        return path
-      }
-      
-      const result = expandTildePath('~/Documents/test.txt')
-      expect(result).toBe('/Users/testuser/Documents/test.txt')
-      
-      process.env.HOME = originalEnv
-    })
+describe("Utility Functions", () => {
+	describe("expandTildePath", () => {
+		it("should expand tilde to home directory", () => {
+			const originalEnv = process.env.HOME;
+			process.env.HOME = "/Users/testuser";
 
-    it('should return path unchanged if no tilde', () => {
-      function expandTildePath(path: string): string {
-        if (path.startsWith('~/')) {
-          const home = process.env.HOME || process.env.USERPROFILE || ''
-          return path.replace('~', home)
-        }
-        return path
-      }
-      
-      const result = expandTildePath('/absolute/path/test.txt')
-      expect(result).toBe('/absolute/path/test.txt')
-    })
-  })
+			function expandTildePath(path: string): string {
+				if (path.startsWith("~/")) {
+					const home = process.env.HOME || process.env.USERPROFILE || "";
+					return path.replace("~", home);
+				}
+				return path;
+			}
 
-  describe('getDisplayPath', () => {
-    it('should return original path if short', () => {
-      function getDisplayPath(leftPath: string, rightPath: string, isLeft: boolean): string {
-        const targetPath = isLeft ? leftPath : rightPath
-        const otherPath = isLeft ? rightPath : leftPath
+			const result = expandTildePath("~/Documents/test.txt");
+			expect(result).toBe("/Users/testuser/Documents/test.txt");
 
-        if (!targetPath || !otherPath) return targetPath || ''
+			process.env.HOME = originalEnv;
+		});
 
-        const targetSegments = targetPath.split('/').filter(s => s !== '')
-        const otherSegments = otherPath.split('/').filter(s => s !== '')
+		it("should return path unchanged if no tilde", () => {
+			function expandTildePath(path: string): string {
+				if (path.startsWith("~/")) {
+					const home = process.env.HOME || process.env.USERPROFILE || "";
+					return path.replace("~", home);
+				}
+				return path;
+			}
 
-        if (targetSegments.length === 0) return targetPath
+			const result = expandTildePath("/absolute/path/test.txt");
+			expect(result).toBe("/absolute/path/test.txt");
+		});
+	});
 
-        const totalSegmentsToShow = 4
+	describe("getDisplayPath", () => {
+		it("should return original path if short", () => {
+			function getDisplayPath(
+				leftPath: string,
+				rightPath: string,
+				isLeft: boolean,
+			): string {
+				const targetPath = isLeft ? leftPath : rightPath;
+				const otherPath = isLeft ? rightPath : leftPath;
 
-        if (targetSegments.length <= totalSegmentsToShow) {
-          return targetSegments.join('/')
-        }
+				if (!targetPath || !otherPath) return targetPath || "";
 
-        const segments = targetSegments.slice(-totalSegmentsToShow)
-        return '.../' + segments.join('/')
-      }
+				const targetSegments = targetPath.split("/").filter((s) => s !== "");
+				const otherSegments = otherPath.split("/").filter((s) => s !== "");
 
-      const result = getDisplayPath('/short/path.txt', '/other/path.txt', true)
-      expect(result).toBe('short/path.txt')
-    })
+				if (targetSegments.length === 0) return targetPath;
 
-    it('should truncate long paths', () => {
-      function getDisplayPath(leftPath: string, rightPath: string, isLeft: boolean): string {
-        const targetPath = isLeft ? leftPath : rightPath
-        const otherPath = isLeft ? rightPath : leftPath
+				const totalSegmentsToShow = 4;
 
-        if (!targetPath || !otherPath) return targetPath || ''
+				if (targetSegments.length <= totalSegmentsToShow) {
+					return targetSegments.join("/");
+				}
 
-        const targetSegments = targetPath.split('/').filter(s => s !== '')
-        const otherSegments = otherPath.split('/').filter(s => s !== '')
+				const segments = targetSegments.slice(-totalSegmentsToShow);
+				return ".../" + segments.join("/");
+			}
 
-        if (targetSegments.length === 0) return targetPath
+			const result = getDisplayPath("/short/path.txt", "/other/path.txt", true);
+			expect(result).toBe("short/path.txt");
+		});
 
-        const totalSegmentsToShow = 4
+		it("should truncate long paths", () => {
+			function getDisplayPath(
+				leftPath: string,
+				rightPath: string,
+				isLeft: boolean,
+			): string {
+				const targetPath = isLeft ? leftPath : rightPath;
+				const otherPath = isLeft ? rightPath : leftPath;
 
-        if (targetSegments.length <= totalSegmentsToShow) {
-          return targetSegments.join('/')
-        }
+				if (!targetPath || !otherPath) return targetPath || "";
 
-        const segments = targetSegments.slice(-totalSegmentsToShow)
-        return '.../' + segments.join('/')
-      }
+				const targetSegments = targetPath.split("/").filter((s) => s !== "");
+				const otherSegments = otherPath.split("/").filter((s) => s !== "");
 
-      const longPath = '/very/long/path/to/some/deep/directory/file.txt'
-      const result = getDisplayPath(longPath, '/other/path.txt', true)
-      expect(result).toBe('.../some/deep/directory/file.txt')
-    })
+				if (targetSegments.length === 0) return targetPath;
 
-    it('should handle empty paths', () => {
-      function getDisplayPath(leftPath: string, rightPath: string, isLeft: boolean): string {
-        const targetPath = isLeft ? leftPath : rightPath
-        const otherPath = isLeft ? rightPath : leftPath
+				const totalSegmentsToShow = 4;
 
-        if (!targetPath || !otherPath) return targetPath || ''
+				if (targetSegments.length <= totalSegmentsToShow) {
+					return targetSegments.join("/");
+				}
 
-        const targetSegments = targetPath.split('/').filter(s => s !== '')
-        const otherSegments = otherPath.split('/').filter(s => s !== '')
+				const segments = targetSegments.slice(-totalSegmentsToShow);
+				return ".../" + segments.join("/");
+			}
 
-        if (targetSegments.length === 0) return targetPath
+			const longPath = "/very/long/path/to/some/deep/directory/file.txt";
+			const result = getDisplayPath(longPath, "/other/path.txt", true);
+			expect(result).toBe(".../some/deep/directory/file.txt");
+		});
 
-        const totalSegmentsToShow = 4
+		it("should handle empty paths", () => {
+			function getDisplayPath(
+				leftPath: string,
+				rightPath: string,
+				isLeft: boolean,
+			): string {
+				const targetPath = isLeft ? leftPath : rightPath;
+				const otherPath = isLeft ? rightPath : leftPath;
 
-        if (targetSegments.length <= totalSegmentsToShow) {
-          return targetSegments.join('/')
-        }
+				if (!targetPath || !otherPath) return targetPath || "";
 
-        const segments = targetSegments.slice(-totalSegmentsToShow)
-        return '.../' + segments.join('/')
-      }
+				const targetSegments = targetPath.split("/").filter((s) => s !== "");
+				const otherSegments = otherPath.split("/").filter((s) => s !== "");
 
-      const result = getDisplayPath('', '/other/path.txt', true)
-      expect(result).toBe('')
-    })
-  })
+				if (targetSegments.length === 0) return targetPath;
 
-  describe('getLineClass', () => {
-    it('should return correct CSS class for line types', () => {
-      function getLineClass(type: string): string {
-        switch (type) {
-          case 'added':
-            return 'line-added'
-          case 'removed':
-            return 'line-removed'
-          case 'modified':
-            return 'line-modified'
-          default:
-            return 'line-same'
-        }
-      }
+				const totalSegmentsToShow = 4;
 
-      expect(getLineClass('added')).toBe('line-added')
-      expect(getLineClass('removed')).toBe('line-removed')
-      expect(getLineClass('modified')).toBe('line-modified')
-      expect(getLineClass('same')).toBe('line-same')
-      expect(getLineClass('unknown')).toBe('line-same')
-    })
-  })
+				if (targetSegments.length <= totalSegmentsToShow) {
+					return targetSegments.join("/");
+				}
 
-  describe('getLineNumberWidth', () => {
-    it('should calculate width based on max line number', () => {
-      const mockDiffResult = {
-        lines: [
-          { leftNumber: 1, rightNumber: 1, type: 'same' },
-          { leftNumber: 99, rightNumber: 99, type: 'same' },
-          { leftNumber: 100, rightNumber: 100, type: 'same' }
-        ]
-      }
+				const segments = targetSegments.slice(-totalSegmentsToShow);
+				return ".../" + segments.join("/");
+			}
 
-      function getLineNumberWidth(diffResult: any): string {
-        if (!diffResult || !diffResult.lines.length) return '32px'
+			const result = getDisplayPath("", "/other/path.txt", true);
+			expect(result).toBe("");
+		});
+	});
 
-        const maxLineNumber = Math.max(
-          ...diffResult.lines.map((line: any) =>
-            Math.max(line.leftNumber || 0, line.rightNumber || 0)
-          )
-        )
+	describe("getLineClass", () => {
+		it("should return correct CSS class for line types", () => {
+			function getLineClass(type: string): string {
+				switch (type) {
+					case "added":
+						return "line-added";
+					case "removed":
+						return "line-removed";
+					case "modified":
+						return "line-modified";
+					default:
+						return "line-same";
+				}
+			}
 
-        const digits = Math.max(2, maxLineNumber.toString().length)
-        const width = digits * 6 + 8
+			expect(getLineClass("added")).toBe("line-added");
+			expect(getLineClass("removed")).toBe("line-removed");
+			expect(getLineClass("modified")).toBe("line-modified");
+			expect(getLineClass("same")).toBe("line-same");
+			expect(getLineClass("unknown")).toBe("line-same");
+		});
+	});
 
-        return `${width}px`
-      }
+	describe("getLineNumberWidth", () => {
+		it("should calculate width based on max line number", () => {
+			const mockDiffResult = {
+				lines: [
+					{ leftNumber: 1, rightNumber: 1, type: "same" },
+					{ leftNumber: 99, rightNumber: 99, type: "same" },
+					{ leftNumber: 100, rightNumber: 100, type: "same" },
+				],
+			};
 
-      const result = getLineNumberWidth(mockDiffResult)
-      expect(result).toBe('26px') // 3 digits * 6 + 8 = 26px
-    })
+			function getLineNumberWidth(diffResult: any): string {
+				if (!diffResult || !diffResult.lines.length) return "32px";
 
-    it('should return default width for empty result', () => {
-      function getLineNumberWidth(diffResult: any): string {
-        if (!diffResult || !diffResult.lines.length) return '32px'
+				const maxLineNumber = Math.max(
+					...diffResult.lines.map((line: any) =>
+						Math.max(line.leftNumber || 0, line.rightNumber || 0),
+					),
+				);
 
-        const maxLineNumber = Math.max(
-          ...diffResult.lines.map((line: any) =>
-            Math.max(line.leftNumber || 0, line.rightNumber || 0)
-          )
-        )
+				const digits = Math.max(2, maxLineNumber.toString().length);
+				const width = digits * 6 + 8;
 
-        const digits = Math.max(2, maxLineNumber.toString().length)
-        const width = digits * 6 + 8
+				return `${width}px`;
+			}
 
-        return `${width}px`
-      }
+			const result = getLineNumberWidth(mockDiffResult);
+			expect(result).toBe("26px"); // 3 digits * 6 + 8 = 26px
+		});
 
-      expect(getLineNumberWidth(null)).toBe('32px')
-      expect(getLineNumberWidth({ lines: [] })).toBe('32px')
-    })
-  })
+		it("should return default width for empty result", () => {
+			function getLineNumberWidth(diffResult: any): string {
+				if (!diffResult || !diffResult.lines.length) return "32px";
 
-  describe('getLanguageFromFilename', () => {
-    it('should detect language from file extension', () => {
-      function getLanguageFromFilename(filename: string): string {
-        if (!filename) return 'markup'
+				const maxLineNumber = Math.max(
+					...diffResult.lines.map((line: any) =>
+						Math.max(line.leftNumber || 0, line.rightNumber || 0),
+					),
+				);
 
-        const ext = filename.split('.').pop()?.toLowerCase()
+				const digits = Math.max(2, maxLineNumber.toString().length);
+				const width = digits * 6 + 8;
 
-        const languageMap: Record<string, string> = {
-          js: 'javascript',
-          jsx: 'javascript',
-          ts: 'typescript',
-          tsx: 'typescript',
-          java: 'java',
-          go: 'go',
-          py: 'python',
-          php: 'php',
-          rb: 'ruby',
-          cs: 'csharp',
-          css: 'css',
-          scss: 'css',
-          sass: 'css',
-          json: 'json',
-          md: 'markdown',
-          sh: 'bash',
-          bash: 'bash',
-          zsh: 'bash',
-          c: 'c',
-          cpp: 'cpp',
-          h: 'c',
-          hpp: 'cpp',
-        }
+				return `${width}px`;
+			}
 
-        return languageMap[ext] || 'markup'
-      }
+			expect(getLineNumberWidth(null)).toBe("32px");
+			expect(getLineNumberWidth({ lines: [] })).toBe("32px");
+		});
+	});
 
-      expect(getLanguageFromFilename('test.js')).toBe('javascript')
-      expect(getLanguageFromFilename('test.ts')).toBe('typescript')
-      expect(getLanguageFromFilename('test.py')).toBe('python')
-      expect(getLanguageFromFilename('test.go')).toBe('go')
-      expect(getLanguageFromFilename('test.unknown')).toBe('markup')
-      expect(getLanguageFromFilename('')).toBe('markup')
-    })
-  })
+	describe("getLanguageFromFilename", () => {
+		it("should detect language from file extension", () => {
+			function getLanguageFromFilename(filename: string): string {
+				if (!filename) return "markup";
 
-  describe('handleKeydown', () => {
-    it('should handle Ctrl+S on Windows/Linux', () => {
-      const mockSaveLeftFile = vi.fn()
-      const mockSaveRightFile = vi.fn()
-      const leftFilePath = '/path/to/left.txt'
-      const rightFilePath = '/path/to/right.txt'
+				const ext = filename.split(".").pop()?.toLowerCase();
 
-      function handleKeydown(event: any, saveLeftFile: () => void, saveRightFile: () => void, leftPath: string, rightPath: string): void {
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-        const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey
+				const languageMap: Record<string, string> = {
+					js: "javascript",
+					jsx: "javascript",
+					ts: "typescript",
+					tsx: "typescript",
+					java: "java",
+					go: "go",
+					py: "python",
+					php: "php",
+					rb: "ruby",
+					cs: "csharp",
+					css: "css",
+					scss: "css",
+					sass: "css",
+					json: "json",
+					md: "markdown",
+					sh: "bash",
+					bash: "bash",
+					zsh: "bash",
+					c: "c",
+					cpp: "cpp",
+					h: "c",
+					hpp: "cpp",
+				};
 
-        if (isCtrlOrCmd && event.key === 's') {
-          event.preventDefault()
+				return languageMap[ext] || "markup";
+			}
 
-          if (leftPath) {
-            saveLeftFile()
-          }
-          if (rightPath) {
-            saveRightFile()
-          }
-        }
-      }
+			expect(getLanguageFromFilename("test.js")).toBe("javascript");
+			expect(getLanguageFromFilename("test.ts")).toBe("typescript");
+			expect(getLanguageFromFilename("test.py")).toBe("python");
+			expect(getLanguageFromFilename("test.go")).toBe("go");
+			expect(getLanguageFromFilename("test.unknown")).toBe("markup");
+			expect(getLanguageFromFilename("")).toBe("markup");
+		});
+	});
 
-      // Mock Windows platform
-      Object.defineProperty(navigator, 'platform', {
-        value: 'Win32',
-        writable: true
-      })
+	describe("handleKeydown", () => {
+		it("should handle Ctrl+S on Windows/Linux", () => {
+			const mockSaveLeftFile = vi.fn();
+			const mockSaveRightFile = vi.fn();
+			const leftFilePath = "/path/to/left.txt";
+			const rightFilePath = "/path/to/right.txt";
 
-      const mockEvent = {
-        key: 's',
-        ctrlKey: true,
-        metaKey: false,
-        preventDefault: vi.fn()
-      }
+			function handleKeydown(
+				event: any,
+				saveLeftFile: () => void,
+				saveRightFile: () => void,
+				leftPath: string,
+				rightPath: string,
+			): void {
+				const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+				const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
 
-      handleKeydown(mockEvent, mockSaveLeftFile, mockSaveRightFile, leftFilePath, rightFilePath)
+				if (isCtrlOrCmd && event.key === "s") {
+					event.preventDefault();
 
-      expect(mockEvent.preventDefault).toHaveBeenCalled()
-      expect(mockSaveLeftFile).toHaveBeenCalled()
-      expect(mockSaveRightFile).toHaveBeenCalled()
-    })
+					if (leftPath) {
+						saveLeftFile();
+					}
+					if (rightPath) {
+						saveRightFile();
+					}
+				}
+			}
 
-    it('should handle Cmd+S on Mac', () => {
-      const mockSaveLeftFile = vi.fn()
-      const mockSaveRightFile = vi.fn()
-      const leftFilePath = '/path/to/left.txt'
-      const rightFilePath = '/path/to/right.txt'
+			// Mock Windows platform
+			Object.defineProperty(navigator, "platform", {
+				value: "Win32",
+				writable: true,
+			});
 
-      function handleKeydown(event: any, saveLeftFile: () => void, saveRightFile: () => void, leftPath: string, rightPath: string): void {
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-        const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey
+			const mockEvent = {
+				key: "s",
+				ctrlKey: true,
+				metaKey: false,
+				preventDefault: vi.fn(),
+			};
 
-        if (isCtrlOrCmd && event.key === 's') {
-          event.preventDefault()
+			handleKeydown(
+				mockEvent,
+				mockSaveLeftFile,
+				mockSaveRightFile,
+				leftFilePath,
+				rightFilePath,
+			);
 
-          if (leftPath) {
-            saveLeftFile()
-          }
-          if (rightPath) {
-            saveRightFile()
-          }
-        }
-      }
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockSaveLeftFile).toHaveBeenCalled();
+			expect(mockSaveRightFile).toHaveBeenCalled();
+		});
 
-      // Mock Mac platform
-      Object.defineProperty(navigator, 'platform', {
-        value: 'MacIntel',
-        writable: true
-      })
+		it("should handle Cmd+S on Mac", () => {
+			const mockSaveLeftFile = vi.fn();
+			const mockSaveRightFile = vi.fn();
+			const leftFilePath = "/path/to/left.txt";
+			const rightFilePath = "/path/to/right.txt";
 
-      const mockEvent = {
-        key: 's',
-        ctrlKey: false,
-        metaKey: true,
-        preventDefault: vi.fn()
-      }
+			function handleKeydown(
+				event: any,
+				saveLeftFile: () => void,
+				saveRightFile: () => void,
+				leftPath: string,
+				rightPath: string,
+			): void {
+				const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+				const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
 
-      handleKeydown(mockEvent, mockSaveLeftFile, mockSaveRightFile, leftFilePath, rightFilePath)
+				if (isCtrlOrCmd && event.key === "s") {
+					event.preventDefault();
 
-      expect(mockEvent.preventDefault).toHaveBeenCalled()
-      expect(mockSaveLeftFile).toHaveBeenCalled()
-      expect(mockSaveRightFile).toHaveBeenCalled()
-    })
-  })
-})
+					if (leftPath) {
+						saveLeftFile();
+					}
+					if (rightPath) {
+						saveRightFile();
+					}
+				}
+			}
+
+			// Mock Mac platform
+			Object.defineProperty(navigator, "platform", {
+				value: "MacIntel",
+				writable: true,
+			});
+
+			const mockEvent = {
+				key: "s",
+				ctrlKey: false,
+				metaKey: true,
+				preventDefault: vi.fn(),
+			};
+
+			handleKeydown(
+				mockEvent,
+				mockSaveLeftFile,
+				mockSaveRightFile,
+				leftFilePath,
+				rightFilePath,
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockSaveLeftFile).toHaveBeenCalled();
+			expect(mockSaveRightFile).toHaveBeenCalled();
+		});
+	});
+});
