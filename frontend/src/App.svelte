@@ -1694,7 +1694,7 @@ function checkHorizontalScrollbar() {
     width: 100%;
     font-size: var(--font-size); /* Ensure same font size */
     line-height: var(--line-height); /* Ensure same line height */
-    border-bottom: 1px solid rgba(255, 0, 255, 0.3); /* Magenta border for visibility */
+    /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
   }
 
   /* Special styling for chunk start lines */
@@ -1764,7 +1764,7 @@ function checkHorizontalScrollbar() {
     position: relative;
     margin: 0;
     padding: 0;
-    border-bottom: 1px solid rgba(255, 0, 255, 0.3); /* Magenta border for visibility */
+    /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
   }
   
   
