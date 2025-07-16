@@ -24,7 +24,9 @@ type DiffResult struct {
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx              context.Context
+	InitialLeftFile  string
+	InitialRightFile string
 }
 
 // NewApp creates a new App application struct
@@ -36,6 +38,12 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// GetInitialFiles returns the initial file paths passed via command line
+func (a *App) GetInitialFiles() (string, string) {
+	fmt.Printf("GetInitialFiles called: left='%s', right='%s'\n", a.InitialLeftFile, a.InitialRightFile)
+	return a.InitialLeftFile, a.InitialRightFile
 }
 
 // SelectFile opens a file dialog and returns the selected file path

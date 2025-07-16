@@ -6,6 +6,7 @@ import {
 	CopyToFile,
 	type DiffLine,
 	type DiffResult,
+	GetInitialFiles,
 	HasUnsavedChanges,
 	QuitWithoutSaving,
 	RemoveLineFromFile,
@@ -946,6 +947,22 @@ onMount(async () => {
 	// Add event listeners
 	document.addEventListener("keydown", handleKeydown);
 	EventsOn("show-quit-dialog", handleQuitDialog);
+	
+	// Check for initial files from command line
+	try {
+		const [initialLeft, initialRight] = await GetInitialFiles();
+		if (initialLeft && initialRight) {
+			leftFilePath = initialLeft;
+			rightFilePath = initialRight;
+			leftFileName = initialLeft.split("/").pop() || "Select left file...";
+			rightFileName = initialRight.split("/").pop() || "Select right file...";
+			
+			// Automatically compare the files
+			await compareBothFiles();
+		}
+	} catch (error) {
+		console.error("Error getting initial files:", error);
+	}
 
 	// Initialize Shiki highlighter with Catppuccin themes
 	try {

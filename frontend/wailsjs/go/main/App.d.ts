@@ -6,6 +6,8 @@ export function CompareFiles(arg1:string,arg2:string):Promise<main.DiffResult>;
 
 export function CopyToFile(arg1:string,arg2:string,arg3:number,arg4:string):Promise<void>;
 
+export function GetInitialFiles():Promise<string|string>;
+
 export function GetUnsavedFilesList():Promise<Array<string>>;
 
 export function HasUnsavedChanges(arg1:string):Promise<boolean>;
