@@ -987,9 +987,13 @@ onMount(async () => {
 		highlighter = null;
 	}
 
-	// Set up ResizeObserver to detect scrollbar changes
+	// Set up ResizeObserver to detect scrollbar changes with debouncing
+	let resizeTimeout: number;
 	const resizeObserver = new ResizeObserver(() => {
-		checkHorizontalScrollbar();
+		clearTimeout(resizeTimeout);
+		resizeTimeout = setTimeout(() => {
+			checkHorizontalScrollbar();
+		}, 100);
 	});
 	
 	// Wait for next tick to ensure elements are mounted
@@ -1005,6 +1009,7 @@ onMount(async () => {
 		if (highlighter) {
 			highlighter.dispose?.();
 		}
+		clearTimeout(resizeTimeout);
 		resizeObserver.disconnect();
 	};
 });
@@ -1035,15 +1040,13 @@ function checkHorizontalScrollbar() {
       <button class="file-btn" on:click={selectRightFile}>
         📂 {rightFileName}
       </button>
-      {#if leftFilePath && rightFilePath}
-        <button class="compare-btn" on:click={compareBothFiles} disabled={isComparing}>
-          {#if isComparing}
-            Comparing files...
-          {:else}
-            Compare
-          {/if}
-        </button>
-      {/if}
+      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || isComparing}>
+        {#if isComparing}
+          Comparing files...
+        {:else}
+          Compare Files
+        {/if}
+      </button>
     </div>
     
     {#if errorMessage}
@@ -1293,6 +1296,13 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .compare-btn:hover:not(:disabled) {
     background: #7dc4e4;
+  }
+
+  :global([data-theme="dark"]) .compare-btn:disabled {
+    background: #5b6078;
+    border-color: #5b6078;
+    color: #a5adcb;
+    opacity: 0.7;
   }
 
   :global([data-theme="dark"]) .file-header {
