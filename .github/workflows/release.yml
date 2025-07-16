@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -70,12 +73,12 @@ jobs:
       run: |
         cd build/bin
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          tar -czf ../../weld-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz *
+          tar -czf weld-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz *
         elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-          7z a ../../weld-${{ matrix.platform }}-${{ matrix.arch }}.zip *
+          7z a weld-${{ matrix.platform }}-${{ matrix.arch }}.zip *
         elif [ "${{ matrix.os }}" = "macos-latest" ]; then
           # Create a DMG or ZIP for macOS
-          zip -r ../../weld-${{ matrix.platform }}-${{ matrix.arch }}.zip Weld.app
+          zip -r weld-${{ matrix.platform }}-${{ matrix.arch }}.zip Weld.app
         fi
       shell: bash
     
@@ -85,8 +88,8 @@ jobs:
       with:
         name: weld-${{ matrix.platform }}-${{ matrix.arch }}
         path: |
-          weld-*.tar.gz
-          weld-*.zip
+          build/bin/weld-*.tar.gz
+          build/bin/weld-*.zip
         retention-days: 30
     
     # Create release (only on tag push)
@@ -95,7 +98,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          weld-*.tar.gz
-          weld-*.zip
+          build/bin/weld-*.tar.gz
+          build/bin/weld-*.zip
         draft: true
         generate_release_notes: true
