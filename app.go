@@ -105,81 +105,72 @@ func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 
 func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
 	fmt.Printf("Starting LCS-based diff computation: %d vs %d lines\n", len(leftLines), len(rightLines))
+
+	// Compute the LCS table
+	m, n := len(leftLines), len(rightLines)
+	lcs := make([][]int, m+1)
+	for i := range lcs {
+		lcs[i] = make([]int, n+1)
+	}
+
+	// Fill the LCS table
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if leftLines[i-1] == rightLines[j-1] {
+				lcs[i][j] = lcs[i-1][j-1] + 1
+			} else {
+				if lcs[i-1][j] > lcs[i][j-1] {
+					lcs[i][j] = lcs[i-1][j]
+				} else {
+					lcs[i][j] = lcs[i][j-1]
+				}
+			}
+		}
+	}
+
+	// Backtrack to build the diff
 	result := &DiffResult{Lines: []DiffLine{}}
+	i, j := m, n
+	var diffLines []DiffLine
 
-	// Use a simplified diff approach that handles insertions/deletions properly
-	leftIdx, rightIdx := 0, 0
-
-	for leftIdx < len(leftLines) || rightIdx < len(rightLines) {
-		if leftIdx >= len(leftLines) {
-			// Only right lines remain - all are added
-			result.Lines = append(result.Lines, DiffLine{
+	for i > 0 || j > 0 {
+		if i > 0 && j > 0 && leftLines[i-1] == rightLines[j-1] {
+			// Lines match
+			diffLines = append(diffLines, DiffLine{
+				LeftLine:    leftLines[i-1],
+				RightLine:   rightLines[j-1],
+				LeftNumber:  i,
+				RightNumber: j,
+				Type:        "same",
+			})
+			i--
+			j--
+		} else if j > 0 && (i == 0 || lcs[i][j-1] >= lcs[i-1][j]) {
+			// Line added in right
+			diffLines = append(diffLines, DiffLine{
 				LeftLine:    "",
-				RightLine:   rightLines[rightIdx],
+				RightLine:   rightLines[j-1],
 				LeftNumber:  0,
-				RightNumber: rightIdx + 1,
+				RightNumber: j,
 				Type:        "added",
 			})
-			rightIdx++
-		} else if rightIdx >= len(rightLines) {
-			// Only left lines remain - all are removed
-			result.Lines = append(result.Lines, DiffLine{
-				LeftLine:    leftLines[leftIdx],
+			j--
+		} else if i > 0 {
+			// Line removed from left
+			diffLines = append(diffLines, DiffLine{
+				LeftLine:    leftLines[i-1],
 				RightLine:   "",
-				LeftNumber:  leftIdx + 1,
+				LeftNumber:  i,
 				RightNumber: 0,
 				Type:        "removed",
 			})
-			leftIdx++
-		} else if leftLines[leftIdx] == rightLines[rightIdx] {
-			// Lines match
-			result.Lines = append(result.Lines, DiffLine{
-				LeftLine:    leftLines[leftIdx],
-				RightLine:   rightLines[rightIdx],
-				LeftNumber:  leftIdx + 1,
-				RightNumber: rightIdx + 1,
-				Type:        "same",
-			})
-			leftIdx++
-			rightIdx++
-		} else {
-			// Lines don't match - look ahead to see if it's an insertion or deletion
-			rightMatchIdx := a.findNextMatch(rightLines, rightIdx+1, leftLines[leftIdx])
-			leftMatchIdx := a.findNextMatch(leftLines, leftIdx+1, rightLines[rightIdx])
-
-			if rightMatchIdx != -1 && (leftMatchIdx == -1 || rightMatchIdx-rightIdx <= leftMatchIdx-leftIdx) {
-				// Found the left line later in right - treat current right line as added
-				result.Lines = append(result.Lines, DiffLine{
-					LeftLine:    "",
-					RightLine:   rightLines[rightIdx],
-					LeftNumber:  0,
-					RightNumber: rightIdx + 1,
-					Type:        "added",
-				})
-				rightIdx++
-			} else if leftMatchIdx != -1 {
-				// Found the right line later in left - treat current left line as removed
-				result.Lines = append(result.Lines, DiffLine{
-					LeftLine:    leftLines[leftIdx],
-					RightLine:   "",
-					LeftNumber:  leftIdx + 1,
-					RightNumber: 0,
-					Type:        "removed",
-				})
-				leftIdx++
-			} else {
-				// No matches found - treat as modified
-				result.Lines = append(result.Lines, DiffLine{
-					LeftLine:    leftLines[leftIdx],
-					RightLine:   rightLines[rightIdx],
-					LeftNumber:  leftIdx + 1,
-					RightNumber: rightIdx + 1,
-					Type:        "modified",
-				})
-				leftIdx++
-				rightIdx++
-			}
+			i--
 		}
+	}
+
+	// Reverse the diff lines (we built them backwards)
+	for i := len(diffLines) - 1; i >= 0; i-- {
+		result.Lines = append(result.Lines, diffLines[i])
 	}
 
 	fmt.Printf("Diff computation completed: %d result lines\n", len(result.Lines))
