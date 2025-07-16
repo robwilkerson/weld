@@ -1,6 +1,7 @@
 # 🧑‍🏭 Weld
 
 [![CI](https://github.com/robwilkerson/weld/actions/workflows/ci.yml/badge.svg)](https://github.com/robwilkerson/weld/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/robwilkerson/weld?label=latest%20release)](https://github.com/robwilkerson/weld/releases/latest)
 
 Weld is a visual diff and merge tool targeted at developers.
 
