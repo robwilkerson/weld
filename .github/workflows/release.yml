@@ -50,7 +50,7 @@ jobs:
     
     # Install Wails
     - name: Install Wails
-      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
     # Build for production
     - name: Build Weld

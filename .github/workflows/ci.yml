@@ -43,7 +43,7 @@ jobs:
     
     # Install Wails
     - name: Install Wails
-      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
     # Verify Wails installation
     - name: Wails Doctor
