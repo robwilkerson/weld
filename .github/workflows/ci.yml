@@ -47,14 +47,22 @@ jobs:
     - name: Wails Doctor
       run: wails doctor
     
-    # Backend tests
-    - name: Run backend tests
-      run: go test ./... -v -cover
-    
     # Frontend dependencies
     - name: Install frontend dependencies
       working-directory: frontend
       run: bun install
+    
+    # Build frontend (required for go:embed)
+    # The main.go file uses //go:embed all:frontend/dist to embed the frontend
+    # assets into the binary. This requires the dist directory to exist at
+    # compile time, so we must build the frontend before running Go tests.
+    - name: Build frontend
+      working-directory: frontend
+      run: bun run build
+    
+    # Backend tests
+    - name: Run backend tests
+      run: go test ./... -v -cover
     
     # Frontend tests
     - name: Run frontend tests
