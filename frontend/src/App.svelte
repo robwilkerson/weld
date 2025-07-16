@@ -812,13 +812,6 @@ function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
 		chunks.push(currentChunk);
 	}
 
-	console.log('Detected line chunks:', chunks.map(chunk => ({
-		type: chunk.type,
-		startIndex: chunk.startIndex,
-		endIndex: chunk.endIndex,
-		lines: chunk.lines,
-		lineNumbers: `${chunk.startIndex + 1}-${chunk.endIndex + 1}`
-	})));
 
 	return chunks;
 }
