@@ -1,3 +1,10 @@
+//go:build ignore
+
+// WARNING: Do not remove the build tag above!
+// This file is test data for the diff tool and should not be compiled.
+// The build tag prevents Go from trying to build this file during tests,
+// which would fail due to duplicate declarations with addmiddle-2.go.
+
 package main
 
 import (
