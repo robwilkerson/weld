@@ -23,7 +23,6 @@ let highlighter: any = null;
 // Cache for highlighted lines to avoid re-processing
 const highlightCache: Map<string, string> = new Map();
 
-
 let leftFilePath: string = "";
 let rightFilePath: string = "";
 let leftFileName: string = "Select left file...";
@@ -162,7 +161,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 				};
 			}),
 		};
-		
+
 		// After highlighting is done, scroll to first diff
 		setTimeout(() => scrollToFirstDiff(), 200);
 	} catch (error) {
@@ -187,7 +186,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 				};
 			}),
 		};
-		
+
 		// Check for horizontal scrollbar after content is rendered
 		setTimeout(() => {
 			checkHorizontalScrollbar();
@@ -253,48 +252,59 @@ function escapeHtml(text: string): string {
 }
 
 // Compute inline diff highlights for modified lines
-function computeInlineDiff(left: string, right: string): { left: string; right: string } {
+function computeInlineDiff(
+	left: string,
+	right: string,
+): { left: string; right: string } {
 	// For very different strings, just return escaped versions
 	if (Math.abs(left.length - right.length) > left.length * 0.5) {
 		return { left: escapeHtml(left), right: escapeHtml(right) };
 	}
-	
+
 	// Find common prefix
 	let prefixLen = 0;
-	while (prefixLen < left.length && prefixLen < right.length && left[prefixLen] === right[prefixLen]) {
+	while (
+		prefixLen < left.length &&
+		prefixLen < right.length &&
+		left[prefixLen] === right[prefixLen]
+	) {
 		prefixLen++;
 	}
-	
+
 	// Find common suffix
 	let suffixLen = 0;
 	while (
-		suffixLen < left.length - prefixLen && 
-		suffixLen < right.length - prefixLen && 
+		suffixLen < left.length - prefixLen &&
+		suffixLen < right.length - prefixLen &&
 		left[left.length - 1 - suffixLen] === right[right.length - 1 - suffixLen]
 	) {
 		suffixLen++;
 	}
-	
+
 	// Extract the different parts
 	const leftPrefix = left.substring(0, prefixLen);
 	const leftDiff = left.substring(prefixLen, left.length - suffixLen);
 	const leftSuffix = left.substring(left.length - suffixLen);
-	
+
 	const rightPrefix = right.substring(0, prefixLen);
 	const rightDiff = right.substring(prefixLen, right.length - suffixLen);
 	const rightSuffix = right.substring(right.length - suffixLen);
-	
+
 	// Build highlighted strings
-	const leftHighlighted = 
-		escapeHtml(leftPrefix) + 
-		(leftDiff ? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>` : '') +
+	const leftHighlighted =
+		escapeHtml(leftPrefix) +
+		(leftDiff
+			? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>`
+			: "") +
 		escapeHtml(leftSuffix);
-		
-	const rightHighlighted = 
-		escapeHtml(rightPrefix) + 
-		(rightDiff ? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>` : '') +
+
+	const rightHighlighted =
+		escapeHtml(rightPrefix) +
+		(rightDiff
+			? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>`
+			: "") +
 		escapeHtml(rightSuffix);
-	
+
 	return { left: leftHighlighted, right: rightHighlighted };
 }
 
@@ -302,19 +312,19 @@ function extractHighlightedLines(html: string): string[] {
 	// Create a temporary div to parse the HTML
 	const div = document.createElement("div");
 	div.innerHTML = html;
-	
+
 	// Find the code element
 	const codeElement = div.querySelector("code");
 	if (!codeElement) return [];
-	
+
 	// Split by line breaks and extract the HTML for each line
 	const lines: string[] = [];
 	const innerHTML = codeElement.innerHTML;
-	
+
 	// Split by <br> or newline characters while preserving the content
 	const parts = innerHTML.split(/(?=<br>)|(?=\n)/);
 	let currentLine = "";
-	
+
 	for (const part of parts) {
 		if (part.startsWith("<br>")) {
 			lines.push(currentLine);
@@ -326,12 +336,12 @@ function extractHighlightedLines(html: string): string[] {
 			currentLine += part;
 		}
 	}
-	
+
 	// Don't forget the last line
 	if (currentLine) {
 		lines.push(currentLine);
 	}
-	
+
 	return lines;
 }
 
@@ -382,14 +392,14 @@ async function compareBothFiles(): Promise<void> {
 		errorMessage = "";
 
 		diffResult = await CompareFiles(leftFilePath, rightFilePath);
-		
+
 		if (!diffResult || !diffResult.lines) {
 			errorMessage = "No comparison result received";
 			diffResult = null;
 		} else if (diffResult.lines.length === 0) {
 			errorMessage = "Files are identical";
 		}
-		
+
 		// Check for horizontal scrollbar after diff is loaded
 		setTimeout(() => {
 			checkHorizontalScrollbar();
@@ -506,7 +516,7 @@ function toggleDarkMode(): void {
 	if (diffResult) {
 		processHighlighting(diffResult);
 	}
-	
+
 	// Close menu after toggling
 	showMenu = false;
 }
@@ -514,14 +524,14 @@ function toggleDarkMode(): void {
 async function handleDiscardChanges(): Promise<void> {
 	try {
 		errorMessage = "Discarding all changes...";
-		
+
 		// Clear the cache
 		await DiscardAllChanges();
-		
+
 		// Refresh the comparison
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		
+
 		errorMessage = "All changes discarded";
 		showMenu = false;
 	} catch (error) {
@@ -662,7 +672,11 @@ async function copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 		// with the content from the left file
 		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
 			const line = diffResult.lines[i];
-			if (line.type === "modified" && line.leftNumber !== null && line.rightNumber !== null) {
+			if (
+				line.type === "modified" &&
+				line.leftNumber !== null &&
+				line.rightNumber !== null
+			) {
 				// First remove the old line from right
 				await RemoveLineFromFile(rightFilePath, line.rightNumber);
 				// Then insert the left content at that position
@@ -695,7 +709,11 @@ async function copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 		// with the content from the right file
 		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
 			const line = diffResult.lines[i];
-			if (line.type === "modified" && line.leftNumber !== null && line.rightNumber !== null) {
+			if (
+				line.type === "modified" &&
+				line.leftNumber !== null &&
+				line.rightNumber !== null
+			) {
 				// First remove the old line from left
 				await RemoveLineFromFile(leftFilePath, line.leftNumber);
 				// Then insert the right content at that position
@@ -880,7 +898,6 @@ function getLineNumberWidth(): string {
 	return `${width}px`;
 }
 
-
 async function highlightFileContent(
 	content: string,
 	filename: string,
@@ -924,18 +941,18 @@ async function getHighlightedLine(
 	try {
 		const ext = filename.split(".").pop()?.toLowerCase();
 		const language = getLanguageFromExtension(ext || "");
-		
+
 		// Create a timeout promise
 		const timeoutPromise = new Promise<string>((_, reject) => {
 			setTimeout(() => reject(new Error("Highlighting timeout")), 1000);
 		});
-		
+
 		// Race between highlighting and timeout
 		const highlightPromise = highlighter.codeToHtml(line, {
 			lang: language,
 			theme: isDarkMode ? "catppuccin-macchiato" : "catppuccin-latte",
 		});
-		
+
 		const highlighted = await Promise.race([highlightPromise, timeoutPromise]);
 
 		// Extract just the content from the <pre><code> wrapper
@@ -944,7 +961,12 @@ async function getHighlightedLine(
 		);
 		return match ? match[1] : highlighted;
 	} catch (error) {
-		console.warn("Error highlighting line:", error, "Line:", line.substring(0, 50));
+		console.warn(
+			"Error highlighting line:",
+			error,
+			"Line:",
+			line.substring(0, 50),
+		);
 		return escapeHtml(line);
 	}
 }
@@ -955,7 +977,11 @@ function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
 
 	lines.forEach((line, index) => {
 		// Create chunks for added/removed/modified lines
-		if (line.type === "added" || line.type === "removed" || line.type === "modified") {
+		if (
+			line.type === "added" ||
+			line.type === "removed" ||
+			line.type === "modified"
+		) {
 			if (currentChunk && currentChunk.type === line.type) {
 				// Extend current chunk
 				currentChunk.endIndex = index;
@@ -986,7 +1012,6 @@ function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
 		chunks.push(currentChunk);
 	}
 
-
 	return chunks;
 }
 
@@ -1007,36 +1032,35 @@ function scrollToFirstDiff(): void {
 		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
 			return;
 		}
-		
+
 		// Find the first line that's not "same"
 		const firstDiffIndex = highlightedDiffResult.lines.findIndex(
-			line => line.type !== 'same'
+			(line) => line.type !== "same",
 		);
-		
+
 		if (firstDiffIndex === -1) {
 			return;
 		}
-		
+
 		// Calculate the line height from CSS variable
 		const computedStyle = window.getComputedStyle(document.documentElement);
-		const lineHeightValue = computedStyle.getPropertyValue('--line-height');
+		const lineHeightValue = computedStyle.getPropertyValue("--line-height");
 		const fontSize = 13; // Approximate px value
 		// Parse the em value and convert to px
 		const lineHeight = parseFloat(lineHeightValue) || 1.5;
 		const lineHeightPx = lineHeight * fontSize;
-		
+
 		// Calculate the position of the first diff
 		const firstDiffPosition = firstDiffIndex * lineHeightPx;
-		
+
 		// Get the viewport height
 		const viewportHeight = leftPane.clientHeight;
 		const middleOfViewport = viewportHeight / 2;
-		
-		
+
 		// Always scroll to center the first diff in the viewport
 		// Calculate scroll position to center the first diff
 		const scrollTo = Math.max(0, firstDiffPosition - middleOfViewport);
-		
+
 		// Ensure all panes are ready and synced
 		requestAnimationFrame(() => {
 			// Set scroll position on all panes simultaneously
@@ -1114,7 +1138,7 @@ onMount(async () => {
 	// Add event listeners
 	document.addEventListener("keydown", handleKeydown);
 	EventsOn("show-quit-dialog", handleQuitDialog);
-	
+
 	// Check for initial files from command line
 	try {
 		const [initialLeft, initialRight] = await GetInitialFiles();
@@ -1123,7 +1147,7 @@ onMount(async () => {
 			rightFilePath = initialRight;
 			leftFileName = initialLeft.split("/").pop() || "Select left file...";
 			rightFileName = initialRight.split("/").pop() || "Select right file...";
-			
+
 			// Automatically compare the files
 			await compareBothFiles();
 		}
@@ -1179,7 +1203,7 @@ onMount(async () => {
 			checkHorizontalScrollbar();
 		}, 100);
 	});
-	
+
 	// Wait for next tick to ensure elements are mounted
 	setTimeout(() => {
 		if (leftPane) resizeObserver.observe(leftPane);
@@ -1190,7 +1214,7 @@ onMount(async () => {
 	// Click outside handler for menu
 	function handleClickOutside(event: MouseEvent): void {
 		const target = event.target as HTMLElement;
-		const menuContainer = document.querySelector('.menu-container');
+		const menuContainer = document.querySelector(".menu-container");
 		if (menuContainer && !menuContainer.contains(target)) {
 			showMenu = false;
 		}
