@@ -2089,50 +2089,51 @@ function checkHorizontalScrollbar() {
   }
 
   .line-added {
-    background: #dcfce7;
-    border-left: 3px solid #22c55e;
+    background: rgba(30, 102, 245, 0.1);
+    border-left: 3px solid #1e66f5;
   }
 
   .line-added .line-number {
-    background: #bbf7d0;
-    color: #166534;
+    background: rgba(30, 102, 245, 0.15);
+    color: #1e66f5;
   }
 
   .line-added .line-text {
-    color: #166534;
+    color: #4c4f69;
   }
 
   .line-removed {
-    background: #fef2f2;
-    border-left: 3px solid #ef4444;
+    background: rgba(30, 102, 245, 0.1);
+    border-left: 3px solid #1e66f5;
   }
 
   .line-removed .line-number {
-    background: #fecaca;
-    color: #991b1b;
+    background: rgba(30, 102, 245, 0.15);
+    color: #1e66f5;
   }
 
   .line-removed .line-text {
-    color: #991b1b;
+    color: #4c4f69;
   }
 
   .line-modified {
-    background: #fef3c7;
-    border-left: 3px solid #f59e0b;
+    background: rgba(30, 102, 245, 0.1);
+    border-left: 3px solid #1e66f5;
   }
 
   .line-modified .line-number {
-    background: #fde68a;
-    color: #92400e;
+    background: rgba(30, 102, 245, 0.15);
+    color: #1e66f5;
   }
 
   .line-modified .line-text {
-    color: #92400e;
+    color: #4c4f69;
   }
 
   /* Inline diff highlighting for modified lines */
   :global(.inline-diff-highlight) {
-    background-color: #f59e0b;
+    background-color: #1e66f5;
+    color: #ffffff;
     padding: 0 2px;
     border-radius: 2px;
     font-weight: 600;
@@ -2148,49 +2149,50 @@ function checkHorizontalScrollbar() {
   }
 
   :global([data-theme="dark"]) .line-added {
-    background: #1e3a2e;
-    border-left-color: #a6da95;
+    background: rgba(138, 173, 244, 0.15);
+    border-left-color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-added .line-number {
-    background: #2d5016;
-    color: #a6da95;
+    background: rgba(138, 173, 244, 0.2);
+    color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-added .line-text {
-    color: #a6da95;
+    color: #cad3f5;
   }
 
   :global([data-theme="dark"]) .line-removed {
-    background: #3e2723;
-    border-left-color: #ed8796;
+    background: rgba(138, 173, 244, 0.15);
+    border-left-color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-removed .line-number {
-    background: #5d1a1d;
-    color: #ed8796;
+    background: rgba(138, 173, 244, 0.2);
+    color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-removed .line-text {
-    color: #ed8796;
+    color: #cad3f5;
   }
 
   :global([data-theme="dark"]) .line-modified {
-    background: #3e3424;
-    border-left-color: #eed49f;
+    background: rgba(138, 173, 244, 0.15);
+    border-left-color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-modified .line-number {
-    background: #5d4e1a;
-    color: #eed49f;
+    background: rgba(138, 173, 244, 0.2);
+    color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .line-modified .line-text {
-    color: #eed49f;
+    color: #cad3f5;
   }
 
   :global([data-theme="dark"]) :global(.inline-diff-highlight) {
-    background-color: #a16207;
+    background-color: #8aadf4;
+    color: #181926;
     font-weight: 600;
   }
 
@@ -2344,28 +2346,28 @@ function checkHorizontalScrollbar() {
   }
 
   .left-side-arrow {
-    color: #dc2626;
+    color: #1e66f5;
   }
 
   .left-side-arrow:hover {
-    color: #b91c1c;
+    color: #1756c9;
   }
 
   .right-side-arrow {
-    color: #16a34a;
+    color: #1e66f5;
   }
 
   .right-side-arrow:hover {
-    color: #15803d;
+    color: #1756c9;
   }
 
   /* Modified arrows - same color for both directions */
   .modified-arrow {
-    color: #f59e0b !important; /* Amber/orange to match modified line color */
+    color: #1e66f5 !important;
   }
 
   .modified-arrow:hover {
-    color: #d97706 !important;
+    color: #1756c9 !important;
   }
 
   .gutter-line {
@@ -2413,28 +2415,28 @@ function checkHorizontalScrollbar() {
   }
 
   :global([data-theme="dark"]) .left-side-arrow {
-    color: #ed8796;
+    color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .left-side-arrow:hover {
-    color: #ed8796;
+    color: #7dc4e4;
   }
 
   :global([data-theme="dark"]) .right-side-arrow {
-    color: #a6da95;
+    color: #8aadf4;
   }
 
   :global([data-theme="dark"]) .right-side-arrow:hover {
-    color: #a6da95;
+    color: #7dc4e4;
   }
 
   /* Dark mode modified arrows */
   :global([data-theme="dark"]) .modified-arrow {
-    color: #eed49f !important; /* Match dark mode modified line color */
+    color: #8aadf4 !important;
   }
 
   :global([data-theme="dark"]) .modified-arrow:hover {
-    color: #f4dbd6 !important;
+    color: #7dc4e4 !important;
   }
 
 
