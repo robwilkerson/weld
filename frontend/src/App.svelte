@@ -118,11 +118,23 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 
 	if (!highlighter) {
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => ({
-				...line,
-				leftLineHighlighted: escapeHtml(line.leftLine || ""),
-				rightLineHighlighted: escapeHtml(line.rightLine || ""),
-			})),
+			lines: result.lines.map((line) => {
+				// For modified lines, compute inline diff
+				if (line.type === "modified" && line.leftLine && line.rightLine) {
+					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
+					return {
+						...line,
+						leftLineHighlighted: inlineDiff.left,
+						rightLineHighlighted: inlineDiff.right,
+					};
+				}
+				// For other lines, just escape HTML
+				return {
+					...line,
+					leftLineHighlighted: escapeHtml(line.leftLine || ""),
+					rightLineHighlighted: escapeHtml(line.rightLine || ""),
+				};
+			}),
 		};
 		isProcessingHighlight = false;
 		return;
@@ -132,11 +144,23 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		// For now, disable syntax highlighting to avoid lockups
 		// TODO: Implement with web workers or lazy loading
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => ({
-				...line,
-				leftLineHighlighted: escapeHtml(line.leftLine || ""),
-				rightLineHighlighted: escapeHtml(line.rightLine || ""),
-			})),
+			lines: result.lines.map((line) => {
+				// For modified lines, compute inline diff
+				if (line.type === "modified" && line.leftLine && line.rightLine) {
+					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
+					return {
+						...line,
+						leftLineHighlighted: inlineDiff.left,
+						rightLineHighlighted: inlineDiff.right,
+					};
+				}
+				// For other lines, just escape HTML
+				return {
+					...line,
+					leftLineHighlighted: escapeHtml(line.leftLine || ""),
+					rightLineHighlighted: escapeHtml(line.rightLine || ""),
+				};
+			}),
 		};
 		
 		// After highlighting is done, scroll to first diff
@@ -145,11 +169,23 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		console.error("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => ({
-				...line,
-				leftLineHighlighted: escapeHtml(line.leftLine || ""),
-				rightLineHighlighted: escapeHtml(line.rightLine || ""),
-			})),
+			lines: result.lines.map((line) => {
+				// For modified lines, compute inline diff
+				if (line.type === "modified" && line.leftLine && line.rightLine) {
+					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
+					return {
+						...line,
+						leftLineHighlighted: inlineDiff.left,
+						rightLineHighlighted: inlineDiff.right,
+					};
+				}
+				// For other lines, just escape HTML
+				return {
+					...line,
+					leftLineHighlighted: escapeHtml(line.leftLine || ""),
+					rightLineHighlighted: escapeHtml(line.rightLine || ""),
+				};
+			}),
 		};
 		
 		// Check for horizontal scrollbar after content is rendered
@@ -214,6 +250,52 @@ function escapeHtml(text: string): string {
 	const div = document.createElement("div");
 	div.textContent = text;
 	return div.innerHTML;
+}
+
+// Compute inline diff highlights for modified lines
+function computeInlineDiff(left: string, right: string): { left: string; right: string } {
+	// For very different strings, just return escaped versions
+	if (Math.abs(left.length - right.length) > left.length * 0.5) {
+		return { left: escapeHtml(left), right: escapeHtml(right) };
+	}
+	
+	// Find common prefix
+	let prefixLen = 0;
+	while (prefixLen < left.length && prefixLen < right.length && left[prefixLen] === right[prefixLen]) {
+		prefixLen++;
+	}
+	
+	// Find common suffix
+	let suffixLen = 0;
+	while (
+		suffixLen < left.length - prefixLen && 
+		suffixLen < right.length - prefixLen && 
+		left[left.length - 1 - suffixLen] === right[right.length - 1 - suffixLen]
+	) {
+		suffixLen++;
+	}
+	
+	// Extract the different parts
+	const leftPrefix = left.substring(0, prefixLen);
+	const leftDiff = left.substring(prefixLen, left.length - suffixLen);
+	const leftSuffix = left.substring(left.length - suffixLen);
+	
+	const rightPrefix = right.substring(0, prefixLen);
+	const rightDiff = right.substring(prefixLen, right.length - suffixLen);
+	const rightSuffix = right.substring(right.length - suffixLen);
+	
+	// Build highlighted strings
+	const leftHighlighted = 
+		escapeHtml(leftPrefix) + 
+		(leftDiff ? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>` : '') +
+		escapeHtml(leftSuffix);
+		
+	const rightHighlighted = 
+		escapeHtml(rightPrefix) + 
+		(rightDiff ? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>` : '') +
+		escapeHtml(rightSuffix);
+	
+	return { left: leftHighlighted, right: rightHighlighted };
 }
 
 function extractHighlightedLines(html: string): string[] {
@@ -570,6 +652,72 @@ async function copyChunkToLeft(chunk: LineChunk): Promise<void> {
 	}
 }
 
+async function copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Copying modified chunk to right file...";
+
+		// For modified chunks, we need to replace the content in the right file
+		// with the content from the left file
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "modified" && line.leftNumber !== null && line.rightNumber !== null) {
+				// First remove the old line from right
+				await RemoveLineFromFile(rightFilePath, line.rightNumber);
+				// Then insert the left content at that position
+				await CopyToFile(
+					leftFilePath,
+					rightFilePath,
+					line.rightNumber,
+					line.leftLine,
+				);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Modified chunk copied to right successfully";
+	} catch (error) {
+		console.error("Error copying modified chunk to right:", error);
+		errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
+async function copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
+	if (!diffResult || !highlightedDiffResult) return;
+
+	try {
+		errorMessage = "Copying modified chunk to left file...";
+
+		// For modified chunks, we need to replace the content in the left file
+		// with the content from the right file
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "modified" && line.leftNumber !== null && line.rightNumber !== null) {
+				// First remove the old line from left
+				await RemoveLineFromFile(leftFilePath, line.leftNumber);
+				// Then insert the right content at that position
+				await CopyToFile(
+					rightFilePath,
+					leftFilePath,
+					line.leftNumber,
+					line.rightLine,
+				);
+			}
+		}
+
+		// Refresh the diff
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		errorMessage = "Modified chunk copied to left successfully";
+	} catch (error) {
+		console.error("Error copying modified chunk to left:", error);
+		errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
 async function deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
@@ -806,8 +954,8 @@ function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
 	let currentChunk: LineChunk | null = null;
 
 	lines.forEach((line, index) => {
-		// Only create chunks for added/removed lines
-		if (line.type === "added" || line.type === "removed") {
+		// Create chunks for added/removed/modified lines
+		if (line.type === "added" || line.type === "removed" || line.type === "modified") {
 			if (currentChunk && currentChunk.type === line.type) {
 				// Extend current chunk
 				currentChunk.endIndex = index;
@@ -1185,6 +1333,14 @@ function checkHorizontalScrollbar() {
                       →
                     </button>
                     <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => deleteChunkFromLeft(chunk)} title="Delete chunk from left ({chunk.lines} lines)">
+                      ←
+                    </button>
+                  {:else if chunk.type === 'modified'}
+                    <!-- Content exists in BOTH panes but is different, allow copying either direction -->
+                    <button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => copyModifiedChunkToRight(chunk)} title="Copy left version to right ({chunk.lines} lines)">
+                      →
+                    </button>
+                    <button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => copyModifiedChunkToLeft(chunk)} title="Copy right version to left ({chunk.lines} lines)">
                       ←
                     </button>
                   {/if}
@@ -1974,6 +2130,14 @@ function checkHorizontalScrollbar() {
     color: #92400e;
   }
 
+  /* Inline diff highlighting for modified lines */
+  :global(.inline-diff-highlight) {
+    background-color: #f59e0b;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+
   /* Dark mode line overrides */
   :global([data-theme="dark"]) .line-same {
     background: #24273a;
@@ -2023,6 +2187,11 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .line-modified .line-text {
     color: #eed49f;
+  }
+
+  :global([data-theme="dark"]) :global(.inline-diff-highlight) {
+    background-color: #a16207;
+    font-weight: 600;
   }
 
   .empty-state {
@@ -2190,6 +2359,15 @@ function checkHorizontalScrollbar() {
     color: #15803d;
   }
 
+  /* Modified arrows - same color for both directions */
+  .modified-arrow {
+    color: #f59e0b !important; /* Amber/orange to match modified line color */
+  }
+
+  .modified-arrow:hover {
+    color: #d97706 !important;
+  }
+
   .gutter-line {
     position: relative;
   }
@@ -2248,6 +2426,15 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .right-side-arrow:hover {
     color: #a6da95;
+  }
+
+  /* Dark mode modified arrows */
+  :global([data-theme="dark"]) .modified-arrow {
+    color: #eed49f !important; /* Match dark mode modified line color */
+  }
+
+  :global([data-theme="dark"]) .modified-arrow:hover {
+    color: #f4dbd6 !important;
   }
 
 
