@@ -6,7 +6,7 @@
 	"frontend:build": "bun run build",
 	"frontend:dev:watcher": "bun run dev",
 	"frontend:dev:serverUrl": "auto",
-	"icon": "assets/icons/appicon.icns",
+	"icon": "resources/appicon.icns",
 	"author": {
 		"name": "Rob Wilkerson",
 		"email": ""

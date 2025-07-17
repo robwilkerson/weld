@@ -50,8 +50,9 @@ func (a *App) GetInitialFiles() (string, string) {
 func (a *App) SelectFile() (string, error) {
 	fmt.Println("SelectFile called")
 
-	// Use the user's home directory as default
-	defaultDir, _ := os.UserHomeDir()
+	// Use the sample files directory for testing
+	// TODO: Change back to user's home directory for next release
+	defaultDir := "/Users/54695/Development/lookout-software/weld/resources/sample-files"
 	fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
 
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{

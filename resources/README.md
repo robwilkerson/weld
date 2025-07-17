@@ -1,11 +1,12 @@
-# Assets
+# Resources
 
-This directory contains application-level assets for the Weld diff tool.
+This directory contains all non-code resources for the Weld diff tool, including icons, sample files, and other assets.
 
 ## Directory Structure
 
-- `icons/` - Application icons and branding assets
-  - `appicon.png` - Main application icon (512x512)
+- `appicon.icns` - macOS application icon
+- `appicon.png` - Main application icon (512x512)
+- `sample-files/` - Test files for manual testing and development
 
 ## Icon Specifications
 

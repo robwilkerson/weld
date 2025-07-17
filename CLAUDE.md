@@ -74,11 +74,11 @@ Frontend: Use `cd frontend && bun run test:coverage` for frontend tests with cov
 * `bun run test:watch` - Run tests in watch mode (automatically re-runs on file changes)
 * `bun run test:ui` - Run tests with interactive UI
 
-In the tests/ directory, there's a sample_files/ subdirectory that contains physical files that can be used to manually test very specific scenarios.
+In the resources/ directory, there's a sample_files/ subdirectory that contains physical files that can be used to manually test very specific scenarios.
 
 ### Sample Files
 
-Test files - primarily used for manual testing - are located in `tests/sample-files/`. They are used to test syntax highlighting and very specific, discrete diff scenarios:
+Test files - primarily used for manual testing - are located in `resources/sample-files/`. They are used to test syntax highlighting and very specific, discrete diff scenarios:
 
 * `same-1.js` | `same-2.js` - Identical Javascript files used to verify that no diffs are shown and that we see a banner indicating that the files are the same
 * `addfirst-1.js` | `addfirst-2.js` - Javascript files where the second file has one line added at the very top of the file
@@ -88,7 +88,7 @@ Test files - primarily used for manual testing - are located in `tests/sample-fi
 ## Do Not
 
 * Do not edit files in build/ or wailsjs/
-* Do not add or modify files in tests/sample-files unless specifically asked to do so
+* Do not add or modify files in resources/sample-files unless specifically asked to do so
 * Do not use npm for package management, use Bun instead
 
 ## Common Workflow
@@ -110,7 +110,7 @@ Test files - primarily used for manual testing - are located in `tests/sample-fi
 
 ### Testing and Validation
 
-* Test manually using sample files in `tests/sample-files/`
+* Test manually using sample files in `resources/sample-files/`
 * Run `go test ./... -v --cover` for backend unit tests with coverage
 * Run `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
 * Verify app builds successfully with `wails build`

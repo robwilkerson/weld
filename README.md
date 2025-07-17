@@ -86,7 +86,7 @@ The `weld` executable can be used directly or added to your PATH.
 ## Prerequisites
 
 - **Go** 1.21 or later
-- **Node.js** 20 or later  
+- **Node.js** 20 or later
 - **Bun** (latest version)
 - **Wails** 2.10+
 
@@ -188,18 +188,18 @@ wails build -platform linux/amd64
 
 ```
 weld/
-├── app.go              # Main application logic
-├── main.go             # Entry point and CLI argument handling
-├── frontend/           # Svelte frontend application
-│   ├── src/           
+├── bin/                 # CLI wrapper script
+│   └── weld
+├── build/               # Build outputs (git-ignored)
+├── frontend/            # Svelte frontend application
+│   ├── src/
 │   │   ├── App.svelte  # Main UI component
 │   │   └── ...
 │   └── package.json
-├── bin/               # CLI wrapper script
-│   └── weld
-├── build/             # Build outputs (git-ignored)
-├── wailsjs/           # Auto-generated bindings (git-ignored)
-└── tests/             # Test files and sample data
+├── wailsjs/             # Auto-generated bindings (git-ignored)
+└── resources/           # Sample files, icons, and other resources
+├── app.go               # Main application logic
+├── main.go              # Entry point and CLI argument handling
 ```
 
 ## Contributing
@@ -244,11 +244,9 @@ We follow conventional commits:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-
-
 # Acknowledgements
 
-As mentioned above, this project is deeply inspired by the DX/UX/UI of Meld for MacOS:
+As mentioned above, this project is deeply inspired by the DX/UX/UI and capability of Meld for MacOS:
 
 * [The Original](https://github.com/yousseb/meld)
 * [The Current](https://gitlab.com/dehesselle/meld_macos)
