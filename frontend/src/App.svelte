@@ -6,6 +6,7 @@ import {
 	CopyToFile,
 	type DiffLine,
 	type DiffResult,
+	DiscardAllChanges,
 	GetInitialFiles,
 	HasUnsavedChanges,
 	QuitWithoutSaving,
@@ -43,6 +44,9 @@ let hasHorizontalScrollbar: boolean = false;
 let showQuitDialog: boolean = false;
 let quitDialogFiles: string[] = [];
 let fileSelections: Record<string, boolean> = {};
+
+// Menu state
+let showMenu: boolean = false;
 
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
@@ -419,6 +423,28 @@ function toggleDarkMode(): void {
 	// Re-process highlighting with new theme if we have content
 	if (diffResult) {
 		processHighlighting(diffResult);
+	}
+	
+	// Close menu after toggling
+	showMenu = false;
+}
+
+async function handleDiscardChanges(): Promise<void> {
+	try {
+		errorMessage = "Discarding all changes...";
+		
+		// Clear the cache
+		await DiscardAllChanges();
+		
+		// Refresh the comparison
+		await compareBothFiles();
+		await updateUnsavedChangesStatus();
+		
+		errorMessage = "All changes discarded";
+		showMenu = false;
+	} catch (error) {
+		console.error("Error discarding changes:", error);
+		errorMessage = `Error discarding changes: ${error}`;
 	}
 }
 
@@ -1013,9 +1039,20 @@ onMount(async () => {
 		checkHorizontalScrollbar();
 	}, 0);
 
+	// Click outside handler for menu
+	function handleClickOutside(event: MouseEvent): void {
+		const target = event.target as HTMLElement;
+		const menuContainer = document.querySelector('.menu-container');
+		if (menuContainer && !menuContainer.contains(target)) {
+			showMenu = false;
+		}
+	}
+	document.addEventListener("click", handleClickOutside);
+
 	// Cleanup on destroy
 	return () => {
 		document.removeEventListener("keydown", handleKeydown);
+		document.removeEventListener("click", handleClickOutside);
 		if (highlighter) {
 			highlighter.dispose?.();
 		}
@@ -1036,13 +1073,25 @@ function checkHorizontalScrollbar() {
 
 <main>
   <div class="header">
-    <button class="theme-toggle" on:click={toggleDarkMode} title={isDarkMode ? "Switch to ☀️ mode" : "Switch to 🌜 mode"}>
-      {#if isDarkMode}
-        🌜
-      {:else}
-        ☀️
+    <div class="menu-container">
+      <button class="menu-toggle" on:click={() => showMenu = !showMenu} title="Menu">
+        ☰
+      </button>
+      {#if showMenu}
+        <div class="dropdown-menu">
+          <button class="menu-item" on:click={toggleDarkMode}>
+            {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+          <button 
+            class="menu-item" 
+            on:click={handleDiscardChanges}
+            disabled={!hasUnsavedLeftChanges && !hasUnsavedRightChanges}
+          >
+            🗑️ Discard Changes
+          </button>
+        </div>
       {/if}
-    </button>
+    </div>
     <div class="file-selectors">
       <button class="file-btn" on:click={selectLeftFile}>
         📂 {leftFileName}
@@ -1277,15 +1326,32 @@ function checkHorizontalScrollbar() {
     border-bottom-color: #363a4f;
   }
 
-  :global([data-theme="dark"]) .theme-toggle {
+  :global([data-theme="dark"]) .menu-toggle {
     color: #a5adcb;
     border-color: rgba(165, 173, 203, 0.3);
   }
 
-  :global([data-theme="dark"]) .theme-toggle:hover {
+  :global([data-theme="dark"]) .menu-toggle:hover {
     background: rgba(202, 211, 245, 0.1);
     border-color: rgba(202, 211, 245, 0.5);
     color: #cad3f5;
+  }
+
+  :global([data-theme="dark"]) .dropdown-menu {
+    background: #24273a;
+    border-color: #363a4f;
+  }
+
+  :global([data-theme="dark"]) .menu-item {
+    color: #cad3f5;
+  }
+
+  :global([data-theme="dark"]) .menu-item:hover:not(:disabled) {
+    background: rgba(202, 211, 245, 0.1);
+  }
+
+  :global([data-theme="dark"]) .menu-item:not(:last-child) {
+    border-bottom-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .file-btn {
@@ -1384,32 +1450,66 @@ function checkHorizontalScrollbar() {
     position: relative;
   }
 
-  .theme-toggle {
+  .menu-container {
     position: absolute;
     top: 1rem;
     right: 1rem;
+    z-index: 1000;
+  }
+
+  .menu-toggle {
     background: none;
     border: 1px solid rgba(108, 111, 133, 0.3);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 4px;
     color: #6c6f85;
     transition: all 0.2s ease;
+    font-size: 1.2rem;
+    line-height: 1;
   }
 
-  .theme-toggle:hover {
+  .menu-toggle:hover {
     background: rgba(76, 79, 105, 0.1);
     border-color: rgba(76, 79, 105, 0.5);
     color: #4c4f69;
   }
 
-  /* Make moon emoji darker in light mode for better contrast */
-  .theme-toggle {
-    filter: grayscale(0.3) brightness(0.7);
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: #eff1f5;
+    border: 1px solid #dce0e8;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 150px;
   }
 
-  :global([data-theme="dark"]) .theme-toggle {
-    filter: none;
+  .menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    color: #4c4f69;
+  }
+
+  .menu-item:hover:not(:disabled) {
+    background: rgba(76, 79, 105, 0.1);
+  }
+
+  .menu-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .menu-item:not(:last-child) {
+    border-bottom: 1px solid #dce0e8;
   }
 
   /* Custom scrollbar styling for light mode (Catppuccin Latte) */

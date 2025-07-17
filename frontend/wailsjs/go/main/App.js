@@ -10,6 +10,10 @@ export function CopyToFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CopyToFile'](arg1, arg2, arg3, arg4);
 }
 
+export function DiscardAllChanges() {
+  return window['go']['main']['App']['DiscardAllChanges']();
+}
+
 export function GetInitialFiles() {
   return window['go']['main']['App']['GetInitialFiles']();
 }

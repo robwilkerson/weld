@@ -271,6 +271,14 @@ func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 	return a.ReadFileContent(filepath)
 }
 
+// DiscardAllChanges clears all cached file changes
+func (a *App) DiscardAllChanges() error {
+	// Clear the entire cache
+	fileCache = make(map[string][]string)
+	fmt.Println("Discarded all cached changes")
+	return nil
+}
+
 // SaveChanges saves the in-memory changes to disk
 func (a *App) SaveChanges(filepath string) error {
 	cachedLines, exists := fileCache[filepath]
