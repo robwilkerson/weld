@@ -17,6 +17,12 @@ import {
 } from "../wailsjs/go/main/App.js";
 import { EventsOn, Quit } from "../wailsjs/runtime/runtime.js";
 
+// Import utility functions
+import { getDisplayPath, getDisplayFileName, expandTildePath } from "./utils/path.js";
+import { getLineClass, getLineNumberWidth, escapeHtml, computeInlineDiff } from "./utils/diff.js";
+import { getLanguageFromExtension } from "./utils/language.js";
+import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
+
 // Shiki highlighter instance
 let highlighter: any = null;
 
@@ -241,72 +247,8 @@ async function handleQuitWithoutSaving(): Promise<void> {
 	}
 }
 
-function getDisplayFileName(filepath: string): string {
-	return filepath.split("/").pop() || filepath;
-}
 
-function escapeHtml(text: string): string {
-	const div = document.createElement("div");
-	div.textContent = text;
-	return div.innerHTML;
-}
 
-// Compute inline diff highlights for modified lines
-function computeInlineDiff(
-	left: string,
-	right: string,
-): { left: string; right: string } {
-	// For very different strings, just return escaped versions
-	if (Math.abs(left.length - right.length) > left.length * 0.5) {
-		return { left: escapeHtml(left), right: escapeHtml(right) };
-	}
-
-	// Find common prefix
-	let prefixLen = 0;
-	while (
-		prefixLen < left.length &&
-		prefixLen < right.length &&
-		left[prefixLen] === right[prefixLen]
-	) {
-		prefixLen++;
-	}
-
-	// Find common suffix
-	let suffixLen = 0;
-	while (
-		suffixLen < left.length - prefixLen &&
-		suffixLen < right.length - prefixLen &&
-		left[left.length - 1 - suffixLen] === right[right.length - 1 - suffixLen]
-	) {
-		suffixLen++;
-	}
-
-	// Extract the different parts
-	const leftPrefix = left.substring(0, prefixLen);
-	const leftDiff = left.substring(prefixLen, left.length - suffixLen);
-	const leftSuffix = left.substring(left.length - suffixLen);
-
-	const rightPrefix = right.substring(0, prefixLen);
-	const rightDiff = right.substring(prefixLen, right.length - suffixLen);
-	const rightSuffix = right.substring(right.length - suffixLen);
-
-	// Build highlighted strings
-	const leftHighlighted =
-		escapeHtml(leftPrefix) +
-		(leftDiff
-			? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>`
-			: "") +
-		escapeHtml(leftSuffix);
-
-	const rightHighlighted =
-		escapeHtml(rightPrefix) +
-		(rightDiff
-			? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>`
-			: "") +
-		escapeHtml(rightSuffix);
-
-	return { left: leftHighlighted, right: rightHighlighted };
-}
 
 function extractHighlightedLines(html: string): string[] {
 	// Create a temporary div to parse the HTML
@@ -413,18 +355,6 @@ async function compareBothFiles(): Promise<void> {
 	}
 }
 
-function getLineClass(type: string): string {
-	switch (type) {
-		case "added":
-			return "line-added";
-		case "removed":
-			return "line-removed";
-		case "modified":
-			return "line-modified";
-		default:
-			return "line-same";
-	}
-}
 
 function syncLeftScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
@@ -463,41 +393,7 @@ function syncCenterScroll() {
 	setTimeout(() => (isScrollSyncing = false), 10);
 }
 
-function expandTildePath(path: string): string {
-	if (path.startsWith("~/")) {
-		const home = process.env.HOME || process.env.USERPROFILE || "";
-		return path.replace("~", home);
-	}
-	return path;
-}
 
-function getDisplayPath(
-	leftPath: string,
-	rightPath: string,
-	isLeft: boolean,
-): string {
-	const targetPath = isLeft ? leftPath : rightPath;
-	const otherPath = isLeft ? rightPath : leftPath;
-
-	if (!targetPath || !otherPath) return targetPath || "";
-
-	const targetSegments = targetPath.split("/").filter((s) => s !== "");
-	const otherSegments = otherPath.split("/").filter((s) => s !== "");
-
-	if (targetSegments.length === 0) return targetPath;
-
-	// Always show exactly 4 segments (3 directories + filename) when possible
-	const totalSegmentsToShow = 4;
-
-	// If we have 4 or fewer segments, show them all
-	if (targetSegments.length <= totalSegmentsToShow) {
-		return targetSegments.join("/");
-	}
-
-	// Show the last 4 segments (3 directories + filename)
-	const segments = targetSegments.slice(-totalSegmentsToShow);
-	return ".../" + segments.join("/");
-}
 
 async function initializeDefaultFiles(): Promise<void> {
 	// Removed automatic file loading to prevent crashes
@@ -865,38 +761,9 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
-
-	if (isCtrlOrCmd && event.key === "s") {
-		event.preventDefault();
-
-		// Save both files if they have changes
-		if (leftFilePath) {
-			saveLeftFile();
-		}
-		if (rightFilePath) {
-			saveRightFile();
-		}
-	}
+	handleKeyboardShortcut(event, saveLeftFile, saveRightFile, leftFilePath, rightFilePath);
 }
 
-function getLineNumberWidth(): string {
-	if (!diffResult || !diffResult.lines.length) return "32px";
-
-	// Find the highest line number
-	const maxLineNumber = Math.max(
-		...diffResult.lines.map((line) =>
-			Math.max(line.leftNumber || 0, line.rightNumber || 0),
-		),
-	);
-
-	// Calculate width based on number of digits - much tighter calculation
-	const digits = Math.max(2, maxLineNumber.toString().length);
-	const width = digits * 6 + 8; // ~6px per digit + minimal 8px padding (4px each side)
-
-	return `${width}px`;
-}
 
 async function highlightFileContent(
 	content: string,
@@ -1078,48 +945,6 @@ function scrollToFirstDiff(): void {
 	}
 }
 
-function getLanguageFromExtension(ext: string): string {
-	const languageMap: Record<string, string> = {
-		js: "javascript",
-		jsx: "jsx",
-		ts: "typescript",
-		tsx: "tsx",
-		py: "python",
-		java: "java",
-		go: "go",
-		php: "php",
-		rb: "ruby",
-		cs: "csharp",
-		css: "css",
-		scss: "scss",
-		sass: "sass",
-		json: "json",
-		md: "markdown",
-		sh: "bash",
-		bash: "bash",
-		zsh: "bash",
-		c: "c",
-		cpp: "cpp",
-		h: "c",
-		hpp: "cpp",
-		rs: "rust",
-		kt: "kotlin",
-		swift: "swift",
-		dart: "dart",
-		html: "html",
-		xml: "xml",
-		yaml: "yaml",
-		yml: "yaml",
-		toml: "toml",
-		sql: "sql",
-		r: "r",
-		lua: "lua",
-		vim: "vim",
-		dockerfile: "dockerfile",
-	};
-
-	return languageMap[ext] || "text";
-}
 
 onMount(async () => {
 	// Clear any corrupted cache
