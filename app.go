@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -50,10 +51,25 @@ func (a *App) GetInitialFiles() (string, string) {
 func (a *App) SelectFile() (string, error) {
 	fmt.Println("SelectFile called")
 
-	// Use the sample files directory for testing
-	// TODO: Change back to user's home directory for next release
-	defaultDir := "/Users/54695/Development/lookout-software/weld/resources/sample-files"
-	fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
+	// Use the sample files directory for testing, relative to current working directory
+	// This works regardless of the user's home directory path
+	var defaultDir string
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Could not get current working directory: %v\n", err)
+		// Fallback to user's home directory
+		homeDir, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			defaultDir = ""
+			fmt.Printf("Opening file dialog in current directory\n")
+		} else {
+			defaultDir = homeDir
+			fmt.Printf("Opening file dialog in home directory: %s\n", defaultDir)
+		}
+	} else {
+		defaultDir = filepath.Join(cwd, "resources", "sample-files")
+		fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
+	}
 
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:                      "Select File to Compare",
