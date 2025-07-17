@@ -200,8 +200,8 @@ func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
 func (a *App) CopyToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
 	fmt.Printf("CopyLineToFile: from %s to %s, line %d: %s\n", sourceFile, targetFile, lineNumber, lineContent)
 
-	// Read target file
-	targetLines, err := a.ReadFileContent(targetFile)
+	// Read target file from cache if available, otherwise from disk
+	targetLines, err := a.ReadFileContentWithCache(targetFile)
 	if err != nil {
 		return fmt.Errorf("failed to read target file: %w", err)
 	}
@@ -229,8 +229,8 @@ func (a *App) CopyToFile(sourceFile, targetFile string, lineNumber int, lineCont
 func (a *App) RemoveLineFromFile(targetFile string, lineNumber int) error {
 	fmt.Printf("RemoveLineFromFile: from %s, line %d\n", targetFile, lineNumber)
 
-	// Read target file
-	targetLines, err := a.ReadFileContent(targetFile)
+	// Read target file from cache if available, otherwise from disk
+	targetLines, err := a.ReadFileContentWithCache(targetFile)
 	if err != nil {
 		return fmt.Errorf("failed to read target file: %w", err)
 	}
