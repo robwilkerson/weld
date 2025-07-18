@@ -47,10 +47,14 @@ export function escapeHtml(text: string): string {
 
 /**
  * Computes inline diff highlights for modified lines
+ * @param left - Left side text
+ * @param right - Right side text
+ * @param enableHighlighting - Whether to apply inline highlighting (default: false)
  */
 export function computeInlineDiff(
 	left: string,
 	right: string,
+	enableHighlighting: boolean = false,
 ): { left: string; right: string } {
 	// For very different strings, just return escaped versions
 	if (Math.abs(left.length - right.length) > left.length * 0.5) {
@@ -86,20 +90,35 @@ export function computeInlineDiff(
 	const rightDiff = right.substring(prefixLen, right.length - suffixLen);
 	const rightSuffix = right.substring(right.length - suffixLen);
 
-	// Build highlighted strings
-	const leftHighlighted =
-		escapeHtml(leftPrefix) +
-		(leftDiff
-			? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>`
-			: "") +
-		escapeHtml(leftSuffix);
+	if (enableHighlighting) {
+		// Build highlighted strings with inline diff highlighting
+		const leftHighlighted =
+			escapeHtml(leftPrefix) +
+			(leftDiff
+				? `<span class="inline-diff-highlight">${escapeHtml(leftDiff)}</span>`
+				: "") +
+			escapeHtml(leftSuffix);
 
-	const rightHighlighted =
-		escapeHtml(rightPrefix) +
-		(rightDiff
-			? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>`
-			: "") +
-		escapeHtml(rightSuffix);
+		const rightHighlighted =
+			escapeHtml(rightPrefix) +
+			(rightDiff
+				? `<span class="inline-diff-highlight">${escapeHtml(rightDiff)}</span>`
+				: "") +
+			escapeHtml(rightSuffix);
 
-	return { left: leftHighlighted, right: rightHighlighted };
+		return { left: leftHighlighted, right: rightHighlighted };
+	} else {
+		// Build strings without inline highlighting
+		const leftHighlighted =
+			escapeHtml(leftPrefix) +
+			(leftDiff ? escapeHtml(leftDiff) : "") +
+			escapeHtml(leftSuffix);
+
+		const rightHighlighted =
+			escapeHtml(rightPrefix) +
+			(rightDiff ? escapeHtml(rightDiff) : "") +
+			escapeHtml(rightSuffix);
+
+		return { left: leftHighlighted, right: rightHighlighted };
+	}
 }

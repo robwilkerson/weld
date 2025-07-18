@@ -1,10 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-
+import {
+	computeInlineDiff,
+	escapeHtml,
+	getLineClass,
+	getLineNumberWidth,
+} from "./utils/diff.js";
+import {
+	getModifierKeyName,
+	handleKeydown,
+	isMacOS,
+} from "./utils/keyboard.js";
+import {
+	getLanguageFromExtension,
+	getLanguageFromFilename,
+} from "./utils/language.js";
 // Import actual utility functions
-import { expandTildePath, getDisplayPath, getDisplayFileName } from "./utils/path.js";
-import { getLineClass, getLineNumberWidth, escapeHtml, computeInlineDiff } from "./utils/diff.js";
-import { getLanguageFromExtension, getLanguageFromFilename } from "./utils/language.js";
-import { handleKeydown, isMacOS, getModifierKeyName } from "./utils/keyboard.js";
+import {
+	expandTildePath,
+	getDisplayFileName,
+	getDisplayPath,
+} from "./utils/path.js";
 
 describe("Path Utilities", () => {
 	describe("expandTildePath", () => {
@@ -52,7 +67,11 @@ describe("Path Utilities", () => {
 		});
 
 		it("should handle right file selection", () => {
-			const result = getDisplayPath("/left/path.txt", "/very/long/right/path/file.txt", false);
+			const result = getDisplayPath(
+				"/left/path.txt",
+				"/very/long/right/path/file.txt",
+				false,
+			);
 			expect(result).toBe(".../long/right/path/file.txt");
 		});
 	});
@@ -120,7 +139,9 @@ describe("Diff Utilities", () => {
 
 	describe("escapeHtml", () => {
 		it("should escape HTML characters", () => {
-			expect(escapeHtml("<script>alert('xss')</script>")).toBe("&lt;script&gt;alert('xss')&lt;/script&gt;");
+			expect(escapeHtml("<script>alert('xss')</script>")).toBe(
+				"&lt;script&gt;alert('xss')&lt;/script&gt;",
+			);
 			expect(escapeHtml("Hello & goodbye")).toBe("Hello &amp; goodbye");
 			// Note: textContent doesn't escape quotes, only innerHTML-specific characters
 			expect(escapeHtml('"quoted"')).toBe('"quoted"');
@@ -136,10 +157,24 @@ describe("Diff Utilities", () => {
 	});
 
 	describe("computeInlineDiff", () => {
-		it("should highlight differences in similar strings", () => {
-			const result = computeInlineDiff("const a = 1;", "const a = 2;");
-			expect(result.left).toContain('<span class="inline-diff-highlight">1</span>');
-			expect(result.right).toContain('<span class="inline-diff-highlight">2</span>');
+		it("should highlight differences in similar strings when highlighting enabled", () => {
+			const result = computeInlineDiff("const a = 1;", "const a = 2;", true);
+			expect(result.left).toContain(
+				'<span class="inline-diff-highlight">1</span>',
+			);
+			expect(result.right).toContain(
+				'<span class="inline-diff-highlight">2</span>',
+			);
+		});
+
+		it("should not highlight differences when highlighting disabled", () => {
+			const result = computeInlineDiff("const a = 1;", "const a = 2;", false);
+			expect(result.left).not.toContain('<span class="inline-diff-highlight">');
+			expect(result.right).not.toContain(
+				'<span class="inline-diff-highlight">',
+			);
+			expect(result.left).toBe("const a = 1;");
+			expect(result.right).toBe("const a = 2;");
 		});
 
 		it("should handle completely different strings", () => {
@@ -159,6 +194,14 @@ describe("Diff Utilities", () => {
 			const result = computeInlineDiff("", "");
 			expect(result.left).toBe("");
 			expect(result.right).toBe("");
+		});
+
+		it("should handle default parameter for enableHighlighting", () => {
+			const result = computeInlineDiff("const a = 1;", "const a = 2;"); // No third parameter
+			expect(result.left).not.toContain('<span class="inline-diff-highlight">');
+			expect(result.right).not.toContain(
+				'<span class="inline-diff-highlight">',
+			);
 		});
 	});
 });
@@ -268,7 +311,6 @@ describe("Keyboard Utilities", () => {
 			expect(mockSaveLeftFile).toHaveBeenCalled();
 			expect(mockSaveRightFile).toHaveBeenCalled();
 		});
-
 
 		it("should not handle other key combinations", () => {
 			const mockSaveLeftFile = vi.fn();

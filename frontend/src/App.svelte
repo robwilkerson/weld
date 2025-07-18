@@ -15,13 +15,16 @@ import {
 	SaveSelectedFilesAndQuit,
 	SelectFile,
 } from "../wailsjs/go/main/App.js";
-import { EventsOn, Quit } from "../wailsjs/runtime/runtime.js";
-
-// Import utility functions
-import { getDisplayPath, getDisplayFileName, expandTildePath } from "./utils/path.js";
-import { getLineClass, getLineNumberWidth, escapeHtml, computeInlineDiff } from "./utils/diff.js";
-import { getLanguageFromExtension } from "./utils/language.js";
+import { EventsOn } from "../wailsjs/runtime/runtime.js";
+import {
+	computeInlineDiff,
+	escapeHtml,
+	getLineClass,
+	getLineNumberWidth,
+} from "./utils/diff.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
+import { getLanguageFromExtension } from "./utils/language.js";
+import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -34,25 +37,40 @@ let rightFilePath: string = "";
 let leftFileName: string = "Select left file...";
 let rightFileName: string = "Select right file...";
 let diffResult: DiffResult | null = null;
-let isComparing: boolean = false;
-let errorMessage: string = "";
+let _isComparing: boolean = false;
+let _errorMessage: string = "";
 let leftPane: HTMLElement;
 let rightPane: HTMLElement;
 let centerGutter: HTMLElement;
 let isScrollSyncing: boolean = false;
-let isDarkMode: boolean = true;
-let hasUnsavedLeftChanges: boolean = false;
-let hasUnsavedRightChanges: boolean = false;
-let hasHorizontalScrollbar: boolean = false;
-let hasCompletedComparison: boolean = false;
+// Initialize theme immediately to prevent flash
+let isDarkMode: boolean = (() => {
+	if (typeof localStorage !== "undefined") {
+		const savedTheme = localStorage.getItem("theme");
+		return savedTheme ? savedTheme === "dark" : true;
+	}
+	return true; // Default to dark mode
+})();
+
+// Set theme immediately
+if (typeof document !== "undefined") {
+	document.documentElement.setAttribute(
+		"data-theme",
+		isDarkMode ? "dark" : "light",
+	);
+}
+let _hasUnsavedLeftChanges: boolean = false;
+let _hasUnsavedRightChanges: boolean = false;
+let _hasHorizontalScrollbar: boolean = false;
+let _hasCompletedComparison: boolean = false;
 
 // Quit dialog state
-let showQuitDialog: boolean = false;
-let quitDialogFiles: string[] = [];
+let _showQuitDialog: boolean = false;
+let _quitDialogFiles: string[] = [];
 let fileSelections: Record<string, boolean> = {};
 
 // Menu state
-let showMenu: boolean = false;
+let _showMenu: boolean = false;
 
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
@@ -64,6 +82,10 @@ $: areFilesIdentical =
 	leftFilePath !== rightFilePath;
 
 $: lineNumberWidth = getLineNumberWidth();
+
+// ===========================================
+// HIGHLIGHTING TYPES AND STATE
+// ===========================================
 
 // Extended type for highlighted diff lines
 type HighlightedDiffLine = DiffLine & {
@@ -81,17 +103,24 @@ let highlightedDiffResult: HighlightedDiffResult | null = null;
 // Track if we're currently processing to avoid re-entrancy
 let isProcessingHighlight = false;
 
+// ===========================================
+// HIGHLIGHTING CONFIGURATION
+// ===========================================
+
+// Feature flags for different highlighting types
+const HIGHLIGHTING_CONFIG = {
+	chunkHighlighting: true, // Full-width line backgrounds
+	inlineHighlighting: true, // Specific content changes within lines
+	syntaxHighlighting: false, // Code syntax highlighting
+};
+
 // Process highlighting when diffResult changes
 $: if (diffResult && highlighter && !isProcessingHighlight) {
 	processHighlighting(diffResult);
 } else if (diffResult && !highlighter) {
 	// Set result without highlighting for now
 	highlightedDiffResult = {
-		lines: diffResult.lines.map((line) => ({
-			...line,
-			leftLineHighlighted: escapeHtml(line.leftLine || ""),
-			rightLineHighlighted: escapeHtml(line.rightLine || ""),
-		})),
+		lines: diffResult.lines.map((line) => processLineHighlighting(line)),
 	};
 } else if (!diffResult) {
 	highlightedDiffResult = null;
@@ -112,6 +141,22 @@ $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
 }
 
+// ===========================================
+// HIGHLIGHTING PROCESSING
+// ===========================================
+
+/**
+ * Clean any existing inline highlight markup from text
+ */
+function cleanInlineHighlightMarkup(text: string): string {
+	return text
+		.replace(/<span[^>]*class="[^"]*inline-diff-highlight[^"]*"[^>]*>/g, "")
+		.replace(/<\/span>/g, "");
+}
+
+/**
+ * Process and highlight diff lines based on configuration
+ */
 async function processHighlighting(result: DiffResult): Promise<void> {
 	// Set flag to prevent re-entrancy
 	isProcessingHighlight = true;
@@ -124,23 +169,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 
 	if (!highlighter) {
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => {
-				// For modified lines, compute inline diff
-				if (line.type === "modified" && line.leftLine && line.rightLine) {
-					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
-					return {
-						...line,
-						leftLineHighlighted: inlineDiff.left,
-						rightLineHighlighted: inlineDiff.right,
-					};
-				}
-				// For other lines, just escape HTML
-				return {
-					...line,
-					leftLineHighlighted: escapeHtml(line.leftLine || ""),
-					rightLineHighlighted: escapeHtml(line.rightLine || ""),
-				};
-			}),
+			lines: result.lines.map((line) => processLineHighlighting(line)),
 		};
 		isProcessingHighlight = false;
 		return;
@@ -150,23 +179,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		// For now, disable syntax highlighting to avoid lockups
 		// TODO: Implement with web workers or lazy loading
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => {
-				// For modified lines, compute inline diff
-				if (line.type === "modified" && line.leftLine && line.rightLine) {
-					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
-					return {
-						...line,
-						leftLineHighlighted: inlineDiff.left,
-						rightLineHighlighted: inlineDiff.right,
-					};
-				}
-				// For other lines, just escape HTML
-				return {
-					...line,
-					leftLineHighlighted: escapeHtml(line.leftLine || ""),
-					rightLineHighlighted: escapeHtml(line.rightLine || ""),
-				};
-			}),
+			lines: result.lines.map((line) => processLineHighlighting(line)),
 		};
 
 		// After highlighting is done, scroll to first diff
@@ -175,23 +188,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		console.error("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
 		highlightedDiffResult = {
-			lines: result.lines.map((line) => {
-				// For modified lines, compute inline diff
-				if (line.type === "modified" && line.leftLine && line.rightLine) {
-					const inlineDiff = computeInlineDiff(line.leftLine, line.rightLine);
-					return {
-						...line,
-						leftLineHighlighted: inlineDiff.left,
-						rightLineHighlighted: inlineDiff.right,
-					};
-				}
-				// For other lines, just escape HTML
-				return {
-					...line,
-					leftLineHighlighted: escapeHtml(line.leftLine || ""),
-					rightLineHighlighted: escapeHtml(line.rightLine || ""),
-				};
-			}),
+			lines: result.lines.map((line) => processLineHighlighting(line)),
 		};
 
 		// Check for horizontal scrollbar after content is rendered
@@ -203,20 +200,66 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 	}
 }
 
+/**
+ * Process highlighting for a single line based on configuration
+ */
+function processLineHighlighting(line: DiffLine): HighlightedDiffLine {
+	// Clean any existing markup
+	const leftClean = cleanInlineHighlightMarkup(line.leftLine || "");
+	const rightClean = cleanInlineHighlightMarkup(line.rightLine || "");
+
+	if (HIGHLIGHTING_CONFIG.inlineHighlighting) {
+		if (line.type === "modified" && line.leftLine && line.rightLine) {
+			// Apply inline highlighting for modified lines
+			const inlineDiff = computeInlineDiff(leftClean, rightClean, true);
+			return {
+				...line,
+				leftLineHighlighted: inlineDiff.left,
+				rightLineHighlighted: inlineDiff.right,
+			};
+		} else if (line.type === "added") {
+			// Apply full-line inline highlighting to added lines
+			const rightContent = rightClean.trim() === "" ? " " : rightClean; // Show space for empty lines
+			const rightHighlighted = `<span class="inline-diff-highlight-full">${escapeHtml(rightContent)}</span>`;
+			return {
+				...line,
+				leftLineHighlighted: escapeHtml(leftClean),
+				rightLineHighlighted: rightHighlighted,
+			};
+		} else if (line.type === "removed") {
+			// Apply full-line inline highlighting to removed lines
+			const leftContent = leftClean.trim() === "" ? " " : leftClean; // Show space for empty lines
+			const leftHighlighted = `<span class="inline-diff-highlight-full">${escapeHtml(leftContent)}</span>`;
+			return {
+				...line,
+				leftLineHighlighted: leftHighlighted,
+				rightLineHighlighted: escapeHtml(rightClean),
+			};
+		}
+	}
+
+	// Just escape HTML without inline highlighting
+	return {
+		...line,
+		leftLineHighlighted: escapeHtml(leftClean),
+		rightLineHighlighted: escapeHtml(rightClean),
+	};
+}
+
 // Update unsaved changes status
 async function updateUnsavedChangesStatus(): Promise<void> {
 	if (leftFilePath) {
-		hasUnsavedLeftChanges = await HasUnsavedChanges(leftFilePath);
+		_hasUnsavedLeftChanges = await HasUnsavedChanges(leftFilePath);
 	}
 	if (rightFilePath) {
-		hasUnsavedRightChanges = await HasUnsavedChanges(rightFilePath);
+		_hasUnsavedRightChanges = await HasUnsavedChanges(rightFilePath);
 	}
 }
 
 // Quit dialog functions
 function handleQuitDialog(unsavedFiles: string[]): void {
-	quitDialogFiles = unsavedFiles;
-	showQuitDialog = true;
+	_quitDialogFiles = unsavedFiles;
+	_showQuitDialog = true;
 
 	// Initialize file selections - dirty files checked by default, clean files unchecked and disabled
 	fileSelections = {};
@@ -227,7 +270,7 @@ function handleQuitDialog(unsavedFiles: string[]): void {
 	}
 }
 
-async function handleSaveAndQuit(): Promise<void> {
+async function _handleSaveAndQuit(): Promise<void> {
 	const filesToSave = Object.entries(fileSelections)
 		.filter(([_, selected]) => selected)
 		.map(([filepath, _]) => filepath);
@@ -236,11 +279,11 @@ async function handleSaveAndQuit(): Promise<void> {
 		await SaveSelectedFilesAndQuit(filesToSave);
 	} catch (error) {
 		console.error("Error saving files:", error);
-		errorMessage = `Error saving files: ${error}`;
+		_errorMessage = `Error saving files: ${error}`;
 	}
 }
 
-async function handleQuitWithoutSaving(): Promise<void> {
+async function _handleQuitWithoutSaving(): Promise<void> {
 	try {
 		await QuitWithoutSaving();
 	} catch (error) {
@@ -248,10 +291,7 @@ async function handleQuitWithoutSaving(): Promise<void> {
 	}
 }
 
-
-
-
-function extractHighlightedLines(html: string): string[] {
+function _extractHighlightedLines(html: string): string[] {
 	// Create a temporary div to parse the HTML
 	const div = document.createElement("div");
 	div.innerHTML = html;
@@ -288,65 +328,65 @@ function extractHighlightedLines(html: string): string[] {
 	return lines;
 }
 
-async function selectLeftFile(): Promise<void> {
+async function _selectLeftFile(): Promise<void> {
 	try {
 		const path = await SelectFile();
 		if (path) {
 			leftFilePath = path;
 			leftFileName = path.split("/").pop() || path;
 			await updateUnsavedChangesStatus();
-			errorMessage = `Left file selected: ${leftFileName}`;
+			_errorMessage = `Left file selected: ${leftFileName}`;
 			diffResult = null; // Clear previous results
-			hasCompletedComparison = false; // Reset comparison state
+			_hasCompletedComparison = false; // Reset comparison state
 		} else {
-			errorMessage = "No left file selected";
+			_errorMessage = "No left file selected";
 		}
 	} catch (error) {
 		console.error("Error selecting left file:", error);
-		errorMessage = `Error selecting left file: ${error}`;
+		_errorMessage = `Error selecting left file: ${error}`;
 	}
 }
 
-async function selectRightFile(): Promise<void> {
+async function _selectRightFile(): Promise<void> {
 	try {
 		const path = await SelectFile();
 		if (path) {
 			rightFilePath = path;
 			rightFileName = path.split("/").pop() || path;
 			await updateUnsavedChangesStatus();
-			errorMessage = `Right file selected: ${rightFileName}`;
+			_errorMessage = `Right file selected: ${rightFileName}`;
 			diffResult = null; // Clear previous results
-			hasCompletedComparison = false; // Reset comparison state
+			_hasCompletedComparison = false; // Reset comparison state
 		} else {
-			errorMessage = "No right file selected";
+			_errorMessage = "No right file selected";
 		}
 	} catch (error) {
 		console.error("Error selecting right file:", error);
-		errorMessage = `Error selecting right file: ${error}`;
+		_errorMessage = `Error selecting right file: ${error}`;
 	}
 }
 
 async function compareBothFiles(): Promise<void> {
 	if (!leftFilePath || !rightFilePath) {
-		errorMessage = "Please select both files before comparing";
+		_errorMessage = "Please select both files before comparing";
 		return;
 	}
 
 	try {
-		isComparing = true;
-		errorMessage = "";
+		_isComparing = true;
+		_errorMessage = "";
 
 		diffResult = await CompareFiles(leftFilePath, rightFilePath);
 
 		if (!diffResult || !diffResult.lines) {
-			errorMessage = "No comparison result received";
+			_errorMessage = "No comparison result received";
 			diffResult = null;
 		} else if (diffResult.lines.length === 0) {
-			errorMessage = "Files are identical";
+			_errorMessage = "Files are identical";
 		}
 
 		// Mark comparison as completed
-		hasCompletedComparison = true;
+		_hasCompletedComparison = true;
 
 		// Check for horizontal scrollbar after diff is loaded
 		setTimeout(() => {
@@ -354,15 +394,14 @@ async function compareBothFiles(): Promise<void> {
 		}, 100);
 	} catch (error) {
 		console.error("Comparison error:", error);
-		errorMessage = `Error comparing files: ${error}`;
+		_errorMessage = `Error comparing files: ${error}`;
 		diffResult = null;
 	} finally {
-		isComparing = false;
+		_isComparing = false;
 	}
 }
 
-
-function syncLeftScroll() {
+function _syncLeftScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
 	// Sync vertical scrolling to all panes
@@ -376,7 +415,7 @@ function syncLeftScroll() {
 	});
 }
 
-function syncRightScroll() {
+function _syncRightScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
 	// Sync vertical scrolling to all panes
@@ -390,28 +429,27 @@ function syncRightScroll() {
 	});
 }
 
-function syncCenterScroll() {
+function _syncCenterScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
 	// Sync center gutter scroll to both content panes
 	leftPane.scrollTop = centerGutter.scrollTop;
 	rightPane.scrollTop = centerGutter.scrollTop;
-	setTimeout(() => (isScrollSyncing = false), 10);
+	setTimeout(() => {
+		isScrollSyncing = false;
+	}, 10);
 }
 
-
-
-async function initializeDefaultFiles(): Promise<void> {
+async function _initializeDefaultFiles(): Promise<void> {
 	// Removed automatic file loading to prevent crashes
 	// Users should manually select files to compare
 }
 
-function toggleDarkMode(): void {
+function _toggleDarkMode(): void {
 	isDarkMode = !isDarkMode;
-	document.documentElement.setAttribute(
-		"data-theme",
-		isDarkMode ? "dark" : "light",
-	);
+	const theme = isDarkMode ? "dark" : "light";
+	document.documentElement.setAttribute("data-theme", theme);
+	localStorage.setItem("theme", theme);
 	// Clear highlight cache when theme changes since highlighting depends on theme
 	highlightCache.clear();
 	// Re-process highlighting with new theme if we have content
@@ -420,12 +458,12 @@ function toggleDarkMode(): void {
 	}
 
 	// Close menu after toggling
-	showMenu = false;
+	_showMenu = false;
 }
 
-async function handleDiscardChanges(): Promise<void> {
+async function _handleDiscardChanges(): Promise<void> {
 	try {
-		errorMessage = "Discarding all changes...";
+		_errorMessage = "Discarding all changes...";
 
 		// Clear the cache
 		await DiscardAllChanges();
@@ -434,11 +472,11 @@ async function handleDiscardChanges(): Promise<void> {
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
 
-		errorMessage = "All changes discarded";
-		showMenu = false;
+		_errorMessage = "All changes discarded";
+		_showMenu = false;
 	} catch (error) {
 		console.error("Error discarding changes:", error);
-		errorMessage = `Error discarding changes: ${error}`;
+		_errorMessage = `Error discarding changes: ${error}`;
 	}
 }
 
@@ -449,7 +487,7 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 	if (line.type !== "removed") return;
 
 	try {
-		errorMessage = "Copying line to right file...";
+		_errorMessage = "Copying line to right file...";
 
 		// Copy the line from left to right file at the appropriate position
 		await CopyToFile(
@@ -463,10 +501,10 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
 
-		errorMessage = "Line copied successfully";
+		_errorMessage = "Line copied successfully";
 	} catch (error) {
 		console.error("Error copying line to right:", error);
-		errorMessage = `Error copying line: ${error}`;
+		_errorMessage = `Error copying line: ${error}`;
 	}
 }
 
@@ -477,7 +515,7 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 	if (line.type !== "added") return;
 
 	try {
-		errorMessage = "Copying line to left file...";
+		_errorMessage = "Copying line to left file...";
 
 		// Copy the line from right to left file at the appropriate position
 		await CopyToFile(
@@ -491,26 +529,26 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
 
-		errorMessage = "Line copied successfully";
+		_errorMessage = "Line copied successfully";
 	} catch (error) {
 		console.error("Error copying line to left:", error);
-		errorMessage = `Error copying line: ${error}`;
+		_errorMessage = `Error copying line: ${error}`;
 	}
 }
 
-async function copyLineFromRight(lineIndex: number): Promise<void> {
+async function _copyLineFromRight(lineIndex: number): Promise<void> {
 	await copyLineToLeft(lineIndex);
 }
 
-async function copyLineFromLeft(lineIndex: number): Promise<void> {
+async function _copyLineFromLeft(lineIndex: number): Promise<void> {
 	await copyLineToRight(lineIndex);
 }
 
-async function copyChunkToRight(chunk: LineChunk): Promise<void> {
+async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Copying chunk to right file...";
+		_errorMessage = "Copying chunk to right file...";
 
 		// Copy all lines in the chunk from left to right
 		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
@@ -528,18 +566,18 @@ async function copyChunkToRight(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Chunk copied successfully";
+		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
 		console.error("Error copying chunk to right:", error);
-		errorMessage = `Error copying chunk: ${error}`;
+		_errorMessage = `Error copying chunk: ${error}`;
 	}
 }
 
-async function copyChunkToLeft(chunk: LineChunk): Promise<void> {
+async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Copying chunk to left file...";
+		_errorMessage = "Copying chunk to left file...";
 
 		// Copy all lines in the chunk from right to left
 		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
@@ -557,18 +595,18 @@ async function copyChunkToLeft(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Chunk copied successfully";
+		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
 		console.error("Error copying chunk to left:", error);
-		errorMessage = `Error copying chunk: ${error}`;
+		_errorMessage = `Error copying chunk: ${error}`;
 	}
 }
 
-async function copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
+async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Copying modified chunk to right file...";
+		_errorMessage = "Copying modified chunk to right file...";
 
 		// For modified chunks, we need to replace the content in the right file
 		// with the content from the left file
@@ -594,18 +632,18 @@ async function copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Modified chunk copied to right successfully";
+		_errorMessage = "Modified chunk copied to right successfully";
 	} catch (error) {
 		console.error("Error copying modified chunk to right:", error);
-		errorMessage = `Error copying chunk: ${error}`;
+		_errorMessage = `Error copying chunk: ${error}`;
 	}
 }
 
-async function copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
+async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Copying modified chunk to left file...";
+		_errorMessage = "Copying modified chunk to left file...";
 
 		// For modified chunks, we need to replace the content in the left file
 		// with the content from the right file
@@ -631,18 +669,18 @@ async function copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Modified chunk copied to left successfully";
+		_errorMessage = "Modified chunk copied to left successfully";
 	} catch (error) {
 		console.error("Error copying modified chunk to left:", error);
-		errorMessage = `Error copying chunk: ${error}`;
+		_errorMessage = `Error copying chunk: ${error}`;
 	}
 }
 
-async function deleteChunkFromRight(chunk: LineChunk): Promise<void> {
+async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Deleting chunk from right file...";
+		_errorMessage = "Deleting chunk from right file...";
 
 		// Delete all lines in the chunk from right file (in reverse order to maintain line numbers)
 		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
@@ -659,18 +697,18 @@ async function deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Chunk deleted successfully";
+		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
 		console.error("Error deleting chunk from right:", error);
-		errorMessage = `Error deleting chunk: ${error}`;
+		_errorMessage = `Error deleting chunk: ${error}`;
 	}
 }
 
-async function deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
+async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 	if (!diffResult || !highlightedDiffResult) return;
 
 	try {
-		errorMessage = "Deleting chunk from left file...";
+		_errorMessage = "Deleting chunk from left file...";
 
 		// Delete all lines in the chunk from left file (in reverse order to maintain line numbers)
 		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
@@ -687,21 +725,21 @@ async function deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 		// Refresh the diff
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
-		errorMessage = "Chunk deleted successfully";
+		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
 		console.error("Error deleting chunk from left:", error);
-		errorMessage = `Error deleting chunk: ${error}`;
+		_errorMessage = `Error deleting chunk: ${error}`;
 	}
 }
 
-async function deleteLineFromRight(lineIndex: number): Promise<void> {
+async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 	if (!diffResult || !diffResult.lines[lineIndex]) return;
 
 	const line = diffResult.lines[lineIndex];
 	if (line.type !== "added") return;
 
 	try {
-		errorMessage = "Deleting line from right file...";
+		_errorMessage = "Deleting line from right file...";
 
 		// Remove the line from the right file using the backend function
 		if (line.rightNumber !== null && line.rightNumber > 0) {
@@ -711,22 +749,22 @@ async function deleteLineFromRight(lineIndex: number): Promise<void> {
 			await compareBothFiles();
 			await updateUnsavedChangesStatus();
 
-			errorMessage = "Line deleted successfully";
+			_errorMessage = "Line deleted successfully";
 		}
 	} catch (error) {
 		console.error("Error deleting line from right:", error);
-		errorMessage = `Error deleting line: ${error}`;
+		_errorMessage = `Error deleting line: ${error}`;
 	}
 }
 
-async function deleteLineFromLeft(lineIndex: number): Promise<void> {
+async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 	if (!diffResult || !diffResult.lines[lineIndex]) return;
 
 	const line = diffResult.lines[lineIndex];
 	if (line.type !== "removed") return;
 
 	try {
-		errorMessage = "Deleting line from left file...";
+		_errorMessage = "Deleting line from left file...";
 
 		// Remove the line from the left file using the backend function
 		if (line.leftNumber !== null && line.leftNumber > 0) {
@@ -736,11 +774,11 @@ async function deleteLineFromLeft(lineIndex: number): Promise<void> {
 			await compareBothFiles();
 			await updateUnsavedChangesStatus();
 
-			errorMessage = "Line deleted successfully";
+			_errorMessage = "Line deleted successfully";
 		}
 	} catch (error) {
 		console.error("Error deleting line from left:", error);
-		errorMessage = `Error deleting line: ${error}`;
+		_errorMessage = `Error deleting line: ${error}`;
 	}
 }
 
@@ -748,10 +786,10 @@ async function saveLeftFile(): Promise<void> {
 	try {
 		await SaveChanges(leftFilePath);
 		await updateUnsavedChangesStatus();
-		errorMessage = "Left file saved successfully";
+		_errorMessage = "Left file saved successfully";
 	} catch (error) {
 		console.error("Error saving left file:", error);
-		errorMessage = `Error saving left file: ${error}`;
+		_errorMessage = `Error saving left file: ${error}`;
 	}
 }
 
@@ -759,19 +797,24 @@ async function saveRightFile(): Promise<void> {
 	try {
 		await SaveChanges(rightFilePath);
 		await updateUnsavedChangesStatus();
-		errorMessage = "Right file saved successfully";
+		_errorMessage = "Right file saved successfully";
 	} catch (error) {
 		console.error("Error saving right file:", error);
-		errorMessage = `Error saving right file: ${error}`;
+		_errorMessage = `Error saving right file: ${error}`;
 	}
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-	handleKeyboardShortcut(event, saveLeftFile, saveRightFile, leftFilePath, rightFilePath);
+	handleKeyboardShortcut(
+		event,
+		saveLeftFile,
+		saveRightFile,
+		leftFilePath,
+		rightFilePath,
+	);
 }
 
-
-async function highlightFileContent(
+async function _highlightFileContent(
 	content: string,
 	filename: string,
 ): Promise<string[]> {
@@ -804,7 +847,7 @@ async function highlightFileContent(
 	}
 }
 
-async function getHighlightedLine(
+async function _getHighlightedLine(
 	line: string,
 	filename: string,
 ): Promise<string> {
@@ -892,11 +935,11 @@ function isLineInChunk(lineIndex: number, chunk: LineChunk): boolean {
 	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
 }
 
-function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
+function _isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
 	return lineIndex === chunk.startIndex;
 }
 
-function getChunkForLine(lineIndex: number): LineChunk | null {
+function _getChunkForLine(lineIndex: number): LineChunk | null {
 	return lineChunks.find((chunk) => isLineInChunk(lineIndex, chunk)) || null;
 }
 
@@ -951,7 +994,6 @@ function scrollToFirstDiff(): void {
 	}
 }
 
-
 onMount(async () => {
 	// Clear any corrupted cache
 	highlightCache.clear();
@@ -963,8 +1005,18 @@ onMount(async () => {
 		highlightedDiffResult = null;
 	});
 
-	// Removed automatic file loading on startup
-	document.documentElement.setAttribute("data-theme", "dark");
+	// Initialize theme from localStorage or default to dark
+	const savedTheme = localStorage.getItem("theme");
+	if (savedTheme) {
+		isDarkMode = savedTheme === "dark";
+	} else {
+		// Default to dark mode and save it
+		isDarkMode = true;
+		localStorage.setItem("theme", "dark");
+	}
+	const theme = isDarkMode ? "dark" : "light";
+	document.documentElement.setAttribute("data-theme", theme);
+	console.log("Theme initialized:", theme, "isDarkMode:", isDarkMode);
 
 	// Add event listeners
 	document.addEventListener("keydown", handleKeydown);
@@ -1047,7 +1099,7 @@ onMount(async () => {
 		const target = event.target as HTMLElement;
 		const menuContainer = document.querySelector(".menu-container");
 		if (menuContainer && !menuContainer.contains(target)) {
-			showMenu = false;
+			_showMenu = false;
 		}
 	}
 	document.addEventListener("click", handleClickOutside);
@@ -1069,7 +1121,7 @@ function checkHorizontalScrollbar() {
 		// Check if either pane has horizontal overflow
 		const leftHasScroll = leftPane.scrollWidth > leftPane.clientWidth;
 		const rightHasScroll = rightPane.scrollWidth > rightPane.clientWidth;
-		hasHorizontalScrollbar = leftHasScroll || rightHasScroll;
+		_hasHorizontalScrollbar = leftHasScroll || rightHasScroll;
 	}
 }
 </script>
@@ -1077,18 +1129,18 @@ function checkHorizontalScrollbar() {
 <main>
   <div class="header">
     <div class="menu-container">
-      <button class="menu-toggle" on:click={() => showMenu = !showMenu} title="Menu">
+      <button class="menu-toggle" on:click={() => _showMenu = !_showMenu} title="Menu">
         ☰
       </button>
-      {#if showMenu}
+      {#if _showMenu}
         <div class="dropdown-menu">
-          <button class="menu-item" on:click={toggleDarkMode}>
+          <button class="menu-item" on:click={_toggleDarkMode}>
             {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
           </button>
           <button 
             class="menu-item" 
-            on:click={handleDiscardChanges}
-            disabled={!hasUnsavedLeftChanges && !hasUnsavedRightChanges}
+            on:click={_handleDiscardChanges}
+            disabled={!_hasUnsavedLeftChanges && !_hasUnsavedRightChanges}
           >
             🗑️ Discard Changes
           </button>
@@ -1096,14 +1148,14 @@ function checkHorizontalScrollbar() {
       {/if}
     </div>
     <div class="file-selectors">
-      <button class="file-btn" on:click={selectLeftFile}>
+      <button class="file-btn" on:click={_selectLeftFile}>
         📂 {leftFileName}
       </button>
-      <button class="file-btn" on:click={selectRightFile}>
+      <button class="file-btn" on:click={_selectRightFile}>
         📂 {rightFileName}
       </button>
-      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || isComparing || hasCompletedComparison}>
-        {#if isComparing}
+      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || _isComparing || _hasCompletedComparison}>
+        {#if _isComparing}
           Comparing files...
         {:else}
           Compare Files
@@ -1111,8 +1163,8 @@ function checkHorizontalScrollbar() {
       </button>
     </div>
     
-    {#if errorMessage}
-      <div class="error">{errorMessage}</div>
+    {#if _errorMessage}
+      <div class="error">{_errorMessage}</div>
     {/if}
   </div>
 
@@ -1120,14 +1172,14 @@ function checkHorizontalScrollbar() {
     {#if diffResult}
       <div class="file-header {highlightedDiffResult?.lines?.[0]?.type !== 'same' ? 'first-line-diff' : ''}" style="--line-number-width: {lineNumberWidth}">
         <div class="file-info left">
-          <button class="save-btn" disabled={!hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
         </div>
         <div class="action-gutter-header">
           <!-- Empty header space above action gutter -->
         </div>
         <div class="file-info right">
-          <button class="save-btn" disabled={!hasUnsavedRightChanges} on:click={saveRightFile} title="Save right file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save right file">💾</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, false)}</span>
         </div>
       </div>
@@ -1149,11 +1201,11 @@ function checkHorizontalScrollbar() {
       {/if}
       
       <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
-        <div class="left-pane" bind:this={leftPane} on:scroll={syncLeftScroll}>
+        <div class="left-pane" bind:this={leftPane} on:scroll={_syncLeftScroll}>
           <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const chunk = _getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
                 <span class="line-number">{line.leftNumber || ''}</span>
@@ -1163,11 +1215,11 @@ function checkHorizontalScrollbar() {
           </div>
         </div>
         
-        <div class="center-gutter" bind:this={centerGutter} on:scroll={syncCenterScroll}>
-          <div class="gutter-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px); padding-bottom: {hasHorizontalScrollbar ? '42px' : '30px'};">
+        <div class="center-gutter" bind:this={centerGutter} on:scroll={_syncCenterScroll}>
+          <div class="gutter-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px); padding-bottom: {_hasHorizontalScrollbar ? '42px' : '30px'};">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const chunk = _getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               
               <div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
@@ -1176,26 +1228,26 @@ function checkHorizontalScrollbar() {
                 <div class="chunk-actions" style="--chunk-height: {chunk.lines};">
                   {#if chunk.type === 'added'}
                     <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => deleteChunkFromRight(chunk)} title="Delete chunk from right ({chunk.lines} lines)">
+                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => _deleteChunkFromRight(chunk)} title="Delete chunk from right ({chunk.lines} lines)">
                       →
                     </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => copyChunkToLeft(chunk)} title="Copy chunk to left ({chunk.lines} lines)">
+                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => _copyChunkToLeft(chunk)} title="Copy chunk to left ({chunk.lines} lines)">
                       ←
                     </button>
                   {:else if chunk.type === 'removed'}
                     <!-- Content exists in LEFT pane, so put copy arrow on LEFT side and delete arrow on RIGHT side -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => copyChunkToRight(chunk)} title="Copy chunk to right ({chunk.lines} lines)">
+                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => _copyChunkToRight(chunk)} title="Copy chunk to right ({chunk.lines} lines)">
                       →
                     </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => deleteChunkFromLeft(chunk)} title="Delete chunk from left ({chunk.lines} lines)">
+                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => _deleteChunkFromLeft(chunk)} title="Delete chunk from left ({chunk.lines} lines)">
                       ←
                     </button>
                   {:else if chunk.type === 'modified'}
                     <!-- Content exists in BOTH panes but is different, allow copying either direction -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => copyModifiedChunkToRight(chunk)} title="Copy left version to right ({chunk.lines} lines)">
+                    <button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => _copyModifiedChunkToRight(chunk)} title="Copy left version to right ({chunk.lines} lines)">
                       →
                     </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => copyModifiedChunkToLeft(chunk)} title="Copy right version to left ({chunk.lines} lines)">
+                    <button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => _copyModifiedChunkToLeft(chunk)} title="Copy right version to left ({chunk.lines} lines)">
                       ←
                     </button>
                   {/if}
@@ -1224,11 +1276,11 @@ function checkHorizontalScrollbar() {
           </div>
         </div>
         
-        <div class="right-pane" bind:this={rightPane} on:scroll={syncRightScroll}>
+        <div class="right-pane" bind:this={rightPane} on:scroll={_syncRightScroll}>
           <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
             {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+              {@const chunk = _getChunkForLine(index)}
+              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
                 <span class="line-number">{line.rightNumber || ''}</span>
@@ -1250,8 +1302,8 @@ function checkHorizontalScrollbar() {
   </div>
 
   <!-- Quit Dialog Modal -->
-  {#if showQuitDialog}
-    <div class="modal-overlay" on:click={() => showQuitDialog = false}>
+  {#if _showQuitDialog}
+    <div class="modal-overlay" on:click={() => _showQuitDialog = false}>
       <div class="quit-dialog" on:click|stopPropagation>
         <h3>Unsaved Changes</h3>
         <p>Select which files to save before quitting:</p>
@@ -1262,10 +1314,10 @@ function checkHorizontalScrollbar() {
               <input 
                 type="checkbox" 
                 bind:checked={fileSelections[leftFilePath]}
-                disabled={!quitDialogFiles.includes(leftFilePath)}
+                disabled={!_quitDialogFiles.includes(leftFilePath)}
               />
               <span class="file-name">{getDisplayFileName(leftFilePath)}</span>
-              {#if !quitDialogFiles.includes(leftFilePath)}
+              {#if !_quitDialogFiles.includes(leftFilePath)}
                 <span class="file-status">(no changes)</span>
               {/if}
             </label>
@@ -1276,10 +1328,10 @@ function checkHorizontalScrollbar() {
               <input 
                 type="checkbox" 
                 bind:checked={fileSelections[rightFilePath]}
-                disabled={!quitDialogFiles.includes(rightFilePath)}
+                disabled={!_quitDialogFiles.includes(rightFilePath)}
               />
               <span class="file-name">{getDisplayFileName(rightFilePath)}</span>
-              {#if !quitDialogFiles.includes(rightFilePath)}
+              {#if !_quitDialogFiles.includes(rightFilePath)}
                 <span class="file-status">(no changes)</span>
               {/if}
             </label>
@@ -1287,13 +1339,13 @@ function checkHorizontalScrollbar() {
         </div>
         
         <div class="dialog-buttons">
-          <button class="btn-primary" on:click={handleSaveAndQuit}>
+          <button class="btn-primary" on:click={_handleSaveAndQuit}>
             Save Selected & Quit
           </button>
-          <button class="btn-secondary" on:click={handleQuitWithoutSaving}>
+          <button class="btn-secondary" on:click={_handleQuitWithoutSaving}>
             Quit Without Saving
           </button>
-          <button class="btn-tertiary" on:click={() => showQuitDialog = false}>
+          <button class="btn-tertiary" on:click={() => _showQuitDialog = false}>
             Cancel
           </button>
         </div>
@@ -1930,12 +1982,18 @@ function checkHorizontalScrollbar() {
     text-align: left;
     font-family: inherit;
     tab-size: 4;
-    background: inherit;
+    background: transparent;
     min-width: max-content;
     position: relative;
+    overflow: hidden;
   }
 
 
+  /* ===========================================
+   * CHUNK HIGHLIGHTING - Full-width line backgrounds
+   * =========================================== */
+
+  /* Default line (no changes) */
   .line-same {
     background: #eff1f5;
     border-left: 3px solid transparent;
@@ -1945,58 +2003,64 @@ function checkHorizontalScrollbar() {
     color: #4c4f69;
   }
 
-  .line-added {
-    background: rgba(30, 102, 245, 0.1);
-    border-left: 3px solid #1e66f5;
-  }
-
-  .line-added .line-number {
-    background: rgba(30, 102, 245, 0.15);
-    color: #1e66f5;
-  }
-
-  .line-added .line-text {
-    color: #4c4f69;
-  }
-
-  .line-removed {
-    background: rgba(30, 102, 245, 0.1);
-    border-left: 3px solid #1e66f5;
-  }
-
-  .line-removed .line-number {
-    background: rgba(30, 102, 245, 0.15);
-    color: #1e66f5;
-  }
-
-  .line-removed .line-text {
-    color: #4c4f69;
-  }
-
+  /* Base styles for diff lines (chunk highlighting) */
+  .line-added,
+  .line-removed,
   .line-modified {
-    background: rgba(30, 102, 245, 0.1);
-    border-left: 3px solid #1e66f5;
+    background: rgba(30, 102, 245, 0.1); /* Light blue chunk background */
+    border-left: 3px solid #1e66f5; /* Blue accent border */
   }
 
+  .line-added .line-number,
+  .line-removed .line-number,
   .line-modified .line-number {
-    background: rgba(30, 102, 245, 0.15);
-    color: #1e66f5;
+    background: #e6e9ef; /* Keep line numbers opaque */
+    color: #1e66f5; /* Blue text for diff line numbers */
   }
 
+  .line-added .line-text,
+  .line-removed .line-text,
   .line-modified .line-text {
-    color: #4c4f69;
+    color: #4c4f69; /* Standard text color */
   }
 
-  /* Inline diff highlighting for modified lines */
+  /* ===========================================
+   * INLINE HIGHLIGHTING - Specific content changes
+   * =========================================== */
+
+  /* Inline diff highlighting within modified lines */
   :global(.inline-diff-highlight) {
-    background-color: rgba(30, 102, 245, 0.3);
+    background-color: rgba(30, 102, 245, 0.3) !important;
     color: #4c4f69;
-    padding: 0 2px;
-    border-radius: 2px;
+    padding: 0 2px !important;
+    border-radius: 2px !important;
     font-weight: normal;
+    min-height: var(--line-height);
+    display: inline-block;
+    line-height: var(--line-height);
+    vertical-align: top;
   }
 
-  /* Dark mode line overrides */
+  /* Full-line inline highlighting for added/removed lines */
+  :global(.inline-diff-highlight-full) {
+    background-color: rgba(30, 102, 245, 0.3) !important;
+    color: #4c4f69;
+    padding: 0 2px !important;
+    border-radius: 2px !important;
+    font-weight: normal;
+    min-height: var(--line-height);
+    display: inline-block;
+    line-height: var(--line-height);
+    vertical-align: top;
+    width: 100%;
+    min-width: 100%;
+  }
+
+  /* ===========================================
+   * DARK MODE OVERRIDES
+   * =========================================== */
+
+  /* Dark mode chunk highlighting */
   :global([data-theme="dark"]) .line-same {
     background: #24273a;
     border-left: 3px solid transparent;
@@ -2006,50 +2070,35 @@ function checkHorizontalScrollbar() {
     color: #cad3f5;
   }
 
-  :global([data-theme="dark"]) .line-added {
-    background: rgba(138, 173, 244, 0.15);
-    border-left-color: #8aadf4;
-  }
-
-  :global([data-theme="dark"]) .line-added .line-number {
-    background: rgba(138, 173, 244, 0.2);
-    color: #8aadf4;
-  }
-
-  :global([data-theme="dark"]) .line-added .line-text {
-    color: #cad3f5;
-  }
-
-  :global([data-theme="dark"]) .line-removed {
-    background: rgba(138, 173, 244, 0.15);
-    border-left-color: #8aadf4;
-  }
-
-  :global([data-theme="dark"]) .line-removed .line-number {
-    background: rgba(138, 173, 244, 0.2);
-    color: #8aadf4;
-  }
-
-  :global([data-theme="dark"]) .line-removed .line-text {
-    color: #cad3f5;
-  }
-
+  :global([data-theme="dark"]) .line-added,
+  :global([data-theme="dark"]) .line-removed,
   :global([data-theme="dark"]) .line-modified {
-    background: rgba(138, 173, 244, 0.15);
-    border-left-color: #8aadf4;
+    background: rgba(138, 173, 244, 0.15); /* Darker blue chunk background */
+    border-left-color: #8aadf4; /* Lighter blue accent */
   }
 
+  :global([data-theme="dark"]) .line-added .line-number,
+  :global([data-theme="dark"]) .line-removed .line-number,
   :global([data-theme="dark"]) .line-modified .line-number {
-    background: rgba(138, 173, 244, 0.2);
-    color: #8aadf4;
+    background: #1e2030; /* Dark line number background */
+    color: #8aadf4; /* Light blue text */
   }
 
+  :global([data-theme="dark"]) .line-added .line-text,
+  :global([data-theme="dark"]) .line-removed .line-text,
   :global([data-theme="dark"]) .line-modified .line-text {
-    color: #cad3f5;
+    color: #cad3f5; /* Light text for dark mode */
   }
 
+  /* Dark mode inline highlighting */
   :global([data-theme="dark"]) :global(.inline-diff-highlight) {
-    background-color: rgba(138, 173, 244, 0.3);
+    background-color: rgba(138, 173, 244, 0.3) !important;
+    color: #cad3f5;
+    font-weight: normal;
+  }
+
+  :global([data-theme="dark"]) :global(.inline-diff-highlight-full) {
+    background-color: rgba(138, 173, 244, 0.3) !important;
     color: #cad3f5;
     font-weight: normal;
   }
