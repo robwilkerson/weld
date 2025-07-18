@@ -1434,6 +1434,7 @@ function checkHorizontalScrollbar() {
     background: #1e2030;
     border-right-color: #363a4f;
     color: #8087a2;
+    z-index: 100;
   }
 
   :global([data-theme="dark"]) .pane-content::after {
@@ -1913,7 +1914,7 @@ function checkHorizontalScrollbar() {
     flex-shrink: 0;
     position: sticky;
     left: 0;
-    z-index: 1;
+    z-index: 100;
     font-size: 0.75rem;
     margin: 0;
     display: flex;
@@ -1937,6 +1938,7 @@ function checkHorizontalScrollbar() {
 
   .line-same {
     background: #eff1f5;
+    border-left: 3px solid transparent;
   }
 
   .line-same .line-text {
@@ -1997,6 +1999,7 @@ function checkHorizontalScrollbar() {
   /* Dark mode line overrides */
   :global([data-theme="dark"]) .line-same {
     background: #24273a;
+    border-left: 3px solid transparent;
   }
 
   :global([data-theme="dark"]) .line-same .line-text {
