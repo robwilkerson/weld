@@ -44,6 +44,7 @@ let isDarkMode: boolean = true;
 let hasUnsavedLeftChanges: boolean = false;
 let hasUnsavedRightChanges: boolean = false;
 let hasHorizontalScrollbar: boolean = false;
+let hasCompletedComparison: boolean = false;
 
 // Quit dialog state
 let showQuitDialog: boolean = false;
@@ -296,6 +297,7 @@ async function selectLeftFile(): Promise<void> {
 			await updateUnsavedChangesStatus();
 			errorMessage = `Left file selected: ${leftFileName}`;
 			diffResult = null; // Clear previous results
+			hasCompletedComparison = false; // Reset comparison state
 		} else {
 			errorMessage = "No left file selected";
 		}
@@ -314,6 +316,7 @@ async function selectRightFile(): Promise<void> {
 			await updateUnsavedChangesStatus();
 			errorMessage = `Right file selected: ${rightFileName}`;
 			diffResult = null; // Clear previous results
+			hasCompletedComparison = false; // Reset comparison state
 		} else {
 			errorMessage = "No right file selected";
 		}
@@ -341,6 +344,9 @@ async function compareBothFiles(): Promise<void> {
 		} else if (diffResult.lines.length === 0) {
 			errorMessage = "Files are identical";
 		}
+
+		// Mark comparison as completed
+		hasCompletedComparison = true;
 
 		// Check for horizontal scrollbar after diff is loaded
 		setTimeout(() => {
@@ -1096,7 +1102,7 @@ function checkHorizontalScrollbar() {
       <button class="file-btn" on:click={selectRightFile}>
         📂 {rightFileName}
       </button>
-      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || isComparing}>
+      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || isComparing || hasCompletedComparison}>
         {#if isComparing}
           Comparing files...
         {:else}
