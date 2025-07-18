@@ -1928,6 +1928,7 @@ function checkHorizontalScrollbar() {
     position: relative;
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
     /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
   }
   
@@ -1972,7 +1973,10 @@ function checkHorizontalScrollbar() {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    height: 100%;
+    height: var(--line-height);
+    min-height: var(--line-height);
+    line-height: var(--line-height);
+    box-sizing: border-box;
   }
 
   .line-text {
@@ -1996,7 +2000,7 @@ function checkHorizontalScrollbar() {
   /* Default line (no changes) */
   .line-same {
     background: #eff1f5;
-    border-left: 3px solid transparent;
+    border-left: 3px solid #eff1f5; /* Use background color instead of transparent */
   }
 
   .line-same .line-text {
@@ -2063,7 +2067,7 @@ function checkHorizontalScrollbar() {
   /* Dark mode chunk highlighting */
   :global([data-theme="dark"]) .line-same {
     background: #24273a;
-    border-left: 3px solid transparent;
+    border-left: 3px solid #24273a; /* Use background color instead of transparent */
   }
 
   :global([data-theme="dark"]) .line-same .line-text {
