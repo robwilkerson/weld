@@ -440,6 +440,50 @@ function _syncCenterScroll() {
 	}, 10);
 }
 
+// ===========================================
+// MINIMAP FUNCTIONALITY
+// ===========================================
+
+function handleMinimapClick(event: MouseEvent): void {
+	if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter)
+		return;
+
+	const minimap = event.currentTarget as HTMLElement;
+	const minimapRect = minimap.getBoundingClientRect();
+	const clickY = event.clientY - minimapRect.top;
+
+	// Calculate the percentage of the minimap that was clicked
+	const clickPercentage = clickY / minimapRect.height;
+
+	// Calculate the corresponding line index in the actual content
+	const totalLines = highlightedDiffResult.lines.length;
+	const targetLineIndex = Math.floor(clickPercentage * totalLines);
+
+	// Ensure line index is within bounds
+	const boundedLineIndex = Math.max(
+		0,
+		Math.min(targetLineIndex, totalLines - 1),
+	);
+
+	// Calculate scroll position to show the target line
+	const lineHeightPx = 19.5; // Approximate line height in pixels (1.5em * 13px font)
+	const targetScrollTop = boundedLineIndex * lineHeightPx;
+
+	// Get viewport height to center the target
+	const viewportHeight = leftPane.clientHeight;
+	const scrollTo = Math.max(0, targetScrollTop - viewportHeight / 2);
+
+	// Sync scroll across all panes
+	isScrollSyncing = true;
+	leftPane.scrollTop = scrollTo;
+	rightPane.scrollTop = scrollTo;
+	centerGutter.scrollTop = scrollTo;
+
+	requestAnimationFrame(() => {
+		isScrollSyncing = false;
+	});
+}
+
 async function _initializeDefaultFiles(): Promise<void> {
 	// Removed automatic file loading to prevent crashes
 	// Users should manually select files to compare
@@ -1207,7 +1251,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.leftNumber || ''}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1282,13 +1326,32 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.rightNumber || ''}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
             {/each}
           </div>
         </div>
+        
+        <!-- Minimap Pane -->
+        {#if highlightedDiffResult && highlightedDiffResult.lines.length > 0}
+          <div class="minimap-pane">
+            <div class="minimap" on:click={handleMinimapClick}>
+              {#each lineChunks as chunk}
+                {#if chunk.type !== 'same'}
+                  <div 
+                    class="minimap-chunk minimap-{chunk.type}" 
+                    style="top: {(chunk.startIndex / highlightedDiffResult.lines.length) * 100}%; 
+                           height: {(chunk.lines / highlightedDiffResult.lines.length) * 100}%;"
+                    data-chunk-start={chunk.startIndex}
+                    data-chunk-lines={chunk.lines}
+                  ></div>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
     {:else if leftFilePath && rightFilePath}
       <div class="empty-state">
@@ -1578,21 +1641,21 @@ function checkHorizontalScrollbar() {
 
   /* Custom scrollbar styling for light mode (Catppuccin Latte) */
   ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #dce0e8;
+    background: rgba(220, 224, 232, 0.15);
   }
 
   ::-webkit-scrollbar-thumb {
     background: #acb0be;
-    border-radius: 6px;
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #9ca0b0;
+    background: #6c6f85;
   }
 
   ::-webkit-scrollbar-corner {
@@ -1601,20 +1664,20 @@ function checkHorizontalScrollbar() {
 
   /* Custom scrollbar styling for dark mode (Catppuccin Macchiato) */
   :global([data-theme="dark"]) ::-webkit-scrollbar-track {
-    background: #363a4f;
+    background: rgba(54, 58, 79, 0.15);
   }
 
   :global([data-theme="dark"]) ::-webkit-scrollbar-thumb {
-    background: #5b6078;
-    border-radius: 6px;
+    background: #363a4f;
+    border-radius: 3px;
   }
 
   :global([data-theme="dark"]) ::-webkit-scrollbar-thumb:hover {
-    background: #6e738d;
+    background: #5b6078;
   }
 
   :global([data-theme="dark"]) ::-webkit-scrollbar-corner {
-    background: #363a4f;
+    background: rgba(54, 58, 79, 0.15);
   }
 
   h1 {
@@ -1816,14 +1879,14 @@ function checkHorizontalScrollbar() {
   }
   
   .center-gutter::-webkit-scrollbar:horizontal {
-    height: 12px; /* Match the main scrollbar height */
+    height: 5px; /* Match the main scrollbar height */
   }
   
   /* Ensure panes also have consistent scrollbar sizing */
   .left-pane::-webkit-scrollbar,
   .right-pane::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 5px;
+    height: 5px;
   }
   
   .left-pane::-webkit-scrollbar-track,
@@ -1843,6 +1906,76 @@ function checkHorizontalScrollbar() {
   .right-pane::-webkit-scrollbar-thumb:hover,
   .center-gutter::-webkit-scrollbar-thumb:hover {
     background: #555;
+  }
+
+  /* ===========================================
+   * MINIMAP STYLES
+   * =========================================== */
+
+  .minimap-pane {
+    width: 18px;
+    background: #e6e9ef;
+    border-left: 1px solid #dce0e8;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .minimap {
+    width: 100%;
+    height: calc(100% - 5px); /* Leave space for horizontal scrollbar */
+    cursor: pointer;
+    position: relative;
+    min-height: 300px; /* Fixed height for the minimap */
+  }
+
+  .minimap-chunk {
+    position: absolute;
+    width: 100%;
+    left: 0;
+    border-radius: 1px;
+  }
+
+  .minimap-same {
+    background: #eff1f5;
+  }
+
+  .minimap-added {
+    background: rgba(33, 150, 243, 0.7);
+  }
+
+  .minimap-removed {
+    background: rgba(33, 150, 243, 0.7);
+  }
+
+  .minimap-modified {
+    background: rgba(255, 193, 7, 0.8);
+  }
+
+  .minimap-chunk:hover {
+    opacity: 0.5;
+  }
+
+  /* Dark mode minimap */
+  :global([data-theme="dark"]) .minimap-pane {
+    background: #1e2030;
+    border-left-color: #363a4f;
+  }
+
+  :global([data-theme="dark"]) .minimap-same {
+    background: #24273a;
+  }
+
+  :global([data-theme="dark"]) .minimap-added {
+    background: rgba(100, 181, 246, 0.7);
+  }
+
+  :global([data-theme="dark"]) .minimap-removed {
+    background: rgba(100, 181, 246, 0.7);
+  }
+
+  :global([data-theme="dark"]) .minimap-modified {
+    background: rgba(255, 183, 77, 0.8);
   }
 
   .gutter-line {
