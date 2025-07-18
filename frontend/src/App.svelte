@@ -1987,11 +1987,11 @@ function checkHorizontalScrollbar() {
 
   /* Inline diff highlighting for modified lines */
   :global(.inline-diff-highlight) {
-    background-color: #1e66f5;
-    color: #ffffff;
+    background-color: rgba(30, 102, 245, 0.3);
+    color: #4c4f69;
     padding: 0 2px;
     border-radius: 2px;
-    font-weight: 600;
+    font-weight: normal;
   }
 
   /* Dark mode line overrides */
@@ -2046,9 +2046,9 @@ function checkHorizontalScrollbar() {
   }
 
   :global([data-theme="dark"]) :global(.inline-diff-highlight) {
-    background-color: #8aadf4;
-    color: #181926;
-    font-weight: 600;
+    background-color: rgba(138, 173, 244, 0.3);
+    color: #cad3f5;
+    font-weight: normal;
   }
 
   .empty-state {
