@@ -23,7 +23,7 @@ import {
 } from "./utils/diff.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
-import { getDisplayPath } from "./utils/path.js";
+import { getDisplayPath, getDisplayFileName } from "./utils/path.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -1509,6 +1509,12 @@ function checkHorizontalScrollbar() {
     border-right-color: #363a4f;
   }
 
+  /* Dark mode line number gutter background */
+  :global([data-theme="dark"]) .left-pane::before, 
+  :global([data-theme="dark"]) .right-pane::before {
+    background: #1e2030;
+  }
+
   :global([data-theme="dark"]) .line-number {
     background: #1e2030;
     border: none; /* Explicitly remove all borders */
@@ -1516,10 +1522,10 @@ function checkHorizontalScrollbar() {
     z-index: 100;
   }
 
+  /* Old approach - dark mode version
   :global([data-theme="dark"]) .pane-content::after {
     background: #1e2030;
-    /* border-right-color: #363a4f; */ /* Removed border */
-  }
+  } */
 
   :global([data-theme="dark"]) .line-text {
     color: #cad3f5; /* Removed !important to allow syntax highlighting */
@@ -1812,6 +1818,19 @@ function checkHorizontalScrollbar() {
     position: relative;
   }
 
+  /* Line number gutter background that extends full height */
+  .left-pane::before, .right-pane::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(var(--line-number-width, 32px) + 1px);
+    bottom: 0;
+    background: #e6e9ef;
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .center-gutter {
     width: var(--gutter-width);
     background: #e6e9ef;
@@ -2014,18 +2033,18 @@ function checkHorizontalScrollbar() {
     min-height: 100%; /* Ensure minimum height matches container */
   }
 
+  /* Old approach - replaced with full-height gutter on panes
   .pane-content::after {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: calc(var(--line-number-width, 32px) + 1px);
-    height: calc(100% + 30px); /* Match the pane-content min-height calculation */
+    height: calc(100% + 30px);
     background: #e6e9ef;
-    /* border-right: 1px solid #dce0e8; */ /* Removed border */
-    z-index: -1; /* Move behind line numbers */
+    z-index: -1;
     pointer-events: none;
-  }
+  } */
 
   .line {
     display: flex;
