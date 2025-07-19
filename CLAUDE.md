@@ -47,7 +47,9 @@ bindings for file operations
 
 ## Daily development:
 
-1. `wails dev` - Start the application with live reload
+**IMPORTANT FOR CLAUDE**: Never run `wails dev` directly - it will timeout due to execution time limits. Ask the user to start it in their terminal if needed.
+
+1. `wails dev` - Start the application with live reload (User should run this in terminal)
 2. Make changes to `frontend/src/**` or `**/*.go`
 3. Create or update unit and integration test appropriately when code is added or modified
 3. Run `go fmt` after backend changes
