@@ -116,7 +116,7 @@ describe("Diff Utilities", () => {
 			};
 
 			const result = getLineNumberWidth(mockDiffResult);
-			expect(result).toBe("26px"); // 3 digits * 6 + 8 = 26px
+			expect(result).toBe("34px"); // 3 digits * 6 + 16 = 34px
 		});
 
 		it("should return default width for empty result", () => {
@@ -133,7 +133,7 @@ describe("Diff Utilities", () => {
 			};
 
 			const result = getLineNumberWidth(mockDiffResult);
-			expect(result).toBe("20px"); // minimum 2 digits * 6 + 8 = 20px
+			expect(result).toBe("28px"); // minimum 2 digits * 6 + 16 = 28px
 		});
 	});
 

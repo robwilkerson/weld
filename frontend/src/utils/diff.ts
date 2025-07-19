@@ -31,7 +31,7 @@ export function getLineNumberWidth(diffResult: any): string {
 	);
 
 	const digits = Math.max(2, maxLineNumber.toString().length);
-	const width = digits * 6 + 8; // ~6px per digit + minimal 8px padding (4px each side)
+	const width = digits * 6 + 20; // ~6px per digit + 20px padding (15px left + 5px right)
 
 	return `${width}px`;
 }

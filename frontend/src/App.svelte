@@ -2073,7 +2073,7 @@ function checkHorizontalScrollbar() {
 
   .line-number {
     width: var(--line-number-width, 32px);
-    padding: 0 5px 0 5px;
+    padding: 0 5px 0 15px;
     text-align: right;
     color: #6c6f85;
     background: #e6e9ef;
