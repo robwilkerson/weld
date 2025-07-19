@@ -245,16 +245,20 @@ func (a *App) detectModifications(result *DiffResult) *DiffResult {
 
 // areSimilarLines checks if two lines are similar enough to be considered a modification
 func (a *App) areSimilarLines(left, right string) bool {
-	// If one is empty and the other isn't, they're not similar
-	if (left == "" && right != "") || (left != "" && right == "") {
+	// If either is empty (including both empty), they're not similar
+	if left == "" || right == "" {
 		return false
 	}
 
 	// Calculate similarity using Levenshtein distance ratio
 	distance := a.levenshteinDistance(left, right)
-	maxLen := len(left)
-	if len(right) > maxLen {
-		maxLen = len(right)
+	
+	// Use rune length for proper Unicode handling
+	leftLen := len([]rune(left))
+	rightLen := len([]rune(right))
+	maxLen := leftLen
+	if rightLen > maxLen {
+		maxLen = rightLen
 	}
 
 	// If lines are very short, require exact match
@@ -271,32 +275,36 @@ func (a *App) areSimilarLines(left, right string) bool {
 
 // levenshteinDistance calculates the edit distance between two strings
 func (a *App) levenshteinDistance(s1, s2 string) int {
-	if len(s1) == 0 {
-		return len(s2)
+	// Convert strings to rune slices for proper Unicode handling
+	r1 := []rune(s1)
+	r2 := []rune(s2)
+	
+	if len(r1) == 0 {
+		return len(r2)
 	}
-	if len(s2) == 0 {
-		return len(s1)
+	if len(r2) == 0 {
+		return len(r1)
 	}
 
 	// Create a 2D slice for dynamic programming
-	d := make([][]int, len(s1)+1)
+	d := make([][]int, len(r1)+1)
 	for i := range d {
-		d[i] = make([]int, len(s2)+1)
+		d[i] = make([]int, len(r2)+1)
 	}
 
 	// Initialize first column and row
-	for i := 0; i <= len(s1); i++ {
+	for i := 0; i <= len(r1); i++ {
 		d[i][0] = i
 	}
-	for j := 0; j <= len(s2); j++ {
+	for j := 0; j <= len(r2); j++ {
 		d[0][j] = j
 	}
 
 	// Fill the matrix
-	for i := 1; i <= len(s1); i++ {
-		for j := 1; j <= len(s2); j++ {
+	for i := 1; i <= len(r1); i++ {
+		for j := 1; j <= len(r2); j++ {
 			cost := 0
-			if s1[i-1] != s2[j-1] {
+			if r1[i-1] != r2[j-1] {
 				cost = 1
 			}
 
@@ -308,7 +316,7 @@ func (a *App) levenshteinDistance(s1, s2 string) int {
 		}
 	}
 
-	return d[len(s1)][len(s2)]
+	return d[len(r1)][len(r2)]
 }
 
 // min returns the minimum of three integers
