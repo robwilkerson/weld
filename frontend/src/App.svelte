@@ -1822,9 +1822,9 @@ function checkHorizontalScrollbar() {
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     font-size: var(--font-size);
     line-height: var(--line-height);
-    /* Show vertical scrollbar to match content panes */
-    /* scrollbar-width: none; */ /* Firefox - removed */
-    /* -ms-overflow-style: none; */ /* IE and Edge - removed */
+    /* Hide scrollbar - users should scroll via content panes */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
   }
 
   .gutter-content {
@@ -1849,9 +1849,9 @@ function checkHorizontalScrollbar() {
     pointer-events: none;
   }
 
-  /* Show vertical scrollbar in gutter to match content panes */
+  /* Hide vertical scrollbar in gutter - users should scroll via content panes */
   .center-gutter::-webkit-scrollbar:vertical {
-    width: 5px; /* Match content panes */
+    width: 0; /* Hide scrollbar */
   }
   
   .center-gutter::-webkit-scrollbar:horizontal {
