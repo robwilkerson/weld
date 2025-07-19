@@ -250,6 +250,13 @@ func (a *App) areSimilarLines(left, right string) bool {
 		return false
 	}
 
+	// For whitespace-only differences, trim and compare
+	leftTrimmed := strings.TrimSpace(left)
+	rightTrimmed := strings.TrimSpace(right)
+	if leftTrimmed == rightTrimmed {
+		return true
+	}
+
 	// Calculate similarity using Levenshtein distance ratio
 	distance := a.levenshteinDistance(left, right)
 	
@@ -262,15 +269,15 @@ func (a *App) areSimilarLines(left, right string) bool {
 	}
 
 	// If lines are very short, require exact match
-	if maxLen < 10 {
+	if maxLen < 4 {
 		return left == right
 	}
 
 	// Calculate similarity ratio (1.0 = identical, 0.0 = completely different)
 	similarity := 1.0 - float64(distance)/float64(maxLen)
 
-	// Consider lines similar if they're at least 60% similar
-	return similarity >= 0.6
+	// Consider lines similar if they're at least 70% similar
+	return similarity >= 0.70
 }
 
 // levenshteinDistance calculates the edit distance between two strings
