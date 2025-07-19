@@ -1,5 +1,4 @@
 <script lang="ts">
-import { createHighlighter } from "shiki";
 import { onMount } from "svelte";
 import {
 	CompareFiles,
@@ -24,7 +23,7 @@ import {
 } from "./utils/diff.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
-import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
+import { getDisplayPath } from "./utils/path.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -81,7 +80,7 @@ $: areFilesIdentical =
 	diffResult.lines.every((line) => line.type === "same") &&
 	leftFilePath !== rightFilePath;
 
-$: lineNumberWidth = getLineNumberWidth();
+$: lineNumberWidth = getLineNumberWidth(diffResult);
 
 // ===========================================
 // HIGHLIGHTING TYPES AND STATE
@@ -418,6 +417,7 @@ function _syncLeftScroll() {
 function _syncRightScroll() {
 	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
 	isScrollSyncing = true;
+
 	// Sync vertical scrolling to all panes
 	const scrollTop = rightPane.scrollTop;
 	leftPane.scrollTop = scrollTop;
@@ -444,7 +444,7 @@ function _syncCenterScroll() {
 // MINIMAP FUNCTIONALITY
 // ===========================================
 
-function handleMinimapClick(event: MouseEvent): void {
+function _handleMinimapClick(event: MouseEvent): void {
 	if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter)
 		return;
 
@@ -1082,45 +1082,9 @@ onMount(async () => {
 		console.error("Error getting initial files:", error);
 	}
 
-	// Initialize Shiki highlighter with Catppuccin themes
-	try {
-		highlighter = await createHighlighter({
-			themes: ["catppuccin-macchiato", "catppuccin-latte"],
-			langs: [
-				"python",
-				"javascript",
-				"typescript",
-				"java",
-				"go",
-				"php",
-				"ruby",
-				"csharp",
-				"css",
-				"scss",
-				"sass",
-				"json",
-				"markdown",
-				"bash",
-				"c",
-				"cpp",
-				"rust",
-				"kotlin",
-				"swift",
-				"dart",
-				"html",
-				"xml",
-				"yaml",
-				"toml",
-				"sql",
-				"r",
-				"lua",
-				"vim",
-			],
-		});
-	} catch (error) {
-		console.error("Failed to initialize Shiki:", error);
-		highlighter = null;
-	}
+	// Syntax highlighting disabled for performance
+	// TODO: Re-enable when we can make it performant (web workers, etc.)
+	highlighter = null;
 
 	// Set up ResizeObserver to detect scrollbar changes with debouncing
 	let resizeTimeout: number;
@@ -1246,13 +1210,13 @@ function checkHorizontalScrollbar() {
       
       <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
         <div class="left-pane" bind:this={leftPane} on:scroll={_syncLeftScroll}>
-          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
+          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
-                <span class="line-number">{line.leftNumber || ''}</span>
+                <span class="line-number">{line.leftNumber || ' '}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
             {/each}
@@ -1260,7 +1224,7 @@ function checkHorizontalScrollbar() {
         </div>
         
         <div class="center-gutter" bind:this={centerGutter} on:scroll={_syncCenterScroll}>
-          <div class="gutter-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px); padding-bottom: {_hasHorizontalScrollbar ? '42px' : '30px'};">
+          <div class="gutter-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
@@ -1321,13 +1285,13 @@ function checkHorizontalScrollbar() {
         </div>
         
         <div class="right-pane" bind:this={rightPane} on:scroll={_syncRightScroll}>
-          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height) + 30px);">
+          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
-                <span class="line-number">{line.rightNumber || ''}</span>
+                <span class="line-number">{line.rightNumber || ' '}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
             {/each}
@@ -1337,7 +1301,7 @@ function checkHorizontalScrollbar() {
         <!-- Minimap Pane -->
         {#if highlightedDiffResult && highlightedDiffResult.lines.length > 0}
           <div class="minimap-pane">
-            <div class="minimap" on:click={handleMinimapClick}>
+            <div class="minimap" on:click={_handleMinimapClick}>
               {#each lineChunks as chunk}
                 {#if chunk.type !== 'same'}
                   <div 
@@ -1426,7 +1390,7 @@ function checkHorizontalScrollbar() {
   }
   
   :root {
-    --line-height: 1.5em;
+    --line-height: 19.2px;
     --font-size: 0.8rem;
     --gutter-width: 72px;
   }
@@ -1547,14 +1511,14 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .line-number {
     background: #1e2030;
-    border-right-color: #363a4f;
+    border: none; /* Explicitly remove all borders */
     color: #8087a2;
     z-index: 100;
   }
 
   :global([data-theme="dark"]) .pane-content::after {
     background: #1e2030;
-    border-right-color: #363a4f;
+    /* border-right-color: #363a4f; */ /* Removed border */
   }
 
   :global([data-theme="dark"]) .line-text {
@@ -1851,16 +1815,16 @@ function checkHorizontalScrollbar() {
   .center-gutter {
     width: var(--gutter-width);
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
+    /* border-left: 1px solid #dce0e8; */ /* Removed to match content panes */
+    /* border-right: 1px solid #dce0e8; */ /* Removed to match content panes */
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     font-size: var(--font-size);
     line-height: var(--line-height);
-    /* Hide vertical scrollbar but keep functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    /* Show vertical scrollbar to match content panes */
+    /* scrollbar-width: none; */ /* Firefox - removed */
+    /* -ms-overflow-style: none; */ /* IE and Edge - removed */
   }
 
   .gutter-content {
@@ -1873,9 +1837,21 @@ function checkHorizontalScrollbar() {
     min-height: 100%; /* Ensure minimum height matches container */
   }
 
-  /* Hide vertical scrollbar in gutter but keep track space for alignment */
+  .gutter-content::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(100% + 30px); /* Match the pane-content height calculation */
+    background: transparent;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* Show vertical scrollbar in gutter to match content panes */
   .center-gutter::-webkit-scrollbar:vertical {
-    width: 0; /* Chrome, Safari, Opera */
+    width: 5px; /* Match content panes */
   }
   
   .center-gutter::-webkit-scrollbar:horizontal {
@@ -2033,7 +2009,7 @@ function checkHorizontalScrollbar() {
     min-width: 100%;
     width: fit-content;
     position: relative;
-    padding-bottom: 30px; /* Add some padding for visual comfort */
+    /* padding-bottom: 30px; */ /* Removed - unnecessary dead space */
     line-height: var(--line-height);
     min-height: 100%; /* Ensure minimum height matches container */
   }
@@ -2044,10 +2020,10 @@ function checkHorizontalScrollbar() {
     top: 0;
     left: 0;
     width: calc(var(--line-number-width, 32px) + 1px);
-    height: 100%;
+    height: calc(100% + 30px); /* Match the pane-content min-height calculation */
     background: #e6e9ef;
-    border-right: 1px solid #dce0e8;
-    z-index: 0;
+    /* border-right: 1px solid #dce0e8; */ /* Removed border */
+    z-index: -1; /* Move behind line numbers */
     pointer-events: none;
   }
 
@@ -2062,7 +2038,13 @@ function checkHorizontalScrollbar() {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    border: none; /* Explicitly remove all borders from line elements */
     /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
+  }
+
+  /* Ensure no gaps between line elements */
+  .line + .line {
+    /* margin-top: -1px; */ /* Removed - was affecting arrow positioning */
   }
   
   
@@ -2095,7 +2077,7 @@ function checkHorizontalScrollbar() {
     text-align: right;
     color: #6c6f85;
     background: #e6e9ef;
-    border-right: 1px solid #dce0e8;
+    border: none; /* Explicitly remove all borders */
     user-select: none;
     flex-shrink: 0;
     position: sticky;
@@ -2112,6 +2094,11 @@ function checkHorizontalScrollbar() {
     box-sizing: border-box;
   }
 
+  /* Empty line numbers should show nothing */
+  .line-number:empty::before {
+    content: ''; /* No content for empty line numbers */
+  }
+
   .line-text {
     padding: 0 0.5rem;
     color: #4c4f69;
@@ -2125,6 +2112,17 @@ function checkHorizontalScrollbar() {
     overflow: hidden;
   }
 
+  /* Add borders to content area only, not line numbers */
+  .line-same .line-text {
+    border-left: 3px solid #eff1f5;
+  }
+
+  .line-added .line-text,
+  .line-removed .line-text,
+  .line-modified .line-text {
+    border-left: 3px solid #1e66f5;
+  }
+
 
   /* ===========================================
    * CHUNK HIGHLIGHTING - Full-width line backgrounds
@@ -2133,7 +2131,7 @@ function checkHorizontalScrollbar() {
   /* Default line (no changes) */
   .line-same {
     background: #eff1f5;
-    border-left: 3px solid #eff1f5; /* Use background color instead of transparent */
+    /* border-left: 3px solid #eff1f5; */ /* Removed for consistency */
   }
 
   .line-same .line-text {
@@ -2144,8 +2142,8 @@ function checkHorizontalScrollbar() {
   .line-added,
   .line-removed,
   .line-modified {
-    background: rgba(30, 102, 245, 0.1); /* Light blue chunk background */
-    border-left: 3px solid #1e66f5; /* Blue accent border */
+    /* background: rgba(30, 102, 245, 0.1); */ /* Temporarily removed to test borders */
+    /* border-left: 3px solid #1e66f5; */ /* Removed blue accent border */
   }
 
   .line-added .line-number,
@@ -2200,18 +2198,19 @@ function checkHorizontalScrollbar() {
   /* Dark mode chunk highlighting */
   :global([data-theme="dark"]) .line-same {
     background: #24273a;
-    border-left: 3px solid #24273a; /* Use background color instead of transparent */
+    /* border-left: 3px solid #24273a; */ /* Removed for consistency */
   }
 
   :global([data-theme="dark"]) .line-same .line-text {
     color: #cad3f5;
+    border-left: 3px solid #24273a;
   }
 
   :global([data-theme="dark"]) .line-added,
   :global([data-theme="dark"]) .line-removed,
   :global([data-theme="dark"]) .line-modified {
     background: rgba(138, 173, 244, 0.15); /* Darker blue chunk background */
-    border-left-color: #8aadf4; /* Lighter blue accent */
+    /* border-left-color: #8aadf4; */ /* Removed lighter blue accent */
   }
 
   :global([data-theme="dark"]) .line-added .line-number,
@@ -2225,6 +2224,7 @@ function checkHorizontalScrollbar() {
   :global([data-theme="dark"]) .line-removed .line-text,
   :global([data-theme="dark"]) .line-modified .line-text {
     color: #cad3f5; /* Light text for dark mode */
+    border-left: 3px solid #8aadf4;
   }
 
   /* Dark mode inline highlighting */
@@ -2421,8 +2421,8 @@ function checkHorizontalScrollbar() {
   /* Dark mode gutter arrows */
   :global([data-theme="dark"]) .center-gutter {
     background: #1e2030;
-    border-left-color: #363a4f;
-    border-right-color: #363a4f;
+    /* border-left-color: #363a4f; */ /* Removed - no borders */
+    /* border-right-color: #363a4f; */ /* Removed - no borders */
   }
 
   :global([data-theme="dark"]) .gutter-arrow {

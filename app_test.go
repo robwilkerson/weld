@@ -682,7 +682,7 @@ func TestApp_areSimilarLines(t *testing.T) {
 		{"one empty long vs content", "", "this is a long line with content", false},
 		{"content vs empty long", "this is a long line with content", "", false},
 		{"very similar", "abcdefghijklmnop", "abcdefghijklmnpq", true},
-		{"barely similar", "abcdefghij", "abcdefXYZj", true}, // 80% similar
+		{"barely similar", "abcdefghij", "abcdefXYZj", true},         // 80% similar
 		{"just under threshold", "abcdefghij", "abcXYZfghij", false}, // ~50% similar
 	}
 
@@ -1000,7 +1000,7 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 		}
 
 		nonExistentRight := "/nonexistent/right.txt"
-		
+
 		_, err = app.CompareFiles(leftFile, nonExistentRight)
 		if err == nil {
 			t.Error("CompareFiles should return error when right file doesn't exist")
@@ -1025,7 +1025,7 @@ func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
 
 		// Try to copy to non-existent directory
 		nonExistentTarget := "/nonexistent/directory/target.txt"
-		
+
 		err = app.CopyToFile(sourceFile, nonExistentTarget, 1, "test content")
 		if err == nil {
 			t.Error("CopyToFile should return error when target directory doesn't exist")
@@ -1036,7 +1036,7 @@ func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
 		tempDir := t.TempDir()
 		sourceFile := filepath.Join(tempDir, "source.txt")
 		targetFile := filepath.Join(tempDir, "target.txt")
-		
+
 		// Create files
 		err := os.WriteFile(sourceFile, []byte("line1\nline2"), 0644)
 		if err != nil {
@@ -1077,7 +1077,7 @@ func TestApp_SaveChanges_ErrorHandling(t *testing.T) {
 
 		tempDir := t.TempDir()
 		testFile := filepath.Join(tempDir, "test.txt")
-		
+
 		err := app.SaveChanges(testFile)
 		if err == nil {
 			t.Error("SaveChanges should return error when file is not in cache")

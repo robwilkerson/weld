@@ -122,6 +122,9 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * **Frontend changes not reflected**: Restart `wails dev`
 * **TypeScript errors**: Check `wailsjs/` bindings are generated with `wails build`
 * **Missing dependencies**: Run `bun i` in `frontend/`
+* **`__zoxide_z` command not found error**: When running commands that change directories (like `cd frontend && bun run test`), wrap the entire command in `bash -c "..."` or `zsh -c "..."`. For example:
+  * ❌ `cd frontend && bun run test:coverage`
+  * ✅ `bash -c "cd frontend && bun run test:coverage"`
 
 # Developer Environment Setup
 
