@@ -1736,6 +1736,7 @@ function checkHorizontalScrollbar() {
 
   .action-gutter-header {
     background: #e6e9ef;
+    border-right: 1px solid #dce0e8; /* Match the gutter border below */
   }
 
   .file-info {
@@ -1835,7 +1836,7 @@ function checkHorizontalScrollbar() {
     width: var(--gutter-width);
     background: #e6e9ef;
     /* border-left: 1px solid #dce0e8; */ /* Removed to match content panes */
-    /* border-right: 1px solid #dce0e8; */ /* Removed to match content panes */
+    border-right: 1px solid #dce0e8; /* Visual separator from right pane */
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
@@ -2441,7 +2442,7 @@ function checkHorizontalScrollbar() {
   :global([data-theme="dark"]) .center-gutter {
     background: #1e2030;
     /* border-left-color: #363a4f; */ /* Removed - no borders */
-    /* border-right-color: #363a4f; */ /* Removed - no borders */
+    border-right-color: #363a4f; /* Dark mode border color */
   }
 
   :global([data-theme="dark"]) .gutter-arrow {
