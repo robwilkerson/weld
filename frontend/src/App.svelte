@@ -1809,9 +1809,6 @@ function checkHorizontalScrollbar() {
     background: #e6e9ef;
   }
   
-  .file-header.first-line-diff {
-    padding-bottom: 8px;
-  }
 
   .action-gutter-header {
     background: #e6e9ef;
