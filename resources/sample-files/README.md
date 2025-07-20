@@ -40,19 +40,17 @@ ${test_scenario}-(1|2).${file_extension}
 
     The scrollbar introduces a visual element that, if not handled properly can impact how files are displayed and introduce a misalignment across the left pane, action gutter, and right pane. In this case, both files have a bunch of short lines that require no horizontal scrolling, but to one of the files a long line has been added. This ensures that the UI adjusts for the scrollbar itself properly.
 
+6. Modified content (`modified-*.cs`)
+
+    Tests when existing lines are changed (not just added/removed). The files contain multiple types of modifications including method signature changes (sync to async), parameter modifications, additional logic, and refactored implementations. This exercises the similarity detection algorithm and inline diff highlighting for modified lines.
+
 ### Coming Soon(-ish)
 
-1. Modified content (`modified-*.cs`) - Test when existing lines are changed (not just added/removed)
-1. Moved content (`moved-*.cpp`) - Test when blocks of code are relocated
-within the file
-1. Mixed changes (`mixed-*.rb`) - Test files with multiple types of changes
-(adds, deletes, modifications)
-1. Large files (`large-*.php`) - Test performance with files containing
-thousands of lines
-1. Binary files - Test handling of non-text files (images, PDFs, etc.)
-1. Encoding differences - Test files with different character encodings
-1. Line ending differences - Test files with different line endings (CRLF vs
-  LF)
-1. Whitespace differences - Test files that differ only in whitespace (tabs
-vs spaces, trailing spaces)
-1. Conflict markers - Test files containing git merge conflict markers
+1. Moved content (`moved-*.cpp`) - Test when blocks of code are relocated within the file
+2. Mixed changes (`mixed-*.rb`) - Test files with multiple types of changes (adds, deletes, modifications)
+3. Large files (`large-*.php`) - Test performance with files containing thousands of lines
+4. Binary files - Test handling of non-text files (images, PDFs, etc.)
+5. Encoding differences - Test files with different character encodings
+6. Line ending differences - Test files with different line endings (CRLF vs LF)
+7. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
+8. Conflict markers - Test files containing git merge conflict markers
