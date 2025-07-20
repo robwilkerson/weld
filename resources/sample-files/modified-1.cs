@@ -1,71 +1,75 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SampleApp
 {
     public class UserService
     {
         private readonly IUserRepository _userRepository;
-        private readonly ILogger _logger;
-        
-        public UserService(IUserRepository userRepository, ILogger logger)
+        private readonly ILogger<UserService> _logger;
+
+        public UserService(IUserRepository userRepository, ILogger<UserService> logger)
         {
-            _userRepository = userRepository;
-            _logger = logger;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
-        public User GetUserById(int userId)
+
+        public async Task<User> GetUserByIdAsync(int userId)
         {
-            _logger.LogInfo($"Fetching user with ID: {userId}");
-            
-            var user = _userRepository.FindById(userId);
-            
+            _logger.LogInformation($"Fetching user with ID: {userId}");
+
+            var user = await _userRepository.FindByIdAsync(userId);
+
             if (user == null)
             {
                 _logger.LogWarning($"User not found: {userId}");
                 throw new UserNotFoundException($"User with ID {userId} was not found.");
             }
-            
+
             return user;
         }
-        
-        public List<User> GetActiveUsers()
+
+        public async Task<IEnumerable<User>> GetActiveUsersAsync()
         {
-            _logger.LogInfo("Fetching all active users");
-            
-            var users = _userRepository.GetAll()
-                .Where(u => u.IsActive == true)
+            _logger.LogInformation("Fetching all active users");
+
+            var users = await _userRepository.GetAllAsync();
+            var activeUsers = users
+                .Where(u => u.IsActive && !u.IsDeleted)
                 .OrderBy(u => u.Username)
+                .ThenBy(u => u.CreatedDate)
                 .ToList();
-                
-            _logger.LogInfo($"Found {users.Count} active users");
-            
-            return users;
+
+            _logger.LogInformation($"Found {activeUsers.Count} active users");
+
+            return activeUsers;
         }
-        
-        public bool UpdateUserEmail(int userId, string newEmail)
+
+        public async Task<bool> UpdateUserEmailAsync(int userId, string newEmail)
         {
             if (string.IsNullOrEmpty(newEmail))
             {
-                throw new ArgumentException("Email cannot be empty");
+                throw new ArgumentException("Email cannot be empty or whitespace", nameof(newEmail));
             }
-            
-            var user = GetUserById(userId);
+
+            var user = await GetUserByIdAsync(userId);
             user.Email = newEmail;
             user.ModifiedDate = DateTime.Now;
-            
-            var success = _userRepository.Update(user);
-            
+            user.ModifiedBy = "admin";
+
+            var success = await _userRepository.UpdateAsync(user);
+
             if (success)
             {
-                _logger.LogInfo($"Updated email for user {userId} to {newEmail}");
+                _logger.LogInfo($"Successfully updated email for user {userId} to {newEmail}");
             }
             else
             {
                 _logger.LogError($"Failed to update email for user {userId}");
             }
-            
+
             return success;
         }
     }
