@@ -216,30 +216,65 @@ func (a *App) detectModifications(result *DiffResult) *DiffResult {
 	i := 0
 
 	for i < len(result.Lines) {
-		// Look for a removed line followed by an added line on the same logical line position
-		if i < len(result.Lines)-1 &&
-			result.Lines[i].Type == "removed" &&
-			result.Lines[i+1].Type == "added" {
+		// Look for sequences of removed lines that might be followed by added lines
+		if i < len(result.Lines) && result.Lines[i].Type == "removed" {
+			// Count consecutive removed lines
+			var removedLines []DiffLine
+			for i < len(result.Lines) && result.Lines[i].Type == "removed" {
+				removedLines = append(removedLines, result.Lines[i])
+				i++
+			}
 
-			removed := result.Lines[i]
-			added := result.Lines[i+1]
+			// Check if we have the same number of added lines following
+			if i < len(result.Lines) && result.Lines[i].Type == "added" {
+				addedStart := i
+				var addedLines []DiffLine
+				for i < len(result.Lines) && result.Lines[i].Type == "added" && len(addedLines) < len(removedLines) {
+					addedLines = append(addedLines, result.Lines[i])
+					i++
+				}
 
-			// Check if they're similar enough to be considered a modification
-			if a.areSimilarLines(removed.LeftLine, added.RightLine) {
-				// Create a modified line
-				newLines = append(newLines, DiffLine{
-					LeftLine:    removed.LeftLine,
-					RightLine:   added.RightLine,
-					LeftNumber:  removed.LeftNumber,
-					RightNumber: added.RightNumber,
-					Type:        "modified",
-				})
-				i += 2 // Skip both the removed and added lines
+				// If we have matching counts and all are similar, treat as modifications
+				if len(removedLines) == len(addedLines) {
+					allSimilar := true
+					for j := 0; j < len(removedLines); j++ {
+						if !a.areSimilarLines(removedLines[j].LeftLine, addedLines[j].RightLine) {
+							allSimilar = false
+							break
+						}
+					}
+
+					if allSimilar {
+						// Create modified lines with matching line numbers
+						for j := 0; j < len(removedLines); j++ {
+							newLines = append(newLines, DiffLine{
+								LeftLine:    removedLines[j].LeftLine,
+								RightLine:   addedLines[j].RightLine,
+								LeftNumber:  removedLines[j].LeftNumber,
+								RightNumber: removedLines[j].LeftNumber, // Use left line number for alignment
+								Type:        "modified",
+							})
+						}
+						continue
+					}
+				}
+
+				// Not all modifications - add removed lines and rewind to handle added lines
+				for _, line := range removedLines {
+					newLines = append(newLines, line)
+				}
+				i = addedStart
 				continue
 			}
+
+			// Just removed lines with no added lines following
+			for _, line := range removedLines {
+				newLines = append(newLines, line)
+			}
+			continue
 		}
 
-		// Not a modification, keep the original line
+		// Handle all other lines
 		newLines = append(newLines, result.Lines[i])
 		i++
 	}
@@ -281,8 +316,8 @@ func (a *App) areSimilarLines(left, right string) bool {
 	// Calculate similarity ratio (1.0 = identical, 0.0 = completely different)
 	similarity := 1.0 - float64(distance)/float64(maxLen)
 
-	// Consider lines similar if they're at least 70% similar
-	return similarity >= 0.70
+	// Consider lines similar if they're at least 50% similar
+	return similarity >= 0.50
 }
 
 // levenshteinDistance calculates the edit distance between two strings
