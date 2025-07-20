@@ -548,11 +548,6 @@ function _handleMinimapClick(event: MouseEvent): void {
 	});
 }
 
-async function _initializeDefaultFiles(): Promise<void> {
-	// Removed automatic file loading to prevent crashes
-	// Users should manually select files to compare
-}
-
 function _toggleDarkMode(): void {
 	isDarkMode = !isDarkMode;
 	const theme = isDarkMode ? "dark" : "light";
@@ -1187,7 +1182,6 @@ onMount(async () => {
 	}
 	const theme = isDarkMode ? "dark" : "light";
 	document.documentElement.setAttribute("data-theme", theme);
-	console.log("Theme initialized:", theme, "isDarkMode:", isDarkMode);
 
 	// Add event listeners
 	document.addEventListener("keydown", handleKeydown);
