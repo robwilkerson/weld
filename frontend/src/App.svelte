@@ -24,7 +24,7 @@ import {
 } from "./utils/diff.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
-import { getDisplayPath, getDisplayFileName } from "./utils/path.js";
+import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -122,6 +122,11 @@ $: if (diffResult && highlighter && !isProcessingHighlight) {
 	highlightedDiffResult = {
 		lines: diffResult.lines.map((line) => processLineHighlighting(line)),
 	};
+	// Also trigger scroll when no highlighter is available
+	setTimeout(() => {
+		isInitialScroll = true;
+		scrollToFirstDiff();
+	}, 500);
 } else if (!diffResult) {
 	highlightedDiffResult = null;
 }
@@ -146,17 +151,24 @@ let dragStartScrollTop = 0;
 // Minimap visibility state
 let showMinimap = true;
 
+// Flag to indicate initial scroll is happening
+let isInitialScroll = false;
+
 // Process chunks when highlightedDiffResult changes
 $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
 }
 
 // Update viewport position when scrolling
-$: if (leftPane && highlightedDiffResult && highlightedDiffResult.lines.length > 0) {
+$: if (
+	leftPane &&
+	highlightedDiffResult &&
+	highlightedDiffResult.lines.length > 0
+) {
 	const scrollHeight = leftPane.scrollHeight;
 	const clientHeight = leftPane.clientHeight;
 	const scrollTop = leftPane.scrollTop;
-	
+
 	viewportTop = (scrollTop / scrollHeight) * 100;
 	viewportHeight = (clientHeight / scrollHeight) * 100;
 }
@@ -203,7 +215,11 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		};
 
 		// After highlighting is done, scroll to first diff
-		setTimeout(() => scrollToFirstDiff(), 200);
+		// Need to wait for DOM to update with new content
+		setTimeout(() => {
+			isInitialScroll = true;
+			scrollToFirstDiff();
+		}, 500);
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
@@ -422,7 +438,14 @@ async function compareBothFiles(): Promise<void> {
 }
 
 function _syncLeftScroll() {
-	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
+	if (
+		isScrollSyncing ||
+		isInitialScroll ||
+		!leftPane ||
+		!rightPane ||
+		!centerGutter
+	)
+		return;
 	isScrollSyncing = true;
 	// Sync vertical scrolling to all panes
 	const scrollTop = leftPane.scrollTop;
@@ -436,7 +459,14 @@ function _syncLeftScroll() {
 }
 
 function _syncRightScroll() {
-	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
+	if (
+		isScrollSyncing ||
+		isInitialScroll ||
+		!leftPane ||
+		!rightPane ||
+		!centerGutter
+	)
+		return;
 	isScrollSyncing = true;
 
 	// Sync vertical scrolling to all panes
@@ -451,7 +481,14 @@ function _syncRightScroll() {
 }
 
 function _syncCenterScroll() {
-	if (isScrollSyncing || !leftPane || !rightPane || !centerGutter) return;
+	if (
+		isScrollSyncing ||
+		isInitialScroll ||
+		!leftPane ||
+		!rightPane ||
+		!centerGutter
+	)
+		return;
 	isScrollSyncing = true;
 	// Sync center gutter scroll to both content panes
 	leftPane.scrollTop = centerGutter.scrollTop;
@@ -466,7 +503,13 @@ function _syncCenterScroll() {
 // ===========================================
 
 function _handleMinimapClick(event: MouseEvent): void {
-	if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter)
+	if (
+		!highlightedDiffResult ||
+		!leftPane ||
+		!rightPane ||
+		!centerGutter ||
+		isInitialScroll
+	)
 		return;
 
 	const minimap = event.currentTarget as HTMLElement;
@@ -1014,39 +1057,47 @@ function _getChunkForLine(lineIndex: number): LineChunk | null {
 
 function _handleViewportMouseDown(event: MouseEvent): void {
 	if (!leftPane) return;
-	
+
 	isDraggingViewport = true;
 	dragStartY = event.clientY;
 	dragStartScrollTop = leftPane.scrollTop;
-	
+
 	// Prevent text selection while dragging
 	event.preventDefault();
-	
+
 	// Add global mouse event listeners
-	document.addEventListener('mousemove', _handleViewportDrag);
-	document.addEventListener('mouseup', _handleViewportMouseUp);
+	document.addEventListener("mousemove", _handleViewportDrag);
+	document.addEventListener("mouseup", _handleViewportMouseUp);
 }
 
 function _handleViewportDrag(event: MouseEvent): void {
-	if (!isDraggingViewport || !leftPane || !rightPane || !centerGutter || !highlightedDiffResult) return;
-	
-	const minimap = document.querySelector('.minimap') as HTMLElement;
+	if (
+		!isDraggingViewport ||
+		isInitialScroll ||
+		!leftPane ||
+		!rightPane ||
+		!centerGutter ||
+		!highlightedDiffResult
+	)
+		return;
+
+	const minimap = document.querySelector(".minimap") as HTMLElement;
 	if (!minimap) return;
-	
+
 	const minimapHeight = minimap.offsetHeight;
 	const deltaY = event.clientY - dragStartY;
 	const deltaPercent = (deltaY / minimapHeight) * 100;
-	
+
 	// Calculate new scroll position
 	const scrollHeight = leftPane.scrollHeight;
 	const newScrollTop = dragStartScrollTop + (deltaPercent / 100) * scrollHeight;
-	
+
 	// Apply scroll to all panes
 	isScrollSyncing = true;
 	leftPane.scrollTop = newScrollTop;
 	rightPane.scrollTop = newScrollTop;
 	centerGutter.scrollTop = newScrollTop;
-	
+
 	requestAnimationFrame(() => {
 		isScrollSyncing = false;
 	});
@@ -1054,10 +1105,10 @@ function _handleViewportDrag(event: MouseEvent): void {
 
 function _handleViewportMouseUp(): void {
 	isDraggingViewport = false;
-	
+
 	// Remove global mouse event listeners
-	document.removeEventListener('mousemove', _handleViewportDrag);
-	document.removeEventListener('mouseup', _handleViewportMouseUp);
+	document.removeEventListener("mousemove", _handleViewportDrag);
+	document.removeEventListener("mouseup", _handleViewportMouseUp);
 }
 
 function scrollToFirstDiff(): void {
@@ -1078,10 +1129,8 @@ function scrollToFirstDiff(): void {
 		// Calculate the line height from CSS variable
 		const computedStyle = window.getComputedStyle(document.documentElement);
 		const lineHeightValue = computedStyle.getPropertyValue("--line-height");
-		const fontSize = 13; // Approximate px value
-		// Parse the em value and convert to px
-		const lineHeight = parseFloat(lineHeightValue) || 1.5;
-		const lineHeightPx = lineHeight * fontSize;
+		// Parse the px value directly
+		const lineHeightPx = parseFloat(lineHeightValue) || 19.2;
 
 		// Calculate the position of the first diff
 		const firstDiffPosition = firstDiffIndex * lineHeightPx;
@@ -1104,10 +1153,15 @@ function scrollToFirstDiff(): void {
 			// Allow sync to resume after a frame
 			requestAnimationFrame(() => {
 				isScrollSyncing = false;
+				// Reset initial scroll flag after a delay
+				setTimeout(() => {
+					isInitialScroll = false;
+				}, 100);
 			});
 		});
 	} catch (error) {
 		console.error("Error in scrollToFirstDiff:", error);
+		isInitialScroll = false;
 	}
 }
 
