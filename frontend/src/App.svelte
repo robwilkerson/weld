@@ -1046,6 +1046,18 @@ function _getChunkForLine(lineIndex: number): LineChunk | null {
 	return lineChunks.find((chunk) => isLineInChunk(lineIndex, chunk)) || null;
 }
 
+function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
+	if (!highlightedDiffResult || lineIndex >= highlightedDiffResult.lines.length) return false;
+	
+	const currentLine = highlightedDiffResult.lines[lineIndex];
+	if (currentLine.type !== 'modified') return false;
+	
+	// Check if previous line is not modified
+	if (lineIndex === 0) return true;
+	const prevLine = highlightedDiffResult.lines[lineIndex - 1];
+	return prevLine.type !== 'modified';
+}
+
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
 // ===========================================
@@ -1391,8 +1403,8 @@ function checkHorizontalScrollbar() {
                     </button>
                   {/if}
                 </div>
-              {:else if line.type === 'modified'}
-                <!-- Modified lines stay as single-line operations -->
+              {:else if line.type === 'modified' && _isFirstOfConsecutiveModified(index)}
+                <!-- Show arrows only on the first of consecutive modified lines -->
                 <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
                   →
                 </button>
