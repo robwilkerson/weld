@@ -1473,12 +1473,17 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .file-header {
     background: #1e2030;
-    border-bottom-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .file-info {
     border-right-color: #363a4f;
     color: #cad3f5;
+  }
+
+  /* Dark mode bottom borders for file info sections */
+  :global([data-theme="dark"]) .file-info.left,
+  :global([data-theme="dark"]) .file-info.right {
+    border-bottom-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .save-btn {
@@ -1726,7 +1731,6 @@ function checkHorizontalScrollbar() {
   .file-header {
     display: grid;
     grid-template-columns: 1fr 72px 1fr;
-    border-bottom: 1px solid #dce0e8;
     background: #e6e9ef;
   }
   
@@ -1736,7 +1740,9 @@ function checkHorizontalScrollbar() {
 
   .action-gutter-header {
     background: #e6e9ef;
-    border-right: 1px solid #dce0e8; /* Match the gutter border below */
+    border-left: 1px solid #dce0e8;
+    border-right: 1px solid #dce0e8;
+    box-sizing: border-box;
   }
 
   .file-info {
@@ -1747,6 +1753,12 @@ function checkHorizontalScrollbar() {
     color: #4c4f69;
     text-align: left;
     position: relative;
+  }
+
+  /* Add bottom borders to left and right file info sections */
+  .file-info.left,
+  .file-info.right {
+    border-bottom: 1px solid #dce0e8;
   }
 
   .file-info:first-child {
@@ -1835,8 +1847,8 @@ function checkHorizontalScrollbar() {
   .center-gutter {
     width: var(--gutter-width);
     background: #e6e9ef;
-    /* border-left: 1px solid #dce0e8; */ /* Removed to match content panes */
-    border-right: 1px solid #dce0e8; /* Visual separator from right pane */
+    border-left: 1px solid #dce0e8;
+    border-right: 1px solid #dce0e8;
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
@@ -1845,6 +1857,7 @@ function checkHorizontalScrollbar() {
     /* Hide scrollbar - users should scroll via content panes */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
+    box-sizing: border-box;
   }
 
   .gutter-content {
@@ -1915,6 +1928,7 @@ function checkHorizontalScrollbar() {
     flex-shrink: 0;
     overflow: hidden;
     position: relative;
+    display: none; /* Temporarily hidden to test alignment */
   }
 
   .minimap {
@@ -2441,8 +2455,8 @@ function checkHorizontalScrollbar() {
   /* Dark mode gutter arrows */
   :global([data-theme="dark"]) .center-gutter {
     background: #1e2030;
-    /* border-left-color: #363a4f; */ /* Removed - no borders */
-    border-right-color: #363a4f; /* Dark mode border color */
+    border-left-color: #363a4f;
+    border-right-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .gutter-arrow {
