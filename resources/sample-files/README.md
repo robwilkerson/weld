@@ -44,13 +44,16 @@ ${test_scenario}-(1|2).${file_extension}
 
     Tests when existing lines are changed (not just added/removed). The files contain multiple types of modifications including method signature changes (sync to async), parameter modifications, additional logic, and refactored implementations. This exercises the similarity detection algorithm and inline diff highlighting for modified lines.
 
+7. Moved content (`moved-*.sql`)
+
+    Tests when blocks of code are relocated within the file. A 10-line function block (trigger function and CREATE TRIGGER statement) has been moved from after the index creation to near the end of the file. This tests how the diff tool handles relocated code blocks without modifications.
+
 ### Coming Soon(-ish)
 
-1. Moved content (`moved-*.cpp`) - Test when blocks of code are relocated within the file
-2. Mixed changes (`mixed-*.rb`) - Test files with multiple types of changes (adds, deletes, modifications)
-3. Large files (`large-*.php`) - Test performance with files containing thousands of lines
-4. Binary files - Test handling of non-text files (images, PDFs, etc.)
-5. Encoding differences - Test files with different character encodings
-6. Line ending differences - Test files with different line endings (CRLF vs LF)
-7. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
-8. Conflict markers - Test files containing git merge conflict markers
+1. Mixed changes (`mixed-*.rb`) - Test files with multiple types of changes (adds, deletes, modifications)
+2. Large files (`large-*.php`) - Test performance with files containing thousands of lines
+3. Binary files - Test handling of non-text files (images, PDFs, etc.)
+4. Encoding differences - Test files with different character encodings
+5. Line ending differences - Test files with different line endings (CRLF vs LF)
+6. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
+7. Conflict markers - Test files containing git merge conflict markers
