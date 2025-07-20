@@ -1818,6 +1818,7 @@ function checkHorizontalScrollbar() {
     flex: 1;
     display: flex;
     overflow: hidden;
+    position: relative;
   }
 
   .left-pane, .right-pane {
@@ -1924,11 +1925,12 @@ function checkHorizontalScrollbar() {
   .minimap-pane {
     width: 18px;
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    flex-shrink: 0;
     overflow: hidden;
-    position: relative;
-    display: none; /* Temporarily hidden to test alignment */
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10; /* Ensure it's above other content */
   }
 
   .minimap {
@@ -1969,7 +1971,6 @@ function checkHorizontalScrollbar() {
   /* Dark mode minimap */
   :global([data-theme="dark"]) .minimap-pane {
     background: #1e2030;
-    border-left-color: #363a4f;
   }
 
   :global([data-theme="dark"]) .minimap-same {
