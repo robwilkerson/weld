@@ -135,9 +135,26 @@ interface LineChunk {
 
 let lineChunks: LineChunk[] = [];
 
+// Viewport tracking for minimap
+let viewportTop = 0;
+let viewportHeight = 0;
+let isDraggingViewport = false;
+let dragStartY = 0;
+let dragStartScrollTop = 0;
+
 // Process chunks when highlightedDiffResult changes
 $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
+}
+
+// Update viewport position when scrolling
+$: if (leftPane && highlightedDiffResult && highlightedDiffResult.lines.length > 0) {
+	const scrollHeight = leftPane.scrollHeight;
+	const clientHeight = leftPane.clientHeight;
+	const scrollTop = leftPane.scrollTop;
+	
+	viewportTop = (scrollTop / scrollHeight) * 100;
+	viewportHeight = (clientHeight / scrollHeight) * 100;
 }
 
 // ===========================================
@@ -987,6 +1004,58 @@ function _getChunkForLine(lineIndex: number): LineChunk | null {
 	return lineChunks.find((chunk) => isLineInChunk(lineIndex, chunk)) || null;
 }
 
+// ===========================================
+// MINIMAP VIEWPORT DRAGGING
+// ===========================================
+
+function _handleViewportMouseDown(event: MouseEvent): void {
+	if (!leftPane) return;
+	
+	isDraggingViewport = true;
+	dragStartY = event.clientY;
+	dragStartScrollTop = leftPane.scrollTop;
+	
+	// Prevent text selection while dragging
+	event.preventDefault();
+	
+	// Add global mouse event listeners
+	document.addEventListener('mousemove', _handleViewportDrag);
+	document.addEventListener('mouseup', _handleViewportMouseUp);
+}
+
+function _handleViewportDrag(event: MouseEvent): void {
+	if (!isDraggingViewport || !leftPane || !rightPane || !centerGutter || !highlightedDiffResult) return;
+	
+	const minimap = document.querySelector('.minimap') as HTMLElement;
+	if (!minimap) return;
+	
+	const minimapHeight = minimap.offsetHeight;
+	const deltaY = event.clientY - dragStartY;
+	const deltaPercent = (deltaY / minimapHeight) * 100;
+	
+	// Calculate new scroll position
+	const scrollHeight = leftPane.scrollHeight;
+	const newScrollTop = dragStartScrollTop + (deltaPercent / 100) * scrollHeight;
+	
+	// Apply scroll to all panes
+	isScrollSyncing = true;
+	leftPane.scrollTop = newScrollTop;
+	rightPane.scrollTop = newScrollTop;
+	centerGutter.scrollTop = newScrollTop;
+	
+	requestAnimationFrame(() => {
+		isScrollSyncing = false;
+	});
+}
+
+function _handleViewportMouseUp(): void {
+	isDraggingViewport = false;
+	
+	// Remove global mouse event listeners
+	document.removeEventListener('mousemove', _handleViewportDrag);
+	document.removeEventListener('mouseup', _handleViewportMouseUp);
+}
+
 function scrollToFirstDiff(): void {
 	try {
 		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
@@ -1313,6 +1382,12 @@ function checkHorizontalScrollbar() {
                   ></div>
                 {/if}
               {/each}
+              <!-- Viewport indicator -->
+              <div 
+                class="minimap-viewport" 
+                style="top: {viewportTop}%; height: {viewportHeight}%;"
+                on:mousedown={_handleViewportMouseDown}
+              ></div>
             </div>
           </div>
         {/if}
@@ -1968,9 +2043,38 @@ function checkHorizontalScrollbar() {
     opacity: 0.5;
   }
 
+  /* Viewport indicator shows current visible area */
+  .minimap-viewport {
+    position: absolute;
+    width: 100%;
+    left: 0;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    cursor: grab;
+    transition: background 0.2s ease;
+  }
+  
+  .minimap-viewport:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  .minimap-viewport:active {
+    cursor: grabbing;
+  }
+
   /* Dark mode minimap */
   :global([data-theme="dark"]) .minimap-pane {
     background: #1e2030;
+  }
+
+  :global([data-theme="dark"]) .minimap-viewport {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  :global([data-theme="dark"]) .minimap-viewport:hover {
+    background: rgba(255, 255, 255, 0.15);
   }
 
   :global([data-theme="dark"]) .minimap-same {
