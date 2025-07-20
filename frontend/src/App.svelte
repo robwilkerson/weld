@@ -2212,6 +2212,7 @@ function checkHorizontalScrollbar() {
     min-height: 100%; /* Ensure minimum height matches container */
   }
 
+
   /* Old approach - replaced with full-height gutter on panes
   .pane-content::after {
     content: '';
@@ -2342,6 +2343,11 @@ function checkHorizontalScrollbar() {
   .line-modified {
     /* background: rgba(30, 102, 245, 0.1); */ /* Temporarily removed to test borders */
     /* border-left: 3px solid #1e66f5; */ /* Removed blue accent border */
+  }
+
+  /* Add padding to all lines to prevent minimap overlap */
+  .line {
+    padding-right: 20px;
   }
 
   .line-added .line-number,
