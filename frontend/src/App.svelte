@@ -2028,15 +2028,15 @@ function checkHorizontalScrollbar() {
   }
 
   .minimap-added {
-    background: rgba(33, 150, 243, 0.7);
+    background: rgba(33, 150, 243, 0.4);
   }
 
   .minimap-removed {
-    background: rgba(33, 150, 243, 0.7);
+    background: rgba(33, 150, 243, 0.4);
   }
 
   .minimap-modified {
-    background: rgba(255, 193, 7, 0.8);
+    background: rgba(255, 193, 7, 0.5);
   }
 
   .minimap-chunk:hover {
@@ -2082,15 +2082,15 @@ function checkHorizontalScrollbar() {
   }
 
   :global([data-theme="dark"]) .minimap-added {
-    background: rgba(100, 181, 246, 0.7);
+    background: rgba(100, 181, 246, 0.4);
   }
 
   :global([data-theme="dark"]) .minimap-removed {
-    background: rgba(100, 181, 246, 0.7);
+    background: rgba(100, 181, 246, 0.4);
   }
 
   :global([data-theme="dark"]) .minimap-modified {
-    background: rgba(255, 183, 77, 0.8);
+    background: rgba(255, 183, 77, 0.5);
   }
 
   .gutter-line {
