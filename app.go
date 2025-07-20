@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -28,11 +29,15 @@ type App struct {
 	ctx              context.Context
 	InitialLeftFile  string
 	InitialRightFile string
+	minimapVisible   bool
+	minimapMenuItem  *menu.MenuItem
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		minimapVisible: true, // Default to showing minimap
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -259,7 +264,7 @@ func (a *App) areSimilarLines(left, right string) bool {
 
 	// Calculate similarity using Levenshtein distance ratio
 	distance := a.levenshteinDistance(left, right)
-	
+
 	// Use rune length for proper Unicode handling
 	leftLen := len([]rune(left))
 	rightLen := len([]rune(right))
@@ -285,7 +290,7 @@ func (a *App) levenshteinDistance(s1, s2 string) int {
 	// Convert strings to rune slices for proper Unicode handling
 	r1 := []rune(s1)
 	r2 := []rune(s2)
-	
+
 	if len(r1) == 0 {
 		return len(r2)
 	}
@@ -522,4 +527,24 @@ func (a *App) QuitWithoutSaving() {
 
 	// Quit the application
 	runtime.Quit(a.ctx)
+}
+
+// GetMinimapVisible returns the current minimap visibility state
+func (a *App) GetMinimapVisible() bool {
+	return a.minimapVisible
+}
+
+// SetMinimapVisible sets the minimap visibility state
+func (a *App) SetMinimapVisible(visible bool) {
+	a.minimapVisible = visible
+	// Update the menu checkmark
+	if a.minimapMenuItem != nil {
+		a.minimapMenuItem.Checked = visible
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
+}
+
+// SetMinimapMenuItem stores a reference to the minimap menu item
+func (a *App) SetMinimapMenuItem(item *menu.MenuItem) {
+	a.minimapMenuItem = item
 }

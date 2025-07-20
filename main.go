@@ -6,14 +6,55 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// BuildMenu creates the application menu
+func BuildMenu(app *App) *menu.Menu {
+	appMenu := menu.NewMenu()
+
+	// On macOS, add the app menu first
+	if goruntime.GOOS == "darwin" {
+		appMenu.Append(menu.AppMenu())
+	}
+
+	// File menu
+	fileMenu := appMenu.AddSubmenu("File")
+	fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+		runtime.Quit(app.ctx)
+	})
+
+	// Edit menu
+	appMenu.Append(menu.EditMenu())
+
+	// View menu
+	viewMenu := appMenu.AddSubmenu("View")
+	minimapItem := viewMenu.AddText("Show Minimap", keys.CmdOrCtrl("m"), func(cd *menu.CallbackData) {
+		// Toggle minimap visibility
+		app.SetMinimapVisible(!app.GetMinimapVisible())
+		runtime.EventsEmit(app.ctx, "toggle-minimap", app.GetMinimapVisible())
+	})
+
+	// Store reference to menu item for dynamic updates
+	app.SetMinimapMenuItem(minimapItem)
+
+	// Set initial checkmark state
+	if app.GetMinimapVisible() {
+		minimapItem.Checked = true
+	}
+
+	return appMenu
+}
 
 func main() {
 	// Parse command line arguments
@@ -68,6 +109,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnBeforeClose:    app.OnBeforeClose,
+		Menu:             BuildMenu(app),
 		Bind: []interface{}{
 			app,
 		},

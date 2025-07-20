@@ -682,7 +682,7 @@ func TestApp_areSimilarLines(t *testing.T) {
 		{"one empty long vs content", "", "this is a long line with content", false},
 		{"content vs empty long", "this is a long line with content", "", false},
 		{"very similar", "abcdefghijklmnop", "abcdefghijklmnpq", true},
-		{"barely similar", "abcdefghij", "abcdefXYZj", true},          // 70% similar
+		{"barely similar", "abcdefghij", "abcdefXYZj", true},        // 70% similar
 		{"just under threshold", "abcdefghij", "abcXYZWVUj", false}, // ~60% similar
 	}
 

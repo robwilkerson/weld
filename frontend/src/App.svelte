@@ -7,6 +7,7 @@ import {
 	type DiffResult,
 	DiscardAllChanges,
 	GetInitialFiles,
+	GetMinimapVisible,
 	HasUnsavedChanges,
 	QuitWithoutSaving,
 	RemoveLineFromFile,
@@ -141,6 +142,9 @@ let viewportHeight = 0;
 let isDraggingViewport = false;
 let dragStartY = 0;
 let dragStartScrollTop = 0;
+
+// Minimap visibility state
+let showMinimap = true;
 
 // Process chunks when highlightedDiffResult changes
 $: if (highlightedDiffResult) {
@@ -1181,6 +1185,16 @@ onMount(async () => {
 	}
 	document.addEventListener("click", handleClickOutside);
 
+	// Listen for minimap toggle event from menu
+	EventsOn("toggle-minimap", (visible: boolean) => {
+		showMinimap = visible;
+	});
+
+	// Get initial minimap visibility state
+	GetMinimapVisible().then((visible) => {
+		showMinimap = visible;
+	});
+
 	// Cleanup on destroy
 	return () => {
 		document.removeEventListener("keydown", handleKeydown);
@@ -1368,7 +1382,7 @@ function checkHorizontalScrollbar() {
         </div>
         
         <!-- Minimap Pane -->
-        {#if highlightedDiffResult && highlightedDiffResult.lines.length > 0}
+        {#if showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
           <div class="minimap-pane">
             <div class="minimap" on:click={_handleMinimapClick}>
               {#each lineChunks as chunk}

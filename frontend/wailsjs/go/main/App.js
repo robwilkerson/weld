@@ -18,6 +18,10 @@ export function GetInitialFiles() {
   return window['go']['main']['App']['GetInitialFiles']();
 }
 
+export function GetMinimapVisible() {
+  return window['go']['main']['App']['GetMinimapVisible']();
+}
+
 export function GetUnsavedFilesList() {
   return window['go']['main']['App']['GetUnsavedFilesList']();
 }
@@ -52,4 +56,12 @@ export function SaveSelectedFilesAndQuit(arg1) {
 
 export function SelectFile() {
   return window['go']['main']['App']['SelectFile']();
+}
+
+export function SetMinimapMenuItem(arg1) {
+  return window['go']['main']['App']['SetMinimapMenuItem'](arg1);
+}
+
+export function SetMinimapVisible(arg1) {
+  return window['go']['main']['App']['SetMinimapVisible'](arg1);
 }
