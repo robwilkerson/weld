@@ -72,6 +72,42 @@ let fileSelections: Record<string, boolean> = {};
 // Menu state
 let _showMenu: boolean = false;
 
+// Current diff tracking
+let currentDiffChunkIndex: number = -1;
+
+// Compute diff chunks (groups of consecutive non-"same" lines)
+$: diffChunks = (() => {
+	if (!highlightedDiffResult) return [];
+	
+	const chunks: { startIndex: number; endIndex: number }[] = [];
+	let inDiff = false;
+	let startIndex = -1;
+	
+	highlightedDiffResult.lines.forEach((line, index) => {
+		if (line.type !== "same") {
+			if (!inDiff) {
+				// Start of a new diff chunk
+				inDiff = true;
+				startIndex = index;
+			}
+		} else {
+			if (inDiff) {
+				// End of diff chunk
+				chunks.push({ startIndex, endIndex: index - 1 });
+				inDiff = false;
+			}
+		}
+	});
+	
+	// Handle case where file ends with a diff
+	if (inDiff && startIndex !== -1) {
+		chunks.push({ startIndex, endIndex: highlightedDiffResult.lines.length - 1 });
+	}
+	
+	return chunks;
+})();
+
+
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
 // Only show "files are identical" banner if they're identical on disk
@@ -411,6 +447,7 @@ async function compareBothFiles(): Promise<void> {
 	try {
 		_isComparing = true;
 		_errorMessage = "";
+		currentDiffChunkIndex = -1; // Reset current diff tracking
 
 		diffResult = await CompareFiles(leftFilePath, rightFilePath);
 
@@ -926,6 +963,8 @@ function handleKeydown(event: KeyboardEvent): void {
 		saveRightFile,
 		leftFilePath,
 		rightFilePath,
+		jumpToNextDiff,
+		jumpToPrevDiff,
 	);
 }
 
@@ -1071,6 +1110,7 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	return prevLine.type !== "modified";
 }
 
+
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
 // ===========================================
@@ -1131,6 +1171,111 @@ function _handleViewportMouseUp(): void {
 	document.removeEventListener("mouseup", _handleViewportMouseUp);
 }
 
+function playInvalidSound(): void {
+	// Create a simple beep sound
+	const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+	const oscillator = audioContext.createOscillator();
+	const gainNode = audioContext.createGain();
+	
+	oscillator.connect(gainNode);
+	gainNode.connect(audioContext.destination);
+	
+	oscillator.frequency.value = 200; // Low frequency for error sound
+	oscillator.type = 'sine';
+	gainNode.gain.value = 0.1; // Low volume
+	
+	oscillator.start();
+	oscillator.stop(audioContext.currentTime + 0.1); // 100ms beep
+}
+
+function jumpToNextDiff(): void {
+	if (!diffChunks.length || !leftPane || !rightPane || !centerGutter) {
+		return;
+	}
+
+	// Check if we're at the last chunk
+	if (currentDiffChunkIndex >= diffChunks.length - 1) {
+		// Already at the last diff, play sound and do nothing
+		playInvalidSound();
+		return;
+	}
+
+	// Find the next chunk
+	let nextChunkIndex = -1;
+	if (currentDiffChunkIndex === -1) {
+		// No current chunk, jump to first
+		nextChunkIndex = 0;
+	} else {
+		// Go to next chunk
+		nextChunkIndex = currentDiffChunkIndex + 1;
+	}
+
+	currentDiffChunkIndex = nextChunkIndex;
+	const chunk = diffChunks[nextChunkIndex];
+	scrollToLine(chunk.startIndex);
+}
+
+function jumpToPrevDiff(): void {
+	if (!diffChunks.length || !leftPane || !rightPane || !centerGutter) {
+		return;
+	}
+
+	// Check if we're at the first chunk
+	if (currentDiffChunkIndex === 0) {
+		// Already at the first diff, play sound and do nothing
+		playInvalidSound();
+		return;
+	}
+
+	// Find the previous chunk
+	let prevChunkIndex = -1;
+	if (currentDiffChunkIndex === -1) {
+		// No current chunk, jump to last
+		prevChunkIndex = diffChunks.length - 1;
+	} else {
+		// Go to previous chunk
+		prevChunkIndex = currentDiffChunkIndex - 1;
+	}
+
+	currentDiffChunkIndex = prevChunkIndex;
+	const chunk = diffChunks[prevChunkIndex];
+	scrollToLine(chunk.startIndex);
+}
+
+function scrollToLine(lineIndex: number): void {
+	if (!leftPane || !rightPane || !centerGutter) {
+		return;
+	}
+
+	const lineHeight = parseInt(
+		getComputedStyle(document.documentElement).getPropertyValue(
+			"--line-height",
+		) || "20",
+	);
+
+	// Calculate the target scroll position to center the line in view
+	const targetScrollTop = lineIndex * lineHeight - leftPane.clientHeight / 2 + lineHeight / 2;
+
+	// Ensure we don't scroll past the bounds
+	const maxScroll = leftPane.scrollHeight - leftPane.clientHeight;
+	const clampedScrollTop = Math.max(0, Math.min(targetScrollTop, maxScroll));
+
+	// Temporarily disable scroll syncing to prevent conflicts
+	isScrollSyncing = true;
+	
+	// Use requestAnimationFrame for smoother scrolling
+	requestAnimationFrame(() => {
+		leftPane.scrollTop = clampedScrollTop;
+		rightPane.scrollTop = clampedScrollTop;
+		centerGutter.scrollTop = clampedScrollTop;
+		
+		// Re-enable scroll syncing after a short delay
+		requestAnimationFrame(() => {
+			isScrollSyncing = false;
+		});
+	});
+}
+
 function scrollToFirstDiff(): void {
 	try {
 		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
@@ -1176,6 +1321,11 @@ function scrollToFirstDiff(): void {
 				// Reset initial scroll flag after a delay
 				setTimeout(() => {
 					isInitialScroll = false;
+					// Set the current diff chunk after scrolling completes
+					// This ensures diffChunks is populated
+					if (diffChunks.length > 0 && currentDiffChunkIndex === -1) {
+						currentDiffChunkIndex = 0;
+					}
 				}, 100);
 			});
 		});
@@ -2849,5 +2999,6 @@ function checkHorizontalScrollbar() {
   :global([data-theme="dark"]) .btn-tertiary:hover {
     background: #5b6078;
   }
+
 
 </style>

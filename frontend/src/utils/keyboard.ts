@@ -3,7 +3,7 @@
  */
 
 /**
- * Handles keyboard shortcuts for save operations
+ * Handles keyboard shortcuts for save operations and navigation
  */
 export function handleKeydown(
 	event: KeyboardEvent,
@@ -11,6 +11,8 @@ export function handleKeydown(
 	saveRightFile: () => void,
 	leftPath: string,
 	rightPath: string,
+	jumpToNextDiff?: () => void,
+	jumpToPrevDiff?: () => void,
 ): void {
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
@@ -23,6 +25,17 @@ export function handleKeydown(
 		}
 		if (rightPath) {
 			saveRightFile();
+		}
+	}
+
+	// Navigation shortcuts: Arrow keys and vim keybindings
+	if (jumpToNextDiff && jumpToPrevDiff) {
+		if (event.key === "ArrowDown" || event.key === "j") {
+			event.preventDefault();
+			jumpToNextDiff();
+		} else if (event.key === "ArrowUp" || event.key === "k") {
+			event.preventDefault();
+			jumpToPrevDiff();
 		}
 	}
 }
