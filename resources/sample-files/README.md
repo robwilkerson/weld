@@ -58,9 +58,12 @@ ${test_scenario}-(1|2).${file_extension}
     - Deletion: Removed `legacy_authenticate` method
     - Moved code: `notify_user` method relocated from bottom to middle of class
 
+9. Large files (`large-*.php`)
+
+    Test performance with files containing thousands of lines. The files are ~2000+ lines each with extensive changes throughout including new methods, enhanced implementations, and modified signatures. Performance testing shows excellent results with ~78ms backend processing and ~735ms total time for 3375 lines.
+
 ### Coming Soon(-ish)
 
-1. Large files (`large-*.php`) - Test performance with files containing thousands of lines
 2. Binary files - Test handling of non-text files (images, PDFs, etc.)
 3. Encoding differences - Test files with different character encodings
 4. Line ending differences - Test files with different line endings (CRLF vs LF)
