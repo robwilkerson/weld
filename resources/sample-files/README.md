@@ -67,5 +67,6 @@ ${test_scenario}-(1|2).${file_extension}
 2. Binary files - Test handling of non-text files (images, PDFs, etc.)
 3. Encoding differences - Test files with different character encodings
 4. Line ending differences - Test files with different line endings (CRLF vs LF)
+5. End of file differences - Test files that differ only in the presence of a trailing newline character
 5. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
 6. Conflict markers - Test files containing git merge conflict markers
