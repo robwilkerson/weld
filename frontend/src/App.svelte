@@ -530,18 +530,30 @@ function _handleMinimapClick(event: MouseEvent): void {
 	);
 
 	// Calculate scroll position to show the target line
-	const lineHeightPx = 19.5; // Approximate line height in pixels (1.5em * 13px font)
+	const lineHeightPx = 19.2; // Line height from CSS variable
 	const targetScrollTop = boundedLineIndex * lineHeightPx;
 
 	// Get viewport height to center the target
 	const viewportHeight = leftPane.clientHeight;
 	const scrollTo = Math.max(0, targetScrollTop - viewportHeight / 2);
 
+	// Calculate the maximum scrollable position for each pane
+	const leftMaxScroll = leftPane.scrollHeight - leftPane.clientHeight;
+	const centerMaxScroll = centerGutter.scrollHeight - centerGutter.clientHeight;
+	
+	// Clamp the scroll position to the actual scrollable range
+	const clampedScrollLeft = Math.min(scrollTo, leftMaxScroll);
+	const clampedScrollCenter = Math.min(scrollTo, centerMaxScroll);
+	
 	// Sync scroll across all panes
 	isScrollSyncing = true;
-	leftPane.scrollTop = scrollTo;
-	rightPane.scrollTop = scrollTo;
-	centerGutter.scrollTop = scrollTo;
+	
+	// Use the minimum of the clamped values to keep all panes aligned
+	const finalScroll = Math.min(clampedScrollLeft, clampedScrollCenter);
+	
+	leftPane.scrollTop = finalScroll;
+	rightPane.scrollTop = finalScroll;
+	centerGutter.scrollTop = finalScroll;
 
 	requestAnimationFrame(() => {
 		isScrollSyncing = false;
@@ -1047,15 +1059,16 @@ function _getChunkForLine(lineIndex: number): LineChunk | null {
 }
 
 function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
-	if (!highlightedDiffResult || lineIndex >= highlightedDiffResult.lines.length) return false;
-	
+	if (!highlightedDiffResult || lineIndex >= highlightedDiffResult.lines.length)
+		return false;
+
 	const currentLine = highlightedDiffResult.lines[lineIndex];
-	if (currentLine.type !== 'modified') return false;
-	
+	if (currentLine.type !== "modified") return false;
+
 	// Check if previous line is not modified
 	if (lineIndex === 0) return true;
 	const prevLine = highlightedDiffResult.lines[lineIndex - 1];
-	return prevLine.type !== 'modified';
+	return prevLine.type !== "modified";
 }
 
 // ===========================================

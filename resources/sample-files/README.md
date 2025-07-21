@@ -48,12 +48,21 @@ ${test_scenario}-(1|2).${file_extension}
 
     Tests when blocks of code are relocated within the file. A 10-line function block (trigger function and CREATE TRIGGER statement) has been moved from after the index creation to near the end of the file. This tests how the diff tool handles relocated code blocks without modifications.
 
+8. Mixed changes (`mixed-*.rb`)
+
+    Test files with multiple types of changes including:
+    - Multi-line addition: New `check_email_uniqueness` method
+    - Single-line addition: Cache check in `find_user` method
+    - Multi-line modification: Enhanced `update_email` method with validation and notifications
+    - Single-line modification: Method name change from `validate_email` to `validate_email_format`
+    - Deletion: Removed `legacy_authenticate` method
+    - Moved code: `notify_user` method relocated from bottom to middle of class
+
 ### Coming Soon(-ish)
 
-1. Mixed changes (`mixed-*.rb`) - Test files with multiple types of changes (adds, deletes, modifications)
-2. Large files (`large-*.php`) - Test performance with files containing thousands of lines
-3. Binary files - Test handling of non-text files (images, PDFs, etc.)
-4. Encoding differences - Test files with different character encodings
-5. Line ending differences - Test files with different line endings (CRLF vs LF)
-6. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
-7. Conflict markers - Test files containing git merge conflict markers
+1. Large files (`large-*.php`) - Test performance with files containing thousands of lines
+2. Binary files - Test handling of non-text files (images, PDFs, etc.)
+3. Encoding differences - Test files with different character encodings
+4. Line ending differences - Test files with different line endings (CRLF vs LF)
+5. Whitespace differences - Test files that differ only in whitespace (tabs vs spaces, trailing spaces)
+6. Conflict markers - Test files containing git merge conflict markers
