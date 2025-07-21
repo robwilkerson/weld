@@ -111,6 +111,15 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * Use pull requests for all merges to `main`
 * Run `wails build` and ensure no errors before merging
 
+### Pre-Commit Checklist
+
+**CRITICAL: Complete these checks before EVERY commit:**
+
+- [ ] Verify all changes are necessary - remove any failed attempts or debugging code
+- [ ] Run formatters: `go fmt` and `npx @biomejs/biome check --write frontend/src/`
+- [ ] Run tests if code was changed
+- [ ] Check commit subject line length: `echo -n "subject line" | wc -c` (MUST be ≤50 characters)
+
 ### Testing and Validation
 
 * Test manually using sample files in `resources/sample-files/`
