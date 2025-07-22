@@ -1867,7 +1867,7 @@ function checkHorizontalScrollbar() {
 
   .header {
     padding: 1rem;
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
     background: #e6e9ef;
     position: relative;
   }
@@ -1903,7 +1903,7 @@ function checkHorizontalScrollbar() {
     right: 0;
     margin-top: 0.5rem;
     background: #eff1f5;
-    border: 1px solid #dce0e8;
+    border: 1px solid #9ca0b0;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-width: 150px;
@@ -1931,7 +1931,7 @@ function checkHorizontalScrollbar() {
   }
 
   .menu-item:not(:last-child) {
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
   }
 
   /* Custom scrollbar styling for light mode (Catppuccin Latte) */
@@ -2057,8 +2057,8 @@ function checkHorizontalScrollbar() {
 
   .action-gutter-header {
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
+    border-left: 1px solid #9ca0b0;
+    border-right: 1px solid #9ca0b0;
     box-sizing: border-box;
   }
 
@@ -2075,7 +2075,7 @@ function checkHorizontalScrollbar() {
   /* Add bottom borders to left and right file info sections */
   .file-info.left,
   .file-info.right {
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
   }
 
   .file-info:first-child {
@@ -2165,8 +2165,8 @@ function checkHorizontalScrollbar() {
   .center-gutter {
     width: var(--gutter-width);
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
+    border-left: 1px solid #9ca0b0;
+    border-right: 1px solid #9ca0b0;
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
@@ -2439,7 +2439,7 @@ function checkHorizontalScrollbar() {
   
   .line-spacer .line-number {
     background: transparent !important;
-    border-right: 1px solid #dce0e8;
+    border-right: 1px solid #9ca0b0;
   }
   
 
