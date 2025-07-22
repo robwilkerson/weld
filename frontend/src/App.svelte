@@ -2022,7 +2022,9 @@ function checkHorizontalScrollbar() {
 
   .compare-btn:disabled {
     background: #94a3b8;
+    border-color: #94a3b8;
     cursor: not-allowed;
+    opacity: 0.7;
   }
 
 
