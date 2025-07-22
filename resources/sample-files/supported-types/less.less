@@ -1,0 +1,22 @@
+// Less CSS preprocessor example
+@base: #f938ab;
+@width: 10px;
+@height: @width + 10px;
+
+.header {
+  width: @width;
+  height: @height;
+  color: saturate(@base, 5%);
+  background-color: spin(lighten(@base, 25%), 8);
+}
+
+// Parametric mixins
+.border-radius(@radius: 5px) {
+  -webkit-border-radius: @radius;
+  -moz-border-radius: @radius;
+  border-radius: @radius;
+}
+
+.button {
+  .border-radius(10px);
+}

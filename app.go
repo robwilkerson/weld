@@ -72,7 +72,7 @@ func (a *App) SelectFile() (string, error) {
 			fmt.Printf("Opening file dialog in home directory: %s\n", defaultDir)
 		}
 	} else {
-		defaultDir = filepath.Join(cwd, "resources", "sample-files")
+		defaultDir = filepath.Join(cwd, "resources", "sample-files", "supported-types")
 		fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
 	}
 
