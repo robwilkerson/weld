@@ -2157,7 +2157,7 @@ function checkHorizontalScrollbar() {
     left: 0;
     width: calc(var(--line-number-width, 32px) + 1px);
     bottom: 0;
-    background: #e6e9ef;
+    background: #dce0e8;
     pointer-events: none;
     z-index: 1;
   }
@@ -2458,7 +2458,7 @@ function checkHorizontalScrollbar() {
     padding: 0 5px 0 15px;
     text-align: right;
     color: #6c6f85;
-    background: #e6e9ef;
+    background: #dce0e8;
     border: none; /* Explicitly remove all borders */
     user-select: none;
     flex-shrink: 0;
@@ -2535,7 +2535,7 @@ function checkHorizontalScrollbar() {
   .line-added .line-number,
   .line-removed .line-number,
   .line-modified .line-number {
-    background: #e6e9ef; /* Keep line numbers opaque */
+    background: #dce0e8; /* Keep line numbers opaque */
     color: #1e66f5; /* Blue text for diff line numbers */
   }
 
