@@ -1110,6 +1110,14 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	return prevLine.type !== "modified";
 }
 
+function isInCurrentDiffChunk(lineIndex: number): boolean {
+	if (currentDiffChunkIndex === -1 || !diffChunks[currentDiffChunkIndex]) {
+		return false;
+	}
+	
+	const chunk = diffChunks[currentDiffChunkIndex];
+	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+}
 
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
@@ -1521,7 +1529,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.leftNumber || ' '}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1596,7 +1604,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.rightNumber || ' '}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
@@ -2516,8 +2524,7 @@ function checkHorizontalScrollbar() {
   .line-added,
   .line-removed,
   .line-modified {
-    /* background: rgba(30, 102, 245, 0.1); */ /* Temporarily removed to test borders */
-    /* border-left: 3px solid #1e66f5; */ /* Removed blue accent border */
+    background: rgba(30, 102, 245, 0.1); /* Light blue chunk background */
   }
 
   /* Add padding to all lines to prevent minimap overlap */
@@ -3000,5 +3007,20 @@ function checkHorizontalScrollbar() {
     background: #5b6078;
   }
 
+  /* Current diff highlighting */
+  .line.current-diff {
+    position: relative;
+    background-color: rgba(30, 102, 245, 0.25) !important; /* Stronger blue for light mode */
+    box-shadow: 
+      inset 3px 0 0 #1e66f5,
+      inset -3px 0 0 #1e66f5;
+  }
+  
+  :global([data-theme="dark"]) .line.current-diff {
+    background-color: rgba(138, 173, 244, 0.35) !important; /* Stronger blue for dark mode */
+    box-shadow: 
+      inset 3px 0 0 #8aadf4,
+      inset -3px 0 0 #8aadf4;
+  }
 
 </style>
