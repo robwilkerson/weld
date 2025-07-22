@@ -25,6 +25,7 @@ import {
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
+import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -1471,10 +1472,12 @@ function checkHorizontalScrollbar() {
     </div>
     <div class="file-selectors">
       <button class="file-btn" on:click={_selectLeftFile}>
-        📂 {leftFileName}
+        <span class="file-icon" title={getFileTypeName(leftFileName)}>{@html getFileIcon(leftFileName, isDarkMode)}</span>
+        <span class="file-name">{leftFileName}</span>
       </button>
       <button class="file-btn" on:click={_selectRightFile}>
-        📂 {rightFileName}
+        <span class="file-icon" title={getFileTypeName(rightFileName)}>{@html getFileIcon(rightFileName, isDarkMode)}</span>
+        <span class="file-name">{rightFileName}</span>
       </button>
       <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || _isComparing || _hasCompletedComparison}>
         {#if _isComparing}
@@ -1774,6 +1777,15 @@ function checkHorizontalScrollbar() {
     background: #414559;
   }
 
+  :global([data-theme="dark"]) .file-icon {
+    background: transparent;
+    border-right-color: #5b6078;
+  }
+
+  :global([data-theme="dark"]) .file-btn:hover .file-icon {
+    background: transparent;
+  }
+
   :global([data-theme="dark"]) .compare-btn {
     background: #8aadf4;
     border-color: #8aadf4;
@@ -1990,19 +2002,53 @@ function checkHorizontalScrollbar() {
   }
 
   .file-btn {
-    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
     border: 1px solid #acb0be;
     border-radius: 4px;
     background: #dce0e8;
     cursor: pointer;
     font-size: 0.9rem;
-    min-width: 200px;
+    width: auto;
+    height: 42px;
     text-align: left;
     color: #4c4f69;
+    overflow: hidden;
   }
 
   .file-btn:hover {
     background: #ccd0da;
+  }
+
+  .file-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.6rem;
+    height: 100%;
+    background: transparent;
+    border-right: 1px solid #acb0be;
+    min-width: 32px;
+  }
+
+  .file-btn:hover .file-icon {
+    background: transparent;
+  }
+
+  .file-icon :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .file-name {
+    padding: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    width: 200px;
   }
 
   .compare-btn {
