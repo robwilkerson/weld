@@ -1494,14 +1494,14 @@ function checkHorizontalScrollbar() {
     {#if diffResult}
       <div class="file-header {highlightedDiffResult?.lines?.[0]?.type !== 'same' ? 'first-line-diff' : ''}" style="--line-number-width: {lineNumberWidth}">
         <div class="file-info left">
-          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save changes">📥</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
         </div>
         <div class="action-gutter-header">
           <!-- Empty header space above action gutter -->
         </div>
         <div class="file-info right">
-          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save right file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save changes">📥</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, false)}</span>
         </div>
       </div>
@@ -1808,18 +1808,20 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .save-btn {
     background: #494d64;
-    border-color: #5b6078;
+    border: 1px solid #5b6078;
   }
 
   :global([data-theme="dark"]) .save-btn:disabled {
-    background: #3c4043;
-    border-color: #494d64;
-    opacity: 0.5;
+    background: #363a4f;
+    border: 1px solid #5b6078;
+    opacity: 0.4;
   }
 
   :global([data-theme="dark"]) .save-btn:not(:disabled):hover {
     background: #5b6078;
     border-color: #6e738d;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   :global([data-theme="dark"]) .action-gutter-header {
@@ -2095,7 +2097,7 @@ function checkHorizontalScrollbar() {
     border: 1px solid #acb0be;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2114,15 +2116,17 @@ function checkHorizontalScrollbar() {
   }
 
   .save-btn:disabled {
-    background: #e0e4ea;
-    border-color: #ccd0da;
+    background: #dce0e8;
+    border: 1px solid #9ca0b0;
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.4;
   }
 
   .save-btn:not(:disabled):hover {
     background: #a6adc8;
     border-color: #9ca0b0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .file-path {
