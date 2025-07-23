@@ -76,6 +76,19 @@ let _showMenu: boolean = false;
 // Current diff tracking
 let currentDiffChunkIndex: number = -1;
 
+// Create a reactive function for checking if a line is in the current chunk
+$: isLineHighlighted = (lineIndex: number) => {
+	if (currentDiffChunkIndex === -1 || !diffChunks || !diffChunks[currentDiffChunkIndex]) {
+		return false;
+	}
+	
+	const chunk = diffChunks[currentDiffChunkIndex];
+	const isInChunk = lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+	
+	
+	return isInChunk;
+};
+
 // Compute diff chunks (groups of consecutive non-"same" lines)
 $: diffChunks = (() => {
 	if (!highlightedDiffResult) return [];
@@ -1111,14 +1124,6 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	return prevLine.type !== "modified";
 }
 
-function isInCurrentDiffChunk(lineIndex: number): boolean {
-	if (currentDiffChunkIndex === -1 || !diffChunks[currentDiffChunkIndex]) {
-		return false;
-	}
-	
-	const chunk = diffChunks[currentDiffChunkIndex];
-	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
-}
 
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
@@ -1532,7 +1537,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.leftNumber || ' '}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1547,7 +1552,10 @@ function checkHorizontalScrollbar() {
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
               
-              <div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}">
+              <div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
+              {#if chunk && isFirstInChunk && isLineHighlighted(index)}
+                <div class="current-diff-indicator" style="--chunk-height: {chunk.lines};" title="Current diff"></div>
+              {/if}
               {#if chunk && isFirstInChunk}
                 <!-- Show chunk arrows only on the first line of the chunk, but position them in the middle -->
                 <div class="chunk-actions" style="--chunk-height: {chunk.lines};">
@@ -1607,7 +1615,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.rightNumber || ' '}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
@@ -2413,12 +2421,11 @@ function checkHorizontalScrollbar() {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    width: 100%;
     position: absolute;
     /* Dynamic positioning based on chunk size */
     top: calc((var(--chunk-height) - 1) * var(--line-height) / 2);
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     z-index: 10;
     height: var(--line-height);
   }
@@ -2829,6 +2836,8 @@ function checkHorizontalScrollbar() {
 
   .left-side-arrow {
     color: #1e66f5;
+    margin-right: auto;
+    margin-left: 1px;
   }
 
   .left-side-arrow:hover {
@@ -2837,6 +2846,8 @@ function checkHorizontalScrollbar() {
 
   .right-side-arrow {
     color: #1e66f5;
+    margin-left: auto;
+    margin-right: 1px;
   }
 
   .right-side-arrow:hover {
@@ -2854,6 +2865,24 @@ function checkHorizontalScrollbar() {
 
   .gutter-line {
     position: relative;
+  }
+  
+  /* Current diff indicator */
+  .current-diff-indicator {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #1e66f5;
+    border-radius: 50%;
+    /* Dynamic positioning based on chunk size, same as chunk-actions */
+    top: calc((var(--chunk-height) - 1) * var(--line-height) / 2 + var(--line-height) / 2);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+  
+  :global([data-theme="dark"]) .current-diff-indicator {
+    background-color: #8aadf4;
   }
 
   /* Dark mode gutter arrows */
@@ -3059,17 +3088,21 @@ function checkHorizontalScrollbar() {
     background: #5b6078;
   }
 
-  /* Current diff highlighting */
-  .line.current-diff {
+  /* Current diff highlighting - higher specificity to override line type backgrounds */
+  .line.line-modified.current-diff,
+  .line.line-added.current-diff,
+  .line.line-removed.current-diff {
     position: relative;
-    background-color: rgba(30, 102, 245, 0.25) !important; /* Stronger blue for light mode */
+    background-color: rgba(30, 102, 245, 0.35);
     box-shadow: 
       inset 3px 0 0 #1e66f5,
       inset -3px 0 0 #1e66f5;
   }
   
-  :global([data-theme="dark"]) .line.current-diff {
-    background-color: rgba(138, 173, 244, 0.35) !important; /* Stronger blue for dark mode */
+  :global([data-theme="dark"]) .line.line-modified.current-diff,
+  :global([data-theme="dark"]) .line.line-added.current-diff,
+  :global([data-theme="dark"]) .line.line-removed.current-diff {
+    background-color: rgba(138, 173, 244, 0.35);
     box-shadow: 
       inset 3px 0 0 #8aadf4,
       inset -3px 0 0 #8aadf4;

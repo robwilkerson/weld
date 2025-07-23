@@ -100,6 +100,7 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * **Go**: Use `go fmt` to format all Go files after backend changes
 * **Frontend**: Use `npx @biomejs/biome check --write frontend/src/` after frontend changes
 * **TypeScript**: All frontend code uses TypeScript with proper type annotations
+* **CSS**: Avoid using `!important` - properly structure selectors and specificity instead
 
 ### Git Workflow
 
