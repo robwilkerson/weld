@@ -22,10 +22,10 @@ import {
 	getLineClass,
 	getLineNumberWidth,
 } from "./utils/diff.js";
+import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
-import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -78,25 +78,29 @@ let currentDiffChunkIndex: number = -1;
 
 // Create a reactive function for checking if a line is in the current chunk
 $: isLineHighlighted = (lineIndex: number) => {
-	if (currentDiffChunkIndex === -1 || !diffChunks || !diffChunks[currentDiffChunkIndex]) {
+	if (
+		currentDiffChunkIndex === -1 ||
+		!diffChunks ||
+		!diffChunks[currentDiffChunkIndex]
+	) {
 		return false;
 	}
-	
+
 	const chunk = diffChunks[currentDiffChunkIndex];
-	const isInChunk = lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
-	
-	
+	const isInChunk =
+		lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+
 	return isInChunk;
 };
 
 // Compute diff chunks (groups of consecutive non-"same" lines)
 $: diffChunks = (() => {
 	if (!highlightedDiffResult) return [];
-	
+
 	const chunks: { startIndex: number; endIndex: number }[] = [];
 	let inDiff = false;
 	let startIndex = -1;
-	
+
 	highlightedDiffResult.lines.forEach((line, index) => {
 		if (line.type !== "same") {
 			if (!inDiff) {
@@ -112,15 +116,17 @@ $: diffChunks = (() => {
 			}
 		}
 	});
-	
+
 	// Handle case where file ends with a diff
 	if (inDiff && startIndex !== -1) {
-		chunks.push({ startIndex, endIndex: highlightedDiffResult.lines.length - 1 });
+		chunks.push({
+			startIndex,
+			endIndex: highlightedDiffResult.lines.length - 1,
+		});
 	}
-	
+
 	return chunks;
 })();
-
 
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
@@ -591,17 +597,17 @@ function _handleMinimapClick(event: MouseEvent): void {
 	// Calculate the maximum scrollable position for each pane
 	const leftMaxScroll = leftPane.scrollHeight - leftPane.clientHeight;
 	const centerMaxScroll = centerGutter.scrollHeight - centerGutter.clientHeight;
-	
+
 	// Clamp the scroll position to the actual scrollable range
 	const clampedScrollLeft = Math.min(scrollTo, leftMaxScroll);
 	const clampedScrollCenter = Math.min(scrollTo, centerMaxScroll);
-	
+
 	// Sync scroll across all panes
 	isScrollSyncing = true;
-	
+
 	// Use the minimum of the clamped values to keep all panes aligned
 	const finalScroll = Math.min(clampedScrollLeft, clampedScrollCenter);
-	
+
 	leftPane.scrollTop = finalScroll;
 	rightPane.scrollTop = finalScroll;
 	centerGutter.scrollTop = finalScroll;
@@ -1124,7 +1130,6 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	return prevLine.type !== "modified";
 }
 
-
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
 // ===========================================
@@ -1187,17 +1192,19 @@ function _handleViewportMouseUp(): void {
 
 function playInvalidSound(): void {
 	// Create a simple beep sound
-	const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+	const audioContext = new (
+		window.AudioContext || (window as any).webkitAudioContext
+	)();
 	const oscillator = audioContext.createOscillator();
 	const gainNode = audioContext.createGain();
-	
+
 	oscillator.connect(gainNode);
 	gainNode.connect(audioContext.destination);
-	
+
 	oscillator.frequency.value = 200; // Low frequency for error sound
-	oscillator.type = 'sine';
+	oscillator.type = "sine";
 	gainNode.gain.value = 0.1; // Low volume
-	
+
 	oscillator.start();
 	oscillator.stop(audioContext.currentTime + 0.1); // 100ms beep
 }
@@ -1268,7 +1275,8 @@ function scrollToLine(lineIndex: number): void {
 	);
 
 	// Calculate the target scroll position to center the line in view
-	const targetScrollTop = lineIndex * lineHeight - leftPane.clientHeight / 2 + lineHeight / 2;
+	const targetScrollTop =
+		lineIndex * lineHeight - leftPane.clientHeight / 2 + lineHeight / 2;
 
 	// Ensure we don't scroll past the bounds
 	const maxScroll = leftPane.scrollHeight - leftPane.clientHeight;
@@ -1276,13 +1284,13 @@ function scrollToLine(lineIndex: number): void {
 
 	// Temporarily disable scroll syncing to prevent conflicts
 	isScrollSyncing = true;
-	
+
 	// Use requestAnimationFrame for smoother scrolling
 	requestAnimationFrame(() => {
 		leftPane.scrollTop = clampedScrollTop;
 		rightPane.scrollTop = clampedScrollTop;
 		centerGutter.scrollTop = clampedScrollTop;
-		
+
 		// Re-enable scroll syncing after a short delay
 		requestAnimationFrame(() => {
 			isScrollSyncing = false;
