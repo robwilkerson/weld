@@ -25,6 +25,10 @@ Weld is licensed under the terms of the MIT license.
 3. Drag `Weld.app` to your Applications folder
 4. On first launch, you may need to right-click and select "Open" to bypass Gatekeeper
 
+**Note:** If you see "Weld.app is damaged and can't be opened", this is because the app isn't code signed yet. To fix this:
+- Open Terminal and run: `xattr -cr /Applications/Weld.app`
+- Then try opening the app again
+
 ### Windows
 
 1. Download the latest Windows release from the [Releases](https://github.com/robwilkerson/weld/releases) page

@@ -25,6 +25,7 @@ import {
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
+import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 
 // Shiki highlighter instance
 let highlighter: any = null;
@@ -1110,6 +1111,14 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	return prevLine.type !== "modified";
 }
 
+function isInCurrentDiffChunk(lineIndex: number): boolean {
+	if (currentDiffChunkIndex === -1 || !diffChunks[currentDiffChunkIndex]) {
+		return false;
+	}
+	
+	const chunk = diffChunks[currentDiffChunkIndex];
+	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+}
 
 // ===========================================
 // MINIMAP VIEWPORT DRAGGING
@@ -1463,10 +1472,12 @@ function checkHorizontalScrollbar() {
     </div>
     <div class="file-selectors">
       <button class="file-btn" on:click={_selectLeftFile}>
-        📂 {leftFileName}
+        <span class="file-icon" title={getFileTypeName(leftFileName)}>{@html getFileIcon(leftFileName, isDarkMode)}</span>
+        <span class="file-name">{leftFileName}</span>
       </button>
       <button class="file-btn" on:click={_selectRightFile}>
-        📂 {rightFileName}
+        <span class="file-icon" title={getFileTypeName(rightFileName)}>{@html getFileIcon(rightFileName, isDarkMode)}</span>
+        <span class="file-name">{rightFileName}</span>
       </button>
       <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || _isComparing || _hasCompletedComparison}>
         {#if _isComparing}
@@ -1486,14 +1497,14 @@ function checkHorizontalScrollbar() {
     {#if diffResult}
       <div class="file-header {highlightedDiffResult?.lines?.[0]?.type !== 'same' ? 'first-line-diff' : ''}" style="--line-number-width: {lineNumberWidth}">
         <div class="file-info left">
-          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save left file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save changes">📥</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
         </div>
         <div class="action-gutter-header">
           <!-- Empty header space above action gutter -->
         </div>
         <div class="file-info right">
-          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save right file">💾</button>
+          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save changes">📥</button>
           <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, false)}</span>
         </div>
       </div>
@@ -1521,7 +1532,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.leftNumber || ' '}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1596,7 +1607,7 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''}" data-line-type={line.type}>
+              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isInCurrentDiffChunk(index) ? 'current-diff' : ''}" data-line-type={line.type}>
                 <span class="line-number">{line.rightNumber || ' '}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
@@ -1766,6 +1777,15 @@ function checkHorizontalScrollbar() {
     background: #414559;
   }
 
+  :global([data-theme="dark"]) .file-icon {
+    background: transparent;
+    border-right-color: #5b6078;
+  }
+
+  :global([data-theme="dark"]) .file-btn:hover .file-icon {
+    background: transparent;
+  }
+
   :global([data-theme="dark"]) .compare-btn {
     background: #8aadf4;
     border-color: #8aadf4;
@@ -1800,18 +1820,20 @@ function checkHorizontalScrollbar() {
 
   :global([data-theme="dark"]) .save-btn {
     background: #494d64;
-    border-color: #5b6078;
+    border: 1px solid #5b6078;
   }
 
   :global([data-theme="dark"]) .save-btn:disabled {
-    background: #3c4043;
-    border-color: #494d64;
-    opacity: 0.5;
+    background: #363a4f;
+    border: 1px solid #5b6078;
+    opacity: 0.4;
   }
 
   :global([data-theme="dark"]) .save-btn:not(:disabled):hover {
     background: #5b6078;
     border-color: #6e738d;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   :global([data-theme="dark"]) .action-gutter-header {
@@ -1859,7 +1881,7 @@ function checkHorizontalScrollbar() {
 
   .header {
     padding: 1rem;
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
     background: #e6e9ef;
     position: relative;
   }
@@ -1895,7 +1917,7 @@ function checkHorizontalScrollbar() {
     right: 0;
     margin-top: 0.5rem;
     background: #eff1f5;
-    border: 1px solid #dce0e8;
+    border: 1px solid #9ca0b0;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-width: 150px;
@@ -1923,7 +1945,7 @@ function checkHorizontalScrollbar() {
   }
 
   .menu-item:not(:last-child) {
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
   }
 
   /* Custom scrollbar styling for light mode (Catppuccin Latte) */
@@ -1980,19 +2002,53 @@ function checkHorizontalScrollbar() {
   }
 
   .file-btn {
-    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
     border: 1px solid #acb0be;
     border-radius: 4px;
     background: #dce0e8;
     cursor: pointer;
     font-size: 0.9rem;
-    min-width: 200px;
+    width: auto;
+    height: 42px;
     text-align: left;
     color: #4c4f69;
+    overflow: hidden;
   }
 
   .file-btn:hover {
     background: #ccd0da;
+  }
+
+  .file-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.6rem;
+    height: 100%;
+    background: transparent;
+    border-right: 1px solid #acb0be;
+    min-width: 32px;
+  }
+
+  .file-btn:hover .file-icon {
+    background: transparent;
+  }
+
+  .file-icon :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .file-name {
+    padding: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    width: 200px;
   }
 
   .compare-btn {
@@ -2014,7 +2070,9 @@ function checkHorizontalScrollbar() {
 
   .compare-btn:disabled {
     background: #94a3b8;
+    border-color: #94a3b8;
     cursor: not-allowed;
+    opacity: 0.7;
   }
 
 
@@ -2049,8 +2107,8 @@ function checkHorizontalScrollbar() {
 
   .action-gutter-header {
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
+    border-left: 1px solid #9ca0b0;
+    border-right: 1px solid #9ca0b0;
     box-sizing: border-box;
   }
 
@@ -2067,7 +2125,7 @@ function checkHorizontalScrollbar() {
   /* Add bottom borders to left and right file info sections */
   .file-info.left,
   .file-info.right {
-    border-bottom: 1px solid #dce0e8;
+    border-bottom: 1px solid #9ca0b0;
   }
 
   .file-info:first-child {
@@ -2085,7 +2143,7 @@ function checkHorizontalScrollbar() {
     border: 1px solid #acb0be;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2104,15 +2162,17 @@ function checkHorizontalScrollbar() {
   }
 
   .save-btn:disabled {
-    background: #e0e4ea;
-    border-color: #ccd0da;
+    background: #dce0e8;
+    border: 1px solid #9ca0b0;
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.4;
   }
 
   .save-btn:not(:disabled):hover {
     background: #a6adc8;
     border-color: #9ca0b0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .file-path {
@@ -2149,7 +2209,7 @@ function checkHorizontalScrollbar() {
     left: 0;
     width: calc(var(--line-number-width, 32px) + 1px);
     bottom: 0;
-    background: #e6e9ef;
+    background: #dce0e8;
     pointer-events: none;
     z-index: 1;
   }
@@ -2157,8 +2217,8 @@ function checkHorizontalScrollbar() {
   .center-gutter {
     width: var(--gutter-width);
     background: #e6e9ef;
-    border-left: 1px solid #dce0e8;
-    border-right: 1px solid #dce0e8;
+    border-left: 1px solid #9ca0b0;
+    border-right: 1px solid #9ca0b0;
     overflow: auto;
     flex-shrink: 0;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
@@ -2431,7 +2491,7 @@ function checkHorizontalScrollbar() {
   
   .line-spacer .line-number {
     background: transparent !important;
-    border-right: 1px solid #dce0e8;
+    border-right: 1px solid #9ca0b0;
   }
   
 
@@ -2450,7 +2510,7 @@ function checkHorizontalScrollbar() {
     padding: 0 5px 0 15px;
     text-align: right;
     color: #6c6f85;
-    background: #e6e9ef;
+    background: #dce0e8;
     border: none; /* Explicitly remove all borders */
     user-select: none;
     flex-shrink: 0;
@@ -2516,8 +2576,7 @@ function checkHorizontalScrollbar() {
   .line-added,
   .line-removed,
   .line-modified {
-    /* background: rgba(30, 102, 245, 0.1); */ /* Temporarily removed to test borders */
-    /* border-left: 3px solid #1e66f5; */ /* Removed blue accent border */
+    background: rgba(30, 102, 245, 0.1); /* Light blue chunk background */
   }
 
   /* Add padding to all lines to prevent minimap overlap */
@@ -2528,7 +2587,7 @@ function checkHorizontalScrollbar() {
   .line-added .line-number,
   .line-removed .line-number,
   .line-modified .line-number {
-    background: #e6e9ef; /* Keep line numbers opaque */
+    background: #dce0e8; /* Keep line numbers opaque */
     color: #1e66f5; /* Blue text for diff line numbers */
   }
 
@@ -3000,5 +3059,20 @@ function checkHorizontalScrollbar() {
     background: #5b6078;
   }
 
+  /* Current diff highlighting */
+  .line.current-diff {
+    position: relative;
+    background-color: rgba(30, 102, 245, 0.25) !important; /* Stronger blue for light mode */
+    box-shadow: 
+      inset 3px 0 0 #1e66f5,
+      inset -3px 0 0 #1e66f5;
+  }
+  
+  :global([data-theme="dark"]) .line.current-diff {
+    background-color: rgba(138, 173, 244, 0.35) !important; /* Stronger blue for dark mode */
+    box-shadow: 
+      inset 3px 0 0 #8aadf4,
+      inset -3px 0 0 #8aadf4;
+  }
 
 </style>
