@@ -23,6 +23,7 @@ import {
 } from "./utils/diff.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
+import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 
 // Shiki highlighter instance
 // biome-ignore lint/suspicious/noExplicitAny: Highlighter is disabled and set to null
