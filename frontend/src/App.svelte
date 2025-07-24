@@ -22,6 +22,8 @@ import QuitDialog from "./components/QuitDialog.svelte";
 import {
 	computeInlineDiff,
 	escapeHtml,
+	// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+	getLineClass,
 	getLineNumberWidth,
 } from "./utils/diff.js";
 import * as diffOps from "./utils/diffOperations.js";
@@ -233,8 +235,10 @@ interface LineChunk {
 let lineChunks: LineChunk[] = [];
 
 // Viewport tracking for minimap
-const _viewportTop = 0;
-const _viewportHeight = 0;
+// biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
+let viewportTop = 0;
+// biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
+let viewportHeight = 0;
 let isDraggingViewport = false;
 let dragStartY = 0;
 let dragStartScrollTop = 0;
@@ -1584,8 +1588,8 @@ function checkHorizontalScrollbar() {
                 class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
                 data-line-type={line.type}
                 on:click={() => chunk && handleChunkClick(index)}
-                on:mouseenter={() => chunk && handleChunkMouseEnter(index)}
-                on:mouseleave={() => chunk && handleChunkMouseLeave()}
+                on:mouseenter={() => chunk && _handleChunkMouseEnter(index)}
+                on:mouseleave={() => chunk && _handleChunkMouseLeave()}
                 on:keydown={(e) => {
                   if (chunk && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
@@ -1676,8 +1680,8 @@ function checkHorizontalScrollbar() {
                 class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
                 data-line-type={line.type}
                 on:click={() => chunk && handleChunkClick(index)}
-                on:mouseenter={() => chunk && handleChunkMouseEnter(index)}
-                on:mouseleave={() => chunk && handleChunkMouseLeave()}
+                on:mouseenter={() => chunk && _handleChunkMouseEnter(index)}
+                on:mouseleave={() => chunk && _handleChunkMouseLeave()}
                 on:keydown={(e) => {
                   if (chunk && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
@@ -1696,7 +1700,7 @@ function checkHorizontalScrollbar() {
         
         <!-- Minimap Pane -->
         <Minimap
-          show={showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
+          show={_showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
           {lineChunks}
           totalLines={highlightedDiffResult?.lines.length || 0}
           {currentDiffChunkIndex}
