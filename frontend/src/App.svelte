@@ -76,6 +76,9 @@ let _showMenu: boolean = false;
 // Current diff tracking
 let currentDiffChunkIndex: number = -1;
 
+// Hover tracking for chunks
+let hoveredChunkIndex: number = -1;
+
 // Create a reactive function for checking if a line is in the current chunk
 $: isLineHighlighted = (lineIndex: number) => {
 	if (
@@ -87,6 +90,23 @@ $: isLineHighlighted = (lineIndex: number) => {
 	}
 
 	const chunk = diffChunks[currentDiffChunkIndex];
+	const isInChunk =
+		lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+
+	return isInChunk;
+};
+
+// Create a reactive function for checking if a line is in the hovered chunk
+$: isLineHovered = (lineIndex: number) => {
+	if (
+		hoveredChunkIndex === -1 ||
+		!diffChunks ||
+		!diffChunks[hoveredChunkIndex]
+	) {
+		return false;
+	}
+
+	const chunk = diffChunks[hoveredChunkIndex];
 	const isInChunk =
 		lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
 
@@ -585,6 +605,15 @@ function _handleMinimapClick(event: MouseEvent): void {
 		0,
 		Math.min(targetLineIndex, totalLines - 1),
 	);
+
+	// Find which diff chunk this line belongs to and set it as current
+	const clickedChunkIndex = diffChunks.findIndex(
+		(chunk) => boundedLineIndex >= chunk.startIndex && boundedLineIndex <= chunk.endIndex,
+	);
+	
+	if (clickedChunkIndex !== -1) {
+		currentDiffChunkIndex = clickedChunkIndex;
+	}
 
 	// Calculate scroll position to show the target line
 	const lineHeightPx = 19.2; // Line height from CSS variable
@@ -1298,6 +1327,35 @@ function scrollToLine(lineIndex: number): void {
 	});
 }
 
+function handleChunkClick(lineIndex: number): void {
+	// Find which chunk this line belongs to
+	const clickedChunkIndex = diffChunks.findIndex(
+		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
+	);
+
+	if (clickedChunkIndex !== -1) {
+		// Update the current diff chunk index
+		currentDiffChunkIndex = clickedChunkIndex;
+		// Scroll to the start of the chunk
+		scrollToLine(diffChunks[clickedChunkIndex].startIndex);
+	}
+}
+
+function handleChunkMouseEnter(lineIndex: number): void {
+	// Find which chunk this line belongs to
+	const chunkIndex = diffChunks.findIndex(
+		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
+	);
+
+	if (chunkIndex !== -1) {
+		hoveredChunkIndex = chunkIndex;
+	}
+}
+
+function handleChunkMouseLeave(): void {
+	hoveredChunkIndex = -1;
+}
+
 function scrollToFirstDiff(): void {
 	try {
 		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
@@ -1545,7 +1603,21 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''}" data-line-type={line.type}>
+              <div 
+                class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
+                data-line-type={line.type}
+                on:click={() => chunk && handleChunkClick(index)}
+                on:mouseenter={() => chunk && handleChunkMouseEnter(index)}
+                on:mouseleave={() => chunk && handleChunkMouseLeave()}
+                on:keydown={(e) => {
+                  if (chunk && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleChunkClick(index);
+                  }
+                }}
+                role={chunk ? 'button' : undefined}
+                tabindex={chunk ? 0 : undefined}
+              >
                 <span class="line-number">{line.leftNumber || ' '}</span>
                 <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
               </div>
@@ -1623,7 +1695,21 @@ function checkHorizontalScrollbar() {
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
               {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''}" data-line-type={line.type}>
+              <div 
+                class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
+                data-line-type={line.type}
+                on:click={() => chunk && handleChunkClick(index)}
+                on:mouseenter={() => chunk && handleChunkMouseEnter(index)}
+                on:mouseleave={() => chunk && handleChunkMouseLeave()}
+                on:keydown={(e) => {
+                  if (chunk && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleChunkClick(index);
+                  }
+                }}
+                role={chunk ? 'button' : undefined}
+                tabindex={chunk ? 0 : undefined}
+              >
                 <span class="line-number">{line.rightNumber || ' '}</span>
                 <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
               </div>
@@ -1635,10 +1721,13 @@ function checkHorizontalScrollbar() {
         {#if showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
           <div class="minimap-pane">
             <div class="minimap" on:click={_handleMinimapClick}>
-              {#each lineChunks as chunk}
+              {#each lineChunks as chunk, chunkIndex}
                 {#if chunk.type !== 'same'}
+                  {@const isCurrentChunk = diffChunks.findIndex(
+                    (dc) => dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex
+                  ) === currentDiffChunkIndex}
                   <div 
-                    class="minimap-chunk minimap-{chunk.type}" 
+                    class="minimap-chunk minimap-{chunk.type} {isCurrentChunk ? 'minimap-current' : ''}" 
                     style="top: {(chunk.startIndex / highlightedDiffResult.lines.length) * 100}%; 
                            height: {(chunk.lines / highlightedDiffResult.lines.length) * 100}%;"
                     data-chunk-start={chunk.startIndex}
@@ -2349,8 +2438,23 @@ function checkHorizontalScrollbar() {
     background: rgba(255, 193, 7, 0.5);
   }
 
+  .minimap-chunk {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
   .minimap-chunk:hover {
-    opacity: 0.5;
+    opacity: 0.7;
+  }
+
+  /* Current diff chunk in minimap */
+  .minimap-current {
+    box-shadow: 0 0 0 2px #1e66f5;
+    z-index: 5;
+  }
+
+  :global([data-theme="dark"]) .minimap-current {
+    box-shadow: 0 0 0 2px #8aadf4;
   }
 
   /* Viewport indicator shows current visible area */
@@ -3114,6 +3218,26 @@ function checkHorizontalScrollbar() {
     box-shadow: 
       inset 3px 0 0 #8aadf4,
       inset -3px 0 0 #8aadf4;
+  }
+
+  /* Clickable chunk styling */
+  .line.clickable-chunk {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  /* Chunk hover effect - applies to all lines in the hovered chunk */
+  .line.chunk-hover:not(.current-diff) {
+    background-color: rgba(30, 102, 245, 0.1);
+  }
+
+  :global([data-theme="dark"]) .line.chunk-hover:not(.current-diff) {
+    background-color: rgba(138, 173, 244, 0.1);
+  }
+
+  /* Remove focus outline on individual lines since we handle chunks as a whole */
+  .line.clickable-chunk:focus {
+    outline: none;
   }
 
 </style>
