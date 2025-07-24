@@ -246,35 +246,28 @@ describe("diffOperations", () => {
 	});
 
 	describe("copyModifiedChunkToRight", () => {
-		it("should copy removed lines from modified chunk", async () => {
+		it("should copy modified lines from left to right", async () => {
 			const modifiedChunk: LineChunk = {
 				type: "modified",
-				startIndex: 1,
+				startIndex: 3,
 				endIndex: 3,
-				leftStart: 2,
-				rightStart: 2,
-				lines: 3,
+				leftStart: 3,
+				rightStart: 3,
+				lines: 1,
 			};
 
-			// Add a modified chunk with removed/added pattern
+			// Add a line with type "modified" directly
 			const extendedDiffResult: DiffResult = {
 				lines: [
-					...mockDiffResult.lines.slice(0, 1),
+					...mockDiffResult.lines.slice(0, 3),
 					{
-						type: "removed",
-						leftNumber: 2,
-						rightNumber: null,
-						leftLine: "old modified line",
-						rightLine: "",
+						type: "modified",
+						leftNumber: 3,
+						rightNumber: 3,
+						leftLine: "old line",
+						rightLine: "new line",
 					},
-					{
-						type: "added",
-						leftNumber: null,
-						rightNumber: 2,
-						leftLine: "",
-						rightLine: "new modified line",
-					},
-					...mockDiffResult.lines.slice(3),
+					...mockDiffResult.lines.slice(4),
 				],
 			};
 
@@ -288,45 +281,45 @@ describe("diffOperations", () => {
 				contextWithModified,
 			);
 
+			// Should first delete the right line
+			expect(RemoveLineFromFile).toHaveBeenCalledWith(
+				"/path/to/right.txt",
+				3,
+			);
+
+			// Then copy the left line
 			expect(CopyToFile).toHaveBeenCalledWith(
 				"/path/to/left.txt",
 				"/path/to/right.txt",
-				2,
-				"old modified line",
+				3,
+				"old line",
 			);
 		});
 	});
 
 	describe("copyModifiedChunkToLeft", () => {
-		it("should copy added lines from modified chunk", async () => {
+		it("should copy modified lines from right to left", async () => {
 			const modifiedChunk: LineChunk = {
 				type: "modified",
-				startIndex: 1,
+				startIndex: 3,
 				endIndex: 3,
-				leftStart: 2,
-				rightStart: 2,
-				lines: 3,
+				leftStart: 3,
+				rightStart: 3,
+				lines: 1,
 			};
 
-			// Add a modified chunk with removed/added pattern
+			// Add a line with type "modified" directly
 			const extendedDiffResult: DiffResult = {
 				lines: [
-					...mockDiffResult.lines.slice(0, 1),
+					...mockDiffResult.lines.slice(0, 3),
 					{
-						type: "removed",
-						leftNumber: 2,
-						rightNumber: null,
-						leftLine: "old modified line",
-						rightLine: "",
+						type: "modified",
+						leftNumber: 3,
+						rightNumber: 3,
+						leftLine: "old line",
+						rightLine: "new line",
 					},
-					{
-						type: "added",
-						leftNumber: null,
-						rightNumber: 2,
-						leftLine: "",
-						rightLine: "new modified line",
-					},
-					...mockDiffResult.lines.slice(3),
+					...mockDiffResult.lines.slice(4),
 				],
 			};
 
@@ -337,11 +330,18 @@ describe("diffOperations", () => {
 
 			await diffOps.copyModifiedChunkToLeft(modifiedChunk, contextWithModified);
 
+			// Should first delete the left line
+			expect(RemoveLineFromFile).toHaveBeenCalledWith(
+				"/path/to/left.txt",
+				3,
+			);
+
+			// Then copy the right line
 			expect(CopyToFile).toHaveBeenCalledWith(
 				"/path/to/right.txt",
 				"/path/to/left.txt",
-				2,
-				"new modified line",
+				3,
+				"new line",
 			);
 		});
 	});

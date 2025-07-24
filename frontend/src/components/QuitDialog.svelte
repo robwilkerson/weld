@@ -1,28 +1,34 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getDisplayFileName } from "../utils/path.js";
 
-// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
+// biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = false;
 export let quitDialogFiles: string[] = [];
 export let leftFilePath: string = "";
 export let rightFilePath: string = "";
 export let fileSelections: Record<string, boolean> = {};
+// biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
 const dispatch = createEventDispatcher();
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleSaveAndQuit() {
 	dispatch("saveAndQuit");
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleQuitWithoutSaving() {
 	dispatch("quitWithoutSaving");
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleCancel() {
 	dispatch("cancel");
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleOverlayClick() {
 	dispatch("cancel");
 }

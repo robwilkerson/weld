@@ -2,7 +2,7 @@
 import { createEventDispatcher } from "svelte";
 import type { LineChunk } from "../types";
 
-// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
+// biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
 export let lineChunks: LineChunk[] = [];
 export let totalLines: number = 0;
@@ -11,13 +11,16 @@ export let diffChunks: Array<{ startIndex: number; endIndex: number }> = [];
 export let viewportTop: number = 0;
 export let viewportHeight: number = 0;
 export let isDarkMode: boolean = false;
+// biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
 const dispatch = createEventDispatcher();
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleMinimapClick(event: MouseEvent): void {
 	dispatch("minimapClick", { event });
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleViewportMouseDown(event: MouseEvent): void {
 	dispatch("viewportMouseDown", { event });
 }

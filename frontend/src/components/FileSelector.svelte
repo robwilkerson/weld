@@ -1,9 +1,10 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
 import { SelectFile } from "../../wailsjs/go/main/App.js";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getFileIcon, getFileTypeName } from "../utils/fileIcons.js";
 
-// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
+// biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let leftFilePath: string = "";
 export let rightFilePath: string = "";
 export let leftFileName: string = "Select left file...";
@@ -11,9 +12,11 @@ export let rightFileName: string = "Select right file...";
 export let isDarkMode: boolean = false;
 export let isComparing: boolean = false;
 export let hasCompletedComparison: boolean = false;
+// biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
 const dispatch = createEventDispatcher();
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function selectLeftFile(): Promise<void> {
 	try {
 		const path = await SelectFile();
@@ -25,6 +28,7 @@ async function selectLeftFile(): Promise<void> {
 	}
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function selectRightFile(): Promise<void> {
 	try {
 		const path = await SelectFile();
@@ -36,6 +40,7 @@ async function selectRightFile(): Promise<void> {
 	}
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleCompareClick(): void {
 	dispatch("compare");
 }
