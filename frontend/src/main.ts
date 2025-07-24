@@ -1,6 +1,6 @@
 /**
  * Application entry point
- * 
+ *
  * This file is intentionally not unit tested because:
  * - It's pure boilerplate with no business logic
  * - Testing would require mocking the DOM and Svelte internals

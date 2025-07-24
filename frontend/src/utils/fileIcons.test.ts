@@ -116,9 +116,9 @@ describe("fileIcons", () => {
 
 		describe("dark mode support", () => {
 			it("should adjust colors for dark mode", () => {
-				const lightIcon = getFileIcon("file.txt", false);
+				const _lightIcon = getFileIcon("file.txt", false);
 				const darkIcon = getFileIcon("file.txt", true);
-				
+
 				// Dark mode should convert black to light colors
 				expect(darkIcon).not.toContain('fill="#000000"');
 				expect(darkIcon).not.toContain('stroke="#000000"');
@@ -127,15 +127,15 @@ describe("fileIcons", () => {
 			it("should handle JSON icon color transformation", () => {
 				const icon = getFileIcon("data.json");
 				// JSON yellow should be changed to orange
-				expect(icon).toContain('#FFB366');
-				expect(icon).not.toContain('#f5de19');
+				expect(icon).toContain("#FFB366");
+				expect(icon).not.toContain("#f5de19");
 			});
 
 			it("should handle SQL icon color transformation", () => {
 				const icon = getFileIcon("query.sql");
 				// SQL yellow should be changed to blue
-				expect(icon).toContain('#4A90E2');
-				expect(icon).not.toContain('#ffda44');
+				expect(icon).toContain("#4A90E2");
+				expect(icon).not.toContain("#ffda44");
 			});
 		});
 
@@ -148,7 +148,7 @@ describe("fileIcons", () => {
 
 			it("should handle C++ files with different extensions", () => {
 				const extensions = ["cpp", "cc", "hpp"];
-				extensions.forEach(ext => {
+				extensions.forEach((ext) => {
 					const icon = getFileIcon(`file.${ext}`);
 					expect(icon).toContain('width="28"');
 					expect(icon).toContain('height="28"');
@@ -157,7 +157,7 @@ describe("fileIcons", () => {
 
 			it("should handle shell script extensions", () => {
 				const extensions = ["sh", "bash", "zsh", "fish"];
-				extensions.forEach(ext => {
+				extensions.forEach((ext) => {
 					const icon = getFileIcon(`script.${ext}`);
 					expect(icon).toContain('width="28"');
 					expect(icon).toContain('height="28"');
@@ -250,7 +250,7 @@ describe("fileIcons", () => {
 
 		it("should return 'Shell Script' for shell files", () => {
 			const files = ["script.sh", "run.bash", "init.zsh", "config.fish"];
-			files.forEach(file => {
+			files.forEach((file) => {
 				expect(getFileTypeName(file)).toBe("Shell Script");
 			});
 		});
