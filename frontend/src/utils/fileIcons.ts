@@ -69,7 +69,9 @@ function processSvg(svg: string, isDarkMode: boolean = false): string {
 	}
 
 	// Change JSON icon yellow to creamy orange for better visibility in both themes
-	processed = processed.replace(/fill="#f5de19"/g, 'fill="#FFB366"');
+	processed = processed
+		.replace(/fill="#f5de19"/g, 'fill="#FFB366"')
+		.replace(/fill:#f5de19/g, "fill:#FFB366");
 
 	// Change SQL icon yellow to medium blue for better visibility in both themes
 	processed = processed
