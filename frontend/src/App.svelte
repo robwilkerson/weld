@@ -606,6 +606,15 @@ function _handleMinimapClick(event: MouseEvent): void {
 		Math.min(targetLineIndex, totalLines - 1),
 	);
 
+	// Find which diff chunk this line belongs to and set it as current
+	const clickedChunkIndex = diffChunks.findIndex(
+		(chunk) => boundedLineIndex >= chunk.startIndex && boundedLineIndex <= chunk.endIndex,
+	);
+	
+	if (clickedChunkIndex !== -1) {
+		currentDiffChunkIndex = clickedChunkIndex;
+	}
+
 	// Calculate scroll position to show the target line
 	const lineHeightPx = 19.2; // Line height from CSS variable
 	const targetScrollTop = boundedLineIndex * lineHeightPx;
@@ -1712,10 +1721,13 @@ function checkHorizontalScrollbar() {
         {#if showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
           <div class="minimap-pane">
             <div class="minimap" on:click={_handleMinimapClick}>
-              {#each lineChunks as chunk}
+              {#each lineChunks as chunk, chunkIndex}
                 {#if chunk.type !== 'same'}
+                  {@const isCurrentChunk = diffChunks.findIndex(
+                    (dc) => dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex
+                  ) === currentDiffChunkIndex}
                   <div 
-                    class="minimap-chunk minimap-{chunk.type}" 
+                    class="minimap-chunk minimap-{chunk.type} {isCurrentChunk ? 'minimap-current' : ''}" 
                     style="top: {(chunk.startIndex / highlightedDiffResult.lines.length) * 100}%; 
                            height: {(chunk.lines / highlightedDiffResult.lines.length) * 100}%;"
                     data-chunk-start={chunk.startIndex}
@@ -2426,8 +2438,23 @@ function checkHorizontalScrollbar() {
     background: rgba(255, 193, 7, 0.5);
   }
 
+  .minimap-chunk {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
   .minimap-chunk:hover {
-    opacity: 0.5;
+    opacity: 0.7;
+  }
+
+  /* Current diff chunk in minimap */
+  .minimap-current {
+    box-shadow: 0 0 0 2px #1e66f5;
+    z-index: 5;
+  }
+
+  :global([data-theme="dark"]) .minimap-current {
+    box-shadow: 0 0 0 2px #8aadf4;
   }
 
   /* Viewport indicator shows current visible area */
