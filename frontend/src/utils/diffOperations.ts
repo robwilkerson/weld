@@ -60,15 +60,30 @@ export async function copyChunkToLeft(
 	}
 
 	// Copy all lines in the chunk from right to left
+	// First, find the correct insertion position
+	let insertPosition = 1; // Default to beginning of file
+	
+	// Look for the nearest "same" line above this chunk to determine position
+	for (let i = chunk.startIndex - 1; i >= 0; i--) {
+		const line = diffResult.lines[i];
+		if (line.type === "same" && line.leftNumber !== null) {
+			insertPosition = line.leftNumber + 1;
+			break;
+		}
+	}
+	
+	// Copy all lines in the chunk
+	let currentInsertPosition = insertPosition;
 	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
 		const line = diffResult.lines[i];
 		if (line.type === "added" && line.rightNumber !== null) {
 			await CopyToFile(
 				rightFilePath,
 				leftFilePath,
-				line.rightNumber,
+				currentInsertPosition,
 				line.rightLine,
 			);
+			currentInsertPosition++; // Increment for next line in chunk
 		}
 	}
 
@@ -343,10 +358,22 @@ export async function copyLineToLeft(
 	// Determine which line to copy based on the clicked line type
 	if (clickedLine.type === "added" && clickedLine.rightNumber !== null) {
 		// Copy from right to left
+		// Find the correct insertion position in the left file
+		let insertPosition = 1; // Default to beginning of file
+		
+		// Look for the nearest "same" line above this added line to determine position
+		for (let i = lineIndex - 1; i >= 0; i--) {
+			const line = diffResult.lines[i];
+			if (line.type === "same" && line.leftNumber !== null) {
+				insertPosition = line.leftNumber + 1;
+				break;
+			}
+		}
+		
 		await CopyToFile(
 			rightFilePath,
 			leftFilePath,
-			clickedLine.rightNumber,
+			insertPosition,
 			clickedLine.rightLine,
 		);
 	} else if (clickedLine.type === "removed") {
