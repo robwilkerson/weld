@@ -23,6 +23,7 @@ import {
 } from "./utils/diff.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
+import FileSelector from "./components/FileSelector.svelte";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 
@@ -440,42 +441,28 @@ function _extractHighlightedLines(html: string): string[] {
 	return lines;
 }
 
-async function _selectLeftFile(): Promise<void> {
-	try {
-		const path = await SelectFile();
-		if (path) {
-			leftFilePath = path;
-			leftFileName = path.split("/").pop() || path;
-			await updateUnsavedChangesStatus();
-			_errorMessage = `Left file selected: ${leftFileName}`;
-			diffResult = null; // Clear previous results
-			_hasCompletedComparison = false; // Reset comparison state
-		} else {
-			_errorMessage = "No left file selected";
-		}
-	} catch (error) {
-		console.error("Error selecting left file:", error);
-		_errorMessage = `Error selecting left file: ${error}`;
-	}
+async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
+	const path = event.detail.path;
+	leftFilePath = path;
+	leftFileName = path.split("/").pop() || path;
+	await updateUnsavedChangesStatus();
+	_errorMessage = `Left file selected: ${leftFileName}`;
+	diffResult = null; // Clear previous results
+	_hasCompletedComparison = false; // Reset comparison state
 }
 
-async function _selectRightFile(): Promise<void> {
-	try {
-		const path = await SelectFile();
-		if (path) {
-			rightFilePath = path;
-			rightFileName = path.split("/").pop() || path;
-			await updateUnsavedChangesStatus();
-			_errorMessage = `Right file selected: ${rightFileName}`;
-			diffResult = null; // Clear previous results
-			_hasCompletedComparison = false; // Reset comparison state
-		} else {
-			_errorMessage = "No right file selected";
-		}
-	} catch (error) {
-		console.error("Error selecting right file:", error);
-		_errorMessage = `Error selecting right file: ${error}`;
-	}
+function handleError(event: CustomEvent<{ message: string }>) {
+	_errorMessage = event.detail.message;
+}
+
+async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
+	const path = event.detail.path;
+	rightFilePath = path;
+	rightFileName = path.split("/").pop() || path;
+	await updateUnsavedChangesStatus();
+	_errorMessage = `Right file selected: ${rightFileName}`;
+	diffResult = null; // Clear previous results
+	_hasCompletedComparison = false; // Reset comparison state
 }
 
 async function compareBothFiles(
@@ -1673,23 +1660,19 @@ function checkHorizontalScrollbar() {
         </div>
       {/if}
     </div>
-    <div class="file-selectors">
-      <button class="file-btn" on:click={_selectLeftFile}>
-        <span class="file-icon" title={getFileTypeName(leftFileName)}>{@html getFileIcon(leftFileName, isDarkMode)}</span>
-        <span class="file-name">{leftFileName}</span>
-      </button>
-      <button class="file-btn" on:click={_selectRightFile}>
-        <span class="file-icon" title={getFileTypeName(rightFileName)}>{@html getFileIcon(rightFileName, isDarkMode)}</span>
-        <span class="file-name">{rightFileName}</span>
-      </button>
-      <button class="compare-btn" on:click={compareBothFiles} disabled={!leftFilePath || !rightFilePath || _isComparing || _hasCompletedComparison}>
-        {#if _isComparing}
-          Comparing files...
-        {:else}
-          Compare Files
-        {/if}
-      </button>
-    </div>
+    <FileSelector
+      {leftFilePath}
+      {rightFilePath}
+      {leftFileName}
+      {rightFileName}
+      {isDarkMode}
+      isComparing={_isComparing}
+      hasCompletedComparison={_hasCompletedComparison}
+      on:leftFileSelected={handleLeftFileSelected}
+      on:rightFileSelected={handleRightFileSelected}
+      on:compare={compareBothFiles}
+      on:error={handleError}
+    />
     
     {#if _errorMessage}
       <div class="error">{_errorMessage}</div>
