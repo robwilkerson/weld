@@ -3,6 +3,7 @@ import { createEventDispatcher } from "svelte";
 import { SelectFile } from "../../wailsjs/go/main/App.js";
 import { getFileIcon, getFileTypeName } from "../utils/fileIcons.js";
 
+// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let leftFilePath: string = "";
 export let rightFilePath: string = "";
 export let leftFileName: string = "Select left file...";

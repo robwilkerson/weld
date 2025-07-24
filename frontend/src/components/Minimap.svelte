@@ -2,6 +2,7 @@
 import { createEventDispatcher } from "svelte";
 import type { LineChunk } from "../types";
 
+// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
 export let lineChunks: LineChunk[] = [];
 export let totalLines: number = 0;

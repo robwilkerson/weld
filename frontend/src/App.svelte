@@ -24,6 +24,7 @@ import {
 	escapeHtml,
 	getLineNumberWidth,
 } from "./utils/diff.js";
+import * as diffOps from "./utils/diffOperations.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
@@ -684,19 +685,8 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 
 	try {
 		_errorMessage = "Copying line to right file...";
-
-		// Copy the line from left to right file at the appropriate position
-		await CopyToFile(
-			leftFilePath,
-			rightFilePath,
-			line.leftNumber,
-			line.leftLine,
-		);
-
-		// Refresh the diff to show the changes
-		await compareBothFiles();
-		await updateUnsavedChangesStatus();
-
+		const context = getDiffOperationContext();
+		await diffOps.copyLineToRight(lineIndex, context);
 		_errorMessage = "Line copied successfully";
 	} catch (error) {
 		console.error("Error copying line to right:", error);
@@ -712,24 +702,24 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 
 	try {
 		_errorMessage = "Copying line to left file...";
-
-		// Copy the line from right to left file at the appropriate position
-		await CopyToFile(
-			rightFilePath,
-			leftFilePath,
-			line.rightNumber,
-			line.rightLine,
-		);
-
-		// Refresh the diff to show the changes
-		await compareBothFiles();
-		await updateUnsavedChangesStatus();
-
+		const context = getDiffOperationContext();
+		await diffOps.copyLineToLeft(lineIndex, context);
 		_errorMessage = "Line copied successfully";
 	} catch (error) {
 		console.error("Error copying line to left:", error);
 		_errorMessage = `Error copying line: ${error}`;
 	}
+}
+
+// Helper to get diff operation context
+function getDiffOperationContext(): diffOps.DiffOperationContext {
+	return {
+		leftFilePath,
+		rightFilePath,
+		diffResult,
+		compareBothFiles,
+		updateUnsavedChangesStatus,
+	};
 }
 
 async function _copyLineFromRight(lineIndex: number): Promise<void> {
@@ -745,23 +735,8 @@ async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Copying chunk to right file...";
-
-		// Copy all lines in the chunk from left to right
-		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-			const line = diffResult.lines[i];
-			if (line.type === "removed" && line.leftNumber !== null) {
-				await CopyToFile(
-					leftFilePath,
-					rightFilePath,
-					line.leftNumber,
-					line.leftLine,
-				);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.copyChunkToRight(chunk, context);
 		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
 		console.error("Error copying chunk to right:", error);
@@ -774,23 +749,8 @@ async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Copying chunk to left file...";
-
-		// Copy all lines in the chunk from right to left
-		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-			const line = diffResult.lines[i];
-			if (line.type === "added" && line.rightNumber !== null) {
-				await CopyToFile(
-					rightFilePath,
-					leftFilePath,
-					line.rightNumber,
-					line.rightLine,
-				);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.copyChunkToLeft(chunk, context);
 		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
 		console.error("Error copying chunk to left:", error);
@@ -803,31 +763,8 @@ async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Copying modified chunk to right file...";
-
-		// For modified chunks, we need to replace the content in the right file
-		// with the content from the left file
-		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-			const line = diffResult.lines[i];
-			if (
-				line.type === "modified" &&
-				line.leftNumber !== null &&
-				line.rightNumber !== null
-			) {
-				// First remove the old line from right
-				await RemoveLineFromFile(rightFilePath, line.rightNumber);
-				// Then insert the left content at that position
-				await CopyToFile(
-					leftFilePath,
-					rightFilePath,
-					line.rightNumber,
-					line.leftLine,
-				);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.copyModifiedChunkToRight(chunk, context);
 		_errorMessage = "Modified chunk copied to right successfully";
 	} catch (error) {
 		console.error("Error copying modified chunk to right:", error);
@@ -840,31 +777,8 @@ async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Copying modified chunk to left file...";
-
-		// For modified chunks, we need to replace the content in the left file
-		// with the content from the right file
-		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-			const line = diffResult.lines[i];
-			if (
-				line.type === "modified" &&
-				line.leftNumber !== null &&
-				line.rightNumber !== null
-			) {
-				// First remove the old line from left
-				await RemoveLineFromFile(leftFilePath, line.leftNumber);
-				// Then insert the right content at that position
-				await CopyToFile(
-					rightFilePath,
-					leftFilePath,
-					line.leftNumber,
-					line.rightLine,
-				);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.copyModifiedChunkToLeft(chunk, context);
 		_errorMessage = "Modified chunk copied to left successfully";
 	} catch (error) {
 		console.error("Error copying modified chunk to left:", error);
@@ -877,22 +791,8 @@ async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Deleting chunk from right file...";
-
-		// Delete all lines in the chunk from right file (in reverse order to maintain line numbers)
-		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
-			const line = diffResult.lines[i];
-			if (
-				line.type === "added" &&
-				line.rightNumber !== null &&
-				line.rightNumber > 0
-			) {
-				await RemoveLineFromFile(rightFilePath, line.rightNumber);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.deleteChunkFromRight(chunk, context);
 		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
 		console.error("Error deleting chunk from right:", error);
@@ -905,22 +805,8 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 
 	try {
 		_errorMessage = "Deleting chunk from left file...";
-
-		// Delete all lines in the chunk from left file (in reverse order to maintain line numbers)
-		for (let i = chunk.endIndex; i >= chunk.startIndex; i--) {
-			const line = diffResult.lines[i];
-			if (
-				line.type === "removed" &&
-				line.leftNumber !== null &&
-				line.leftNumber > 0
-			) {
-				await RemoveLineFromFile(leftFilePath, line.leftNumber);
-			}
-		}
-
-		// Refresh the diff
-		await compareBothFiles(true);
-		await updateUnsavedChangesStatus();
+		const context = getDiffOperationContext();
+		await diffOps.deleteChunkFromLeft(chunk, context);
 		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
 		console.error("Error deleting chunk from left:", error);
@@ -936,17 +822,9 @@ async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 
 	try {
 		_errorMessage = "Deleting line from right file...";
-
-		// Remove the line from the right file using the backend function
-		if (line.rightNumber !== null && line.rightNumber > 0) {
-			await RemoveLineFromFile(rightFilePath, line.rightNumber);
-
-			// Refresh the diff to show the changes
-			await compareBothFiles(true);
-			await updateUnsavedChangesStatus();
-
-			_errorMessage = "Line deleted successfully";
-		}
+		const context = getDiffOperationContext();
+		await diffOps.deleteLineFromRight(lineIndex, context);
+		_errorMessage = "Line deleted successfully";
 	} catch (error) {
 		console.error("Error deleting line from right:", error);
 		_errorMessage = `Error deleting line: ${error}`;
@@ -961,17 +839,9 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 
 	try {
 		_errorMessage = "Deleting line from left file...";
-
-		// Remove the line from the left file using the backend function
-		if (line.leftNumber !== null && line.leftNumber > 0) {
-			await RemoveLineFromFile(leftFilePath, line.leftNumber);
-
-			// Refresh the diff to show the changes
-			await compareBothFiles(true);
-			await updateUnsavedChangesStatus();
-
-			_errorMessage = "Line deleted successfully";
-		}
+		const context = getDiffOperationContext();
+		await diffOps.deleteLineFromLeft(lineIndex, context);
+		_errorMessage = "Line deleted successfully";
 	} catch (error) {
 		console.error("Error deleting line from left:", error);
 		_errorMessage = `Error deleting line: ${error}`;
@@ -1727,7 +1597,7 @@ function checkHorizontalScrollbar() {
       
       <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
         <div class="left-pane" bind:this={leftPane} on:scroll={_syncLeftScroll}>
-          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
+          <div class="pane-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
@@ -1819,7 +1689,7 @@ function checkHorizontalScrollbar() {
         </div>
         
         <div class="right-pane" bind:this={rightPane} on:scroll={_syncRightScroll}>
-          <div class="pane-content" style="min-height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
+          <div class="pane-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
             {#each (highlightedDiffResult?.lines || []) as line, index}
               {@const chunk = _getChunkForLine(index)}
               {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
@@ -2379,6 +2249,7 @@ function checkHorizontalScrollbar() {
     overflow: auto;
     background: #eff1f5;
     position: relative;
+    box-sizing: border-box;
   }
 
   /* Line number gutter background that extends full height */
@@ -2420,17 +2291,18 @@ function checkHorizontalScrollbar() {
     min-height: 100%; /* Ensure minimum height matches container */
   }
 
+  /* Removed - causes height mismatch with panes
   .gutter-content::after {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: calc(100% + 30px); /* Match the pane-content height calculation */
+    height: calc(100% + 30px);
     background: transparent;
     z-index: -1;
     pointer-events: none;
-  }
+  } */
 
   /* Hide vertical scrollbar in gutter - users should scroll via content panes */
   .center-gutter::-webkit-scrollbar:vertical {

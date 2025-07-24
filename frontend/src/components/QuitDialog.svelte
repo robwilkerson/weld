@@ -2,11 +2,12 @@
 import { createEventDispatcher } from "svelte";
 import { getDisplayFileName } from "../utils/path.js";
 
-export const show: boolean = false;
-export const quitDialogFiles: string[] = [];
-export const leftFilePath: string = "";
-export const rightFilePath: string = "";
-export const fileSelections: Record<string, boolean> = {};
+// biome-ignore lint/style/useConst: Svelte component props must use 'let' for reactivity
+export let show: boolean = false;
+export let quitDialogFiles: string[] = [];
+export let leftFilePath: string = "";
+export let rightFilePath: string = "";
+export let fileSelections: Record<string, boolean> = {};
 
 const dispatch = createEventDispatcher();
 
