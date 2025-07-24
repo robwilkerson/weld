@@ -478,7 +478,9 @@ async function _selectRightFile(): Promise<void> {
 	}
 }
 
-async function compareBothFiles(): Promise<void> {
+async function compareBothFiles(
+	preserveCurrentDiff: boolean = false,
+): Promise<void> {
 	if (!leftFilePath || !rightFilePath) {
 		_errorMessage = "Please select both files before comparing";
 		return;
@@ -487,7 +489,9 @@ async function compareBothFiles(): Promise<void> {
 	try {
 		_isComparing = true;
 		_errorMessage = "";
-		currentDiffChunkIndex = -1; // Reset current diff tracking
+		if (!preserveCurrentDiff) {
+			currentDiffChunkIndex = -1; // Reset current diff tracking only when not preserving
+		}
 
 		diffResult = await CompareFiles(leftFilePath, rightFilePath);
 
@@ -767,7 +771,7 @@ async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
@@ -796,7 +800,7 @@ async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Chunk copied successfully";
 	} catch (error) {
@@ -833,7 +837,7 @@ async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Modified chunk copied to right successfully";
 	} catch (error) {
@@ -870,7 +874,7 @@ async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Modified chunk copied to left successfully";
 	} catch (error) {
@@ -898,7 +902,7 @@ async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
@@ -926,7 +930,7 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 		}
 
 		// Refresh the diff
-		await compareBothFiles();
+		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Chunk deleted successfully";
 	} catch (error) {
@@ -949,7 +953,7 @@ async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 			await RemoveLineFromFile(rightFilePath, line.rightNumber);
 
 			// Refresh the diff to show the changes
-			await compareBothFiles();
+			await compareBothFiles(true);
 			await updateUnsavedChangesStatus();
 
 			_errorMessage = "Line deleted successfully";
@@ -974,7 +978,7 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 			await RemoveLineFromFile(leftFilePath, line.leftNumber);
 
 			// Refresh the diff to show the changes
-			await compareBothFiles();
+			await compareBothFiles(true);
 			await updateUnsavedChangesStatus();
 
 			_errorMessage = "Line deleted successfully";
@@ -1200,8 +1204,10 @@ async function copyCurrentDiffLeftToRight(): Promise<void> {
 		await _copyChunkToRight(lineChunk);
 	} else if (lineChunk.type === "modified") {
 		await _copyModifiedChunkToRight(lineChunk);
+	} else if (lineChunk.type === "added") {
+		// When copying "nothing" from left to right, delete the added lines from right
+		await _deleteChunkFromRight(lineChunk);
 	}
-	// 'added' chunks can't be copied left to right (they don't exist on the left)
 
 	// After refresh, navigate to the next appropriate chunk
 	navigateAfterCopy(oldChunkIndex, totalChunks);
@@ -1233,16 +1239,21 @@ async function copyCurrentDiffRightToLeft(): Promise<void> {
 		await _copyChunkToLeft(lineChunk);
 	} else if (lineChunk.type === "modified") {
 		await _copyModifiedChunkToLeft(lineChunk);
+	} else if (lineChunk.type === "removed") {
+		// When copying "nothing" from right to left, delete the removed lines from left
+		await _deleteChunkFromLeft(lineChunk);
 	}
-	// 'removed' chunks can't be copied right to left (they don't exist on the right)
 
 	// After refresh, navigate to the next appropriate chunk
 	navigateAfterCopy(oldChunkIndex, totalChunks);
 }
 
-function navigateAfterCopy(oldChunkIndex: number, oldTotalChunks: number): void {
+function navigateAfterCopy(
+	oldChunkIndex: number,
+	oldTotalChunks: number,
+): void {
 	// After copying and refreshing, we need to determine where to navigate
-	
+
 	// If there are no more diff chunks, nothing to do
 	if (!diffChunks || diffChunks.length === 0) {
 		currentDiffChunkIndex = -1;
@@ -1251,7 +1262,7 @@ function navigateAfterCopy(oldChunkIndex: number, oldTotalChunks: number): void 
 
 	// Check if the number of chunks decreased (chunk was removed)
 	const chunksRemoved = oldTotalChunks - diffChunks.length;
-	
+
 	if (chunksRemoved > 0) {
 		// Chunk was removed, stay at same index (which moves us forward)
 		// unless we're now past the end
@@ -1273,7 +1284,7 @@ function navigateAfterCopy(oldChunkIndex: number, oldTotalChunks: number): void 
 			currentDiffChunkIndex = oldChunkIndex + 1;
 		}
 	}
-	
+
 	// Scroll to the selected chunk
 	if (diffChunks[currentDiffChunkIndex]) {
 		scrollToLine(diffChunks[currentDiffChunkIndex].startIndex);
