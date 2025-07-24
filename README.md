@@ -5,7 +5,7 @@
 
 Weld is a visual diff and merge tool targeted at developers.
 
-It is inspired by and modeled after [Meld](https://github.com/yousseb/meld) which seems to have been deprecated (at best) in favor of [this fork](https://gitlab.com/dehesselle/meld_macos) - at least in terms of the [Homebrew](https://brew.sh/) package. Recent(-ish) churn due to bugs and slow development inspired me to start this project as an alternative, but seem to have stabilized in recent weeks. Nonetheless, the idea lingered and I decided to explore it as an experiment in some new technologies and as a use case for heavy AI usage.
+It is inspired by and modeled after [Meld](https://github.com/yousseb/meld) which seems to have been deprecated (at best) in favor of [this fork](https://gitlab.com/dehesselle/meld_macos) - at least in terms of the [Homebrew](https://brew.sh/) package. Recent(-ish) churn due to bugs and slow development inspired me to start this project as an alternative, but Meld itself seems to have stabilized recently. Nonetheless, the idea lingered and I decided to explore it as an experiment in some new technologies and as a use case for heavy AI usage.
 
 Weld, while inspired by Meld, offers a slightly streamlined set of functionality. The following features of Meld are not part of Weld:
 

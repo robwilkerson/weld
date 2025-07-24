@@ -1,0 +1,22 @@
+# CODEOWNERS file for Weld
+# This file defines who is responsible for code in this repository
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners - will be requested for review on all PRs
+* @robwilkerson
+
+# Frontend specific
+/frontend/ @robwilkerson
+
+# Backend Go code
+*.go @robwilkerson
+
+# Documentation
+*.md @robwilkerson
+/docs/ @robwilkerson
+
+# Configuration files
+/.github/ @robwilkerson
+*.json @robwilkerson
+*.yml @robwilkerson
+*.yaml @robwilkerson
