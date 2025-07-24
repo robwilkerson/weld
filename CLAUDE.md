@@ -108,7 +108,9 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * Make changes and test locally with `wails dev`
 * Run formatting commands before committing
 * Run unit and integration tests before committing
-* **Commit messages**: Keep subject line ≤ 50 characters for readability
+* **Commit messages**: 
+  * Keep subject line ≤ 50 characters for readability
+  * Do NOT include "Generated with" or "Co-Authored-By" lines
 * Use pull requests for all merges to `main`
 * Run `wails build` and ensure no errors before merging
 
