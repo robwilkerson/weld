@@ -2,7 +2,6 @@
 import { onMount } from "svelte";
 import {
 	CompareFiles,
-	CopyToFile,
 	type DiffLine,
 	type DiffResult,
 	DiscardAllChanges,
@@ -10,14 +9,15 @@ import {
 	GetMinimapVisible,
 	HasUnsavedChanges,
 	QuitWithoutSaving,
-	RemoveLineFromFile,
 	SaveChanges,
 	SaveSelectedFilesAndQuit,
-	SelectFile,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import Minimap from "./components/Minimap.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import QuitDialog from "./components/QuitDialog.svelte";
 import {
 	computeInlineDiff,
@@ -29,6 +29,8 @@ import * as diffOps from "./utils/diffOperations.js";
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import { getDisplayPath } from "./utils/path.js";
 import {
 	calculateScrollToCenterLine,
 	clampScrollPosition,
@@ -55,7 +57,8 @@ let _errorMessage: string = "";
 let leftPane: HTMLElement;
 let rightPane: HTMLElement;
 let centerGutter: HTMLElement;
-const isScrollSyncing: boolean = false; // Keep for backward compatibility during migration
+// biome-ignore lint/correctness/noUnusedVariables: Keep for backward compatibility during migration
+const isScrollSyncing: boolean = false;
 // Initialize theme immediately to prevent flash
 let isDarkMode: boolean = (() => {
 	if (typeof localStorage !== "undefined") {
@@ -230,8 +233,8 @@ interface LineChunk {
 let lineChunks: LineChunk[] = [];
 
 // Viewport tracking for minimap
-let _viewportTop = 0;
-let _viewportHeight = 0;
+const _viewportTop = 0;
+const _viewportHeight = 0;
 let isDraggingViewport = false;
 let dragStartY = 0;
 let dragStartScrollTop = 0;
@@ -472,6 +475,7 @@ function _extractHighlightedLines(html: string): string[] {
 	return lines;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
 	leftFilePath = path;
@@ -482,10 +486,12 @@ async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	_hasCompletedComparison = false; // Reset comparison state
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleError(event: CustomEvent<{ message: string }>) {
 	_errorMessage = event.detail.message;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
 	rightFilePath = path;
