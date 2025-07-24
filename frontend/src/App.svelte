@@ -608,9 +608,11 @@ function _handleMinimapClick(event: MouseEvent): void {
 
 	// Find which diff chunk this line belongs to and set it as current
 	const clickedChunkIndex = diffChunks.findIndex(
-		(chunk) => boundedLineIndex >= chunk.startIndex && boundedLineIndex <= chunk.endIndex,
+		(chunk) =>
+			boundedLineIndex >= chunk.startIndex &&
+			boundedLineIndex <= chunk.endIndex,
 	);
-	
+
 	if (clickedChunkIndex !== -1) {
 		currentDiffChunkIndex = clickedChunkIndex;
 	}
@@ -1006,6 +1008,19 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
+	// Handle Shift+L and Shift+H for copying current diff
+	if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+		if (event.key === "L") {
+			event.preventDefault();
+			copyCurrentDiffLeftToRight();
+			return;
+		} else if (event.key === "H") {
+			event.preventDefault();
+			copyCurrentDiffRightToLeft();
+			return;
+		}
+	}
+
 	handleKeyboardShortcut(
 		event,
 		saveLeftFile,
@@ -1157,6 +1172,112 @@ function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
 	if (lineIndex === 0) return true;
 	const prevLine = highlightedDiffResult.lines[lineIndex - 1];
 	return prevLine.type !== "modified";
+}
+
+async function copyCurrentDiffLeftToRight(): Promise<void> {
+	if (
+		currentDiffChunkIndex === -1 ||
+		!diffChunks ||
+		!diffChunks[currentDiffChunkIndex]
+	) {
+		return;
+	}
+
+	const chunk = diffChunks[currentDiffChunkIndex];
+	const lineChunk = lineChunks.find(
+		(lc) =>
+			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
+	);
+
+	if (!lineChunk) return;
+
+	// Store the current position before copying
+	const oldChunkIndex = currentDiffChunkIndex;
+	const totalChunks = diffChunks.length;
+
+	// Determine the action based on chunk type
+	if (lineChunk.type === "removed") {
+		await _copyChunkToRight(lineChunk);
+	} else if (lineChunk.type === "modified") {
+		await _copyModifiedChunkToRight(lineChunk);
+	}
+	// 'added' chunks can't be copied left to right (they don't exist on the left)
+
+	// After refresh, navigate to the next appropriate chunk
+	navigateAfterCopy(oldChunkIndex, totalChunks);
+}
+
+async function copyCurrentDiffRightToLeft(): Promise<void> {
+	if (
+		currentDiffChunkIndex === -1 ||
+		!diffChunks ||
+		!diffChunks[currentDiffChunkIndex]
+	) {
+		return;
+	}
+
+	const chunk = diffChunks[currentDiffChunkIndex];
+	const lineChunk = lineChunks.find(
+		(lc) =>
+			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
+	);
+
+	if (!lineChunk) return;
+
+	// Store the current position before copying
+	const oldChunkIndex = currentDiffChunkIndex;
+	const totalChunks = diffChunks.length;
+
+	// Determine the action based on chunk type
+	if (lineChunk.type === "added") {
+		await _copyChunkToLeft(lineChunk);
+	} else if (lineChunk.type === "modified") {
+		await _copyModifiedChunkToLeft(lineChunk);
+	}
+	// 'removed' chunks can't be copied right to left (they don't exist on the right)
+
+	// After refresh, navigate to the next appropriate chunk
+	navigateAfterCopy(oldChunkIndex, totalChunks);
+}
+
+function navigateAfterCopy(oldChunkIndex: number, oldTotalChunks: number): void {
+	// After copying and refreshing, we need to determine where to navigate
+	
+	// If there are no more diff chunks, nothing to do
+	if (!diffChunks || diffChunks.length === 0) {
+		currentDiffChunkIndex = -1;
+		return;
+	}
+
+	// Check if the number of chunks decreased (chunk was removed)
+	const chunksRemoved = oldTotalChunks - diffChunks.length;
+	
+	if (chunksRemoved > 0) {
+		// Chunk was removed, stay at same index (which moves us forward)
+		// unless we're now past the end
+		if (oldChunkIndex >= diffChunks.length) {
+			// We were at or past the last chunk, wrap to first
+			currentDiffChunkIndex = 0;
+		} else {
+			// Stay at same index (effectively moving forward)
+			currentDiffChunkIndex = oldChunkIndex;
+		}
+	} else {
+		// No chunks removed (e.g., modified chunk was copied)
+		// Move to next chunk
+		if (oldChunkIndex >= diffChunks.length - 1) {
+			// We were at the last chunk, wrap to first
+			currentDiffChunkIndex = 0;
+		} else {
+			// Move to next chunk
+			currentDiffChunkIndex = oldChunkIndex + 1;
+		}
+	}
+	
+	// Scroll to the selected chunk
+	if (diffChunks[currentDiffChunkIndex]) {
+		scrollToLine(diffChunks[currentDiffChunkIndex].startIndex);
+	}
 }
 
 // ===========================================

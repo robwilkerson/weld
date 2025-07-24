@@ -114,6 +114,14 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * Use pull requests for all merges to `main`
 * Run `wails build` and ensure no errors before merging
 
+### Post-Merge Cleanup
+
+After a PR is merged:
+1. Switch to main: `git checkout main`
+2. Pull latest changes: `git pull`
+3. Delete local feature branch: `git branch -d feat/branch-name`
+4. Prune stale remote branches: `git remote prune origin`
+
 ### Pre-Commit Checklist
 
 **CRITICAL: Complete these checks before EVERY commit:**
