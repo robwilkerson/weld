@@ -16,6 +16,9 @@ import {
 	SelectFile,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
+import FileSelector from "./components/FileSelector.svelte";
+import Minimap from "./components/Minimap.svelte";
+import QuitDialog from "./components/QuitDialog.svelte";
 import {
 	computeInlineDiff,
 	escapeHtml,
@@ -23,8 +26,6 @@ import {
 } from "./utils/diff.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
-import FileSelector from "./components/FileSelector.svelte";
-import QuitDialog from "./components/QuitDialog.svelte";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 
@@ -1846,32 +1847,18 @@ function checkHorizontalScrollbar() {
         </div>
         
         <!-- Minimap Pane -->
-        {#if showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
-          <div class="minimap-pane">
-            <div class="minimap" on:click={_handleMinimapClick}>
-              {#each lineChunks as chunk, chunkIndex}
-                {#if chunk.type !== 'same'}
-                  {@const isCurrentChunk = diffChunks.findIndex(
-                    (dc) => dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex
-                  ) === currentDiffChunkIndex}
-                  <div 
-                    class="minimap-chunk minimap-{chunk.type} {isCurrentChunk ? 'minimap-current' : ''}" 
-                    style="top: {(chunk.startIndex / highlightedDiffResult.lines.length) * 100}%; 
-                           height: {(chunk.lines / highlightedDiffResult.lines.length) * 100}%;"
-                    data-chunk-start={chunk.startIndex}
-                    data-chunk-lines={chunk.lines}
-                  ></div>
-                {/if}
-              {/each}
-              <!-- Viewport indicator -->
-              <div 
-                class="minimap-viewport" 
-                style="top: {viewportTop}%; height: {viewportHeight}%;"
-                on:mousedown={_handleViewportMouseDown}
-              ></div>
-            </div>
-          </div>
-        {/if}
+        <Minimap
+          show={showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
+          {lineChunks}
+          totalLines={highlightedDiffResult?.lines.length || 0}
+          {currentDiffChunkIndex}
+          {diffChunks}
+          {viewportTop}
+          {viewportHeight}
+          {isDarkMode}
+          on:minimapClick={(e) => _handleMinimapClick(e.detail.event)}
+          on:viewportMouseDown={(e) => _handleViewportMouseDown(e.detail.event)}
+        />
       </div>
     {:else if leftFilePath && rightFilePath}
       <div class="empty-state">
@@ -2484,116 +2471,6 @@ function checkHorizontalScrollbar() {
    * MINIMAP STYLES
    * =========================================== */
 
-  .minimap-pane {
-    width: 18px;
-    background: #e6e9ef;
-    overflow: hidden;
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 10; /* Ensure it's above other content */
-  }
-
-  .minimap {
-    width: 100%;
-    height: calc(100% - 5px); /* Leave space for horizontal scrollbar */
-    cursor: pointer;
-    position: relative;
-    min-height: 300px; /* Fixed height for the minimap */
-  }
-
-  .minimap-chunk {
-    position: absolute;
-    width: 100%;
-    left: 0;
-    border-radius: 1px;
-  }
-
-  .minimap-same {
-    background: #eff1f5;
-  }
-
-  .minimap-added {
-    background: rgba(33, 150, 243, 0.4);
-  }
-
-  .minimap-removed {
-    background: rgba(33, 150, 243, 0.4);
-  }
-
-  .minimap-modified {
-    background: rgba(255, 193, 7, 0.5);
-  }
-
-  .minimap-chunk {
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-  }
-
-  .minimap-chunk:hover {
-    opacity: 0.7;
-  }
-
-  /* Current diff chunk in minimap */
-  .minimap-current {
-    box-shadow: 0 0 0 2px #1e66f5;
-    z-index: 5;
-  }
-
-  :global([data-theme="dark"]) .minimap-current {
-    box-shadow: 0 0 0 2px #8aadf4;
-  }
-
-  /* Viewport indicator shows current visible area */
-  .minimap-viewport {
-    position: absolute;
-    width: 100%;
-    left: 0;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(0, 0, 0, 0.4);
-    box-sizing: border-box;
-    cursor: grab;
-    transition: background 0.2s ease;
-  }
-  
-  .minimap-viewport:hover {
-    background: rgba(0, 0, 0, 0.3);
-  }
-  
-  .minimap-viewport:active {
-    cursor: grabbing;
-  }
-
-  /* Dark mode minimap */
-  :global([data-theme="dark"]) .minimap-pane {
-    background: #1e2030;
-  }
-
-  :global([data-theme="dark"]) .minimap-viewport {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-  
-  :global([data-theme="dark"]) .minimap-viewport:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  :global([data-theme="dark"]) .minimap-same {
-    background: #24273a;
-  }
-
-  :global([data-theme="dark"]) .minimap-added {
-    background: rgba(100, 181, 246, 0.4);
-  }
-
-  :global([data-theme="dark"]) .minimap-removed {
-    background: rgba(100, 181, 246, 0.4);
-  }
-
-  :global([data-theme="dark"]) .minimap-modified {
-    background: rgba(255, 183, 77, 0.5);
-  }
 
   .gutter-line {
     display: flex;
