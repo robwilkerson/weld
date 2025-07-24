@@ -24,6 +24,7 @@ import {
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import FileSelector from "./components/FileSelector.svelte";
+import QuitDialog from "./components/QuitDialog.svelte";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 
@@ -1171,6 +1172,7 @@ async function copyCurrentDiffLeftToRight(): Promise<void> {
 		!diffChunks ||
 		!diffChunks[currentDiffChunkIndex]
 	) {
+		console.log("No current diff chunk to copy");
 		return;
 	}
 
@@ -1180,7 +1182,12 @@ async function copyCurrentDiffLeftToRight(): Promise<void> {
 			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
 	);
 
-	if (!lineChunk) return;
+	if (!lineChunk) {
+		console.log("No matching lineChunk found");
+		return;
+	}
+
+	console.log("Copying left to right, chunk type:", lineChunk.type);
 
 	// Store the current position before copying
 	const oldChunkIndex = currentDiffChunkIndex;
@@ -1206,6 +1213,7 @@ async function copyCurrentDiffRightToLeft(): Promise<void> {
 		!diffChunks ||
 		!diffChunks[currentDiffChunkIndex]
 	) {
+		console.log("No current diff chunk to copy");
 		return;
 	}
 
@@ -1215,7 +1223,12 @@ async function copyCurrentDiffRightToLeft(): Promise<void> {
 			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
 	);
 
-	if (!lineChunk) return;
+	if (!lineChunk) {
+		console.log("No matching lineChunk found");
+		return;
+	}
+
+	console.log("Copying right to left, chunk type:", lineChunk.type);
 
 	// Store the current position before copying
 	const oldChunkIndex = currentDiffChunkIndex;
@@ -1872,56 +1885,16 @@ function checkHorizontalScrollbar() {
   </div>
 
   <!-- Quit Dialog Modal -->
-  {#if _showQuitDialog}
-    <div class="modal-overlay" on:click={() => _showQuitDialog = false}>
-      <div class="quit-dialog" on:click|stopPropagation>
-        <h3>Unsaved Changes</h3>
-        <p>Select which files to save before quitting:</p>
-        
-        <div class="file-list">
-          {#if leftFilePath}
-            <label class="file-item">
-              <input 
-                type="checkbox" 
-                bind:checked={fileSelections[leftFilePath]}
-                disabled={!_quitDialogFiles.includes(leftFilePath)}
-              />
-              <span class="file-name">{getDisplayFileName(leftFilePath)}</span>
-              {#if !_quitDialogFiles.includes(leftFilePath)}
-                <span class="file-status">(no changes)</span>
-              {/if}
-            </label>
-          {/if}
-          
-          {#if rightFilePath}
-            <label class="file-item">
-              <input 
-                type="checkbox" 
-                bind:checked={fileSelections[rightFilePath]}
-                disabled={!_quitDialogFiles.includes(rightFilePath)}
-              />
-              <span class="file-name">{getDisplayFileName(rightFilePath)}</span>
-              {#if !_quitDialogFiles.includes(rightFilePath)}
-                <span class="file-status">(no changes)</span>
-              {/if}
-            </label>
-          {/if}
-        </div>
-        
-        <div class="dialog-buttons">
-          <button class="btn-primary" on:click={_handleSaveAndQuit}>
-            Save Selected & Quit
-          </button>
-          <button class="btn-secondary" on:click={_handleQuitWithoutSaving}>
-            Quit Without Saving
-          </button>
-          <button class="btn-tertiary" on:click={() => _showQuitDialog = false}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
+  <QuitDialog
+    show={_showQuitDialog}
+    quitDialogFiles={_quitDialogFiles}
+    {leftFilePath}
+    {rightFilePath}
+    bind:fileSelections
+    on:saveAndQuit={_handleSaveAndQuit}
+    on:quitWithoutSaving={_handleQuitWithoutSaving}
+    on:cancel={() => _showQuitDialog = false}
+  />
 </main>
 
 <style>

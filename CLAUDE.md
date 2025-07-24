@@ -156,11 +156,11 @@ After a PR is merged:
 
 ### Testing and Validation
 
-* Test manually using sample files in `resources/sample-files/`
 * Run `go test ./... -v --cover` for backend unit tests with coverage
 * Run `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
 * **Component Testing**: Create test files for all new components (e.g., `ComponentName.test.ts`)
 * **Manual Testing**: Before committing any UI changes, ask the user to run `wails dev` and manually test the affected functionality
+* Test manually using sample files in `resources/sample-files/`
 * Verify app builds successfully with `wails build`
 
 ## Common Issues
