@@ -19,15 +19,13 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 import {
 	computeInlineDiff,
 	escapeHtml,
-	getLineClass,
 	getLineNumberWidth,
 } from "./utils/diff.js";
-import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
-import { getDisplayFileName, getDisplayPath } from "./utils/path.js";
 
 // Shiki highlighter instance
+// biome-ignore lint/suspicious/noExplicitAny: Highlighter is disabled and set to null
 let highlighter: any = null;
 
 // Cache for highlighted lines to avoid re-processing
@@ -218,14 +216,14 @@ interface LineChunk {
 let lineChunks: LineChunk[] = [];
 
 // Viewport tracking for minimap
-let viewportTop = 0;
-let viewportHeight = 0;
+let _viewportTop = 0;
+let _viewportHeight = 0;
 let isDraggingViewport = false;
 let dragStartY = 0;
 let dragStartScrollTop = 0;
 
 // Minimap visibility state
-let showMinimap = true;
+let _showMinimap = true;
 
 // Flag to indicate initial scroll is happening
 let isInitialScroll = false;
@@ -245,8 +243,8 @@ $: if (
 	const clientHeight = leftPane.clientHeight;
 	const scrollTop = leftPane.scrollTop;
 
-	viewportTop = (scrollTop / scrollHeight) * 100;
-	viewportHeight = (clientHeight / scrollHeight) * 100;
+	_viewportTop = (scrollTop / scrollHeight) * 100;
+	_viewportHeight = (clientHeight / scrollHeight) * 100;
 }
 
 // ===========================================
@@ -1353,9 +1351,9 @@ function _handleViewportMouseUp(): void {
 
 function playInvalidSound(): void {
 	// Create a simple beep sound
-	const audioContext = new (
-		window.AudioContext || (window as any).webkitAudioContext
-	)();
+	const audioContext =
+		new // biome-ignore lint/suspicious/noExplicitAny: webkitAudioContext is for browser compatibility
+		(window.AudioContext || (window as any).webkitAudioContext)();
 	const oscillator = audioContext.createOscillator();
 	const gainNode = audioContext.createGain();
 
@@ -1459,7 +1457,7 @@ function scrollToLine(lineIndex: number): void {
 	});
 }
 
-function handleChunkClick(lineIndex: number): void {
+function _handleChunkClick(lineIndex: number): void {
 	// Find which chunk this line belongs to
 	const clickedChunkIndex = diffChunks.findIndex(
 		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
@@ -1473,7 +1471,7 @@ function handleChunkClick(lineIndex: number): void {
 	}
 }
 
-function handleChunkMouseEnter(lineIndex: number): void {
+function _handleChunkMouseEnter(lineIndex: number): void {
 	// Find which chunk this line belongs to
 	const chunkIndex = diffChunks.findIndex(
 		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
@@ -1484,7 +1482,7 @@ function handleChunkMouseEnter(lineIndex: number): void {
 	}
 }
 
-function handleChunkMouseLeave(): void {
+function _handleChunkMouseLeave(): void {
 	hoveredChunkIndex = -1;
 }
 
@@ -1622,12 +1620,12 @@ onMount(async () => {
 
 	// Listen for minimap toggle event from menu
 	EventsOn("toggle-minimap", (visible: boolean) => {
-		showMinimap = visible;
+		_showMinimap = visible;
 	});
 
 	// Get initial minimap visibility state
 	GetMinimapVisible().then((visible) => {
-		showMinimap = visible;
+		_showMinimap = visible;
 	});
 
 	// Cleanup on destroy

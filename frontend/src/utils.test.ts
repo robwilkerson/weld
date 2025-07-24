@@ -265,6 +265,7 @@ describe("Keyboard Utilities", () => {
 				ctrlKey: true,
 				metaKey: false,
 				preventDefault: vi.fn(),
+				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
 			} as any;
 
 			handleKeydown(
@@ -297,6 +298,7 @@ describe("Keyboard Utilities", () => {
 				ctrlKey: false,
 				metaKey: true,
 				preventDefault: vi.fn(),
+				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
 			} as any;
 
 			handleKeydown(
@@ -321,6 +323,7 @@ describe("Keyboard Utilities", () => {
 				ctrlKey: true,
 				metaKey: false,
 				preventDefault: vi.fn(),
+				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
 			} as any;
 
 			handleKeydown(

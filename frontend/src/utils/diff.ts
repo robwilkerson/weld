@@ -2,6 +2,8 @@
  * Diff-related utility functions
  */
 
+import type { DiffLine, DiffResult } from "../../wailsjs/go/main/App";
+
 /**
  * Gets CSS class name for diff line type
  */
@@ -21,11 +23,11 @@ export function getLineClass(type: string): string {
 /**
  * Calculates width for line numbers based on max line number
  */
-export function getLineNumberWidth(diffResult: any): string {
+export function getLineNumberWidth(diffResult: DiffResult | null): string {
 	if (!diffResult || !diffResult.lines.length) return "32px";
 
 	const maxLineNumber = Math.max(
-		...diffResult.lines.map((line: any) =>
+		...diffResult.lines.map((line: DiffLine) =>
 			Math.max(line.leftNumber || 0, line.rightNumber || 0),
 		),
 	);

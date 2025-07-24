@@ -35,7 +35,7 @@ function processSvg(svg: string, isDarkMode: boolean = false): string {
 	let processed = svg.replace(/<title[^>]*>.*?<\/title>/g, "");
 
 	// Only modify the root SVG element's width/height, not inner elements
-	processed = processed.replace(/<svg([^>]*)>/g, (match, attrs) => {
+	processed = processed.replace(/<svg([^>]*)>/g, (_match, attrs) => {
 		// Remove width and height from svg tag attributes
 		const cleanedAttrs = attrs
 			.replace(/\s*width="[^"]*"/g, "")
