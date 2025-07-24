@@ -282,10 +282,7 @@ describe("diffOperations", () => {
 			);
 
 			// Should first delete the right line
-			expect(RemoveLineFromFile).toHaveBeenCalledWith(
-				"/path/to/right.txt",
-				3,
-			);
+			expect(RemoveLineFromFile).toHaveBeenCalledWith("/path/to/right.txt", 3);
 
 			// Then copy the left line
 			expect(CopyToFile).toHaveBeenCalledWith(
@@ -331,10 +328,7 @@ describe("diffOperations", () => {
 			await diffOps.copyModifiedChunkToLeft(modifiedChunk, contextWithModified);
 
 			// Should first delete the left line
-			expect(RemoveLineFromFile).toHaveBeenCalledWith(
-				"/path/to/left.txt",
-				3,
-			);
+			expect(RemoveLineFromFile).toHaveBeenCalledWith("/path/to/left.txt", 3);
 
 			// Then copy the right line
 			expect(CopyToFile).toHaveBeenCalledWith(

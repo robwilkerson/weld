@@ -29,6 +29,11 @@ import * as diffOps from "./utils/diffOperations.js";
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
+import {
+	calculateScrollToCenterLine,
+	clampScrollPosition,
+	createScrollSynchronizer,
+} from "./utils/scrollSync.js";
 
 // Shiki highlighter instance
 // biome-ignore lint/suspicious/noExplicitAny: Highlighter is disabled and set to null
@@ -36,6 +41,9 @@ let highlighter: any = null;
 
 // Cache for highlighted lines to avoid re-processing
 const highlightCache: Map<string, string> = new Map();
+
+// Create scroll synchronizer instance
+const scrollSync = createScrollSynchronizer();
 
 let leftFilePath: string = "";
 let rightFilePath: string = "";
@@ -47,7 +55,7 @@ let _errorMessage: string = "";
 let leftPane: HTMLElement;
 let rightPane: HTMLElement;
 let centerGutter: HTMLElement;
-let isScrollSyncing: boolean = false;
+const isScrollSyncing: boolean = false; // Keep for backward compatibility during migration
 // Initialize theme immediately to prevent flash
 let isDarkMode: boolean = (() => {
 	if (typeof localStorage !== "undefined") {
@@ -239,18 +247,38 @@ $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
 }
 
-// Update viewport position when scrolling
+// Function to update minimap viewport position
+function updateMinimapViewport(): void {
+	if (
+		leftPane &&
+		highlightedDiffResult &&
+		highlightedDiffResult.lines.length > 0
+	) {
+		const scrollHeight = leftPane.scrollHeight;
+		const clientHeight = leftPane.clientHeight;
+		const scrollTop = leftPane.scrollTop;
+
+		viewportTop = (scrollTop / scrollHeight) * 100;
+		viewportHeight = (clientHeight / scrollHeight) * 100;
+	}
+}
+
+// Update viewport position when content changes
 $: if (
 	leftPane &&
 	highlightedDiffResult &&
 	highlightedDiffResult.lines.length > 0
 ) {
-	const scrollHeight = leftPane.scrollHeight;
-	const clientHeight = leftPane.clientHeight;
-	const scrollTop = leftPane.scrollTop;
+	updateMinimapViewport();
+}
 
-	_viewportTop = (scrollTop / scrollHeight) * 100;
-	_viewportHeight = (clientHeight / scrollHeight) * 100;
+// Initialize scroll synchronizer when all elements are available
+$: if (leftPane && rightPane && centerGutter) {
+	scrollSync.setElements({
+		leftPane,
+		rightPane,
+		centerGutter,
+	});
 }
 
 // ===========================================
@@ -508,66 +536,7 @@ async function compareBothFiles(
 	}
 }
 
-function _syncLeftScroll() {
-	if (
-		isScrollSyncing ||
-		isInitialScroll ||
-		!leftPane ||
-		!rightPane ||
-		!centerGutter
-	)
-		return;
-	isScrollSyncing = true;
-	// Sync vertical scrolling to all panes
-	const scrollTop = leftPane.scrollTop;
-	rightPane.scrollTop = scrollTop;
-	centerGutter.scrollTop = scrollTop;
-	// Only sync horizontal scroll between content panes
-	rightPane.scrollLeft = leftPane.scrollLeft;
-	requestAnimationFrame(() => {
-		isScrollSyncing = false;
-	});
-}
-
-function _syncRightScroll() {
-	if (
-		isScrollSyncing ||
-		isInitialScroll ||
-		!leftPane ||
-		!rightPane ||
-		!centerGutter
-	)
-		return;
-	isScrollSyncing = true;
-
-	// Sync vertical scrolling to all panes
-	const scrollTop = rightPane.scrollTop;
-	leftPane.scrollTop = scrollTop;
-	centerGutter.scrollTop = scrollTop;
-	// Only sync horizontal scroll between content panes
-	leftPane.scrollLeft = rightPane.scrollLeft;
-	requestAnimationFrame(() => {
-		isScrollSyncing = false;
-	});
-}
-
-function _syncCenterScroll() {
-	if (
-		isScrollSyncing ||
-		isInitialScroll ||
-		!leftPane ||
-		!rightPane ||
-		!centerGutter
-	)
-		return;
-	isScrollSyncing = true;
-	// Sync center gutter scroll to both content panes
-	leftPane.scrollTop = centerGutter.scrollTop;
-	rightPane.scrollTop = centerGutter.scrollTop;
-	setTimeout(() => {
-		isScrollSyncing = false;
-	}, 10);
-}
+// Scroll sync functions moved below onMount
 
 // ===========================================
 // MINIMAP FUNCTIONALITY
@@ -627,18 +596,12 @@ function _handleMinimapClick(event: MouseEvent): void {
 	const clampedScrollLeft = Math.min(scrollTo, leftMaxScroll);
 	const clampedScrollCenter = Math.min(scrollTo, centerMaxScroll);
 
-	// Sync scroll across all panes
-	isScrollSyncing = true;
-
 	// Use the minimum of the clamped values to keep all panes aligned
 	const finalScroll = Math.min(clampedScrollLeft, clampedScrollCenter);
 
-	leftPane.scrollTop = finalScroll;
-	rightPane.scrollTop = finalScroll;
-	centerGutter.scrollTop = finalScroll;
-
-	requestAnimationFrame(() => {
-		isScrollSyncing = false;
+	// Use scroll synchronizer to update all panes
+	scrollSync.scrollToPosition(finalScroll).then(() => {
+		updateMinimapViewport();
 	});
 }
 
@@ -1203,14 +1166,9 @@ function _handleViewportDrag(event: MouseEvent): void {
 	const scrollHeight = leftPane.scrollHeight;
 	const newScrollTop = dragStartScrollTop + (deltaPercent / 100) * scrollHeight;
 
-	// Apply scroll to all panes
-	isScrollSyncing = true;
-	leftPane.scrollTop = newScrollTop;
-	rightPane.scrollTop = newScrollTop;
-	centerGutter.scrollTop = newScrollTop;
-
-	requestAnimationFrame(() => {
-		isScrollSyncing = false;
+	// Apply scroll to all panes using scroll synchronizer
+	scrollSync.scrollToPosition(newScrollTop).then(() => {
+		updateMinimapViewport();
 	});
 }
 
@@ -1307,26 +1265,22 @@ function scrollToLine(lineIndex: number): void {
 	);
 
 	// Calculate the target scroll position to center the line in view
-	const targetScrollTop =
-		lineIndex * lineHeight - leftPane.clientHeight / 2 + lineHeight / 2;
+	const targetScrollTop = calculateScrollToCenterLine(
+		lineIndex,
+		lineHeight,
+		leftPane.clientHeight,
+	);
 
 	// Ensure we don't scroll past the bounds
-	const maxScroll = leftPane.scrollHeight - leftPane.clientHeight;
-	const clampedScrollTop = Math.max(0, Math.min(targetScrollTop, maxScroll));
+	const clampedScrollTop = clampScrollPosition(
+		targetScrollTop,
+		leftPane.scrollHeight,
+		leftPane.clientHeight,
+	);
 
-	// Temporarily disable scroll syncing to prevent conflicts
-	isScrollSyncing = true;
-
-	// Use requestAnimationFrame for smoother scrolling
-	requestAnimationFrame(() => {
-		leftPane.scrollTop = clampedScrollTop;
-		rightPane.scrollTop = clampedScrollTop;
-		centerGutter.scrollTop = clampedScrollTop;
-
-		// Re-enable scroll syncing after a short delay
-		requestAnimationFrame(() => {
-			isScrollSyncing = false;
-		});
+	// Use scroll synchronizer with animation
+	scrollSync.scrollToPosition(clampedScrollTop, { animate: true }).then(() => {
+		updateMinimapViewport();
 	});
 }
 
@@ -1380,42 +1334,58 @@ function scrollToFirstDiff(): void {
 		// Parse the px value directly
 		const lineHeightPx = parseFloat(lineHeightValue) || 19.2;
 
-		// Calculate the position of the first diff
-		const firstDiffPosition = firstDiffIndex * lineHeightPx;
-
-		// Get the viewport height
-		const viewportHeight = leftPane.clientHeight;
-		const middleOfViewport = viewportHeight / 2;
-
-		// Always scroll to center the first diff in the viewport
 		// Calculate scroll position to center the first diff
-		const scrollTo = Math.max(0, firstDiffPosition - middleOfViewport);
+		const scrollTo = calculateScrollToCenterLine(
+			firstDiffIndex,
+			lineHeightPx,
+			leftPane.clientHeight,
+		);
 
 		// Ensure all panes are ready and synced
-		requestAnimationFrame(() => {
-			// Set scroll position on all panes simultaneously
-			isScrollSyncing = true;
-			leftPane.scrollTop = scrollTo;
-			rightPane.scrollTop = scrollTo;
-			centerGutter.scrollTop = scrollTo;
-			// Allow sync to resume after a frame
-			requestAnimationFrame(() => {
-				isScrollSyncing = false;
-				// Reset initial scroll flag after a delay
-				setTimeout(() => {
-					isInitialScroll = false;
-					// Set the current diff chunk after scrolling completes
-					// This ensures diffChunks is populated
-					if (diffChunks.length > 0 && currentDiffChunkIndex === -1) {
-						currentDiffChunkIndex = 0;
-					}
-				}, 100);
-			});
+		requestAnimationFrame(async () => {
+			// Use scroll synchronizer to position all panes
+			await scrollSync.scrollToPosition(scrollTo, { animate: true });
+			updateMinimapViewport();
+
+			// Reset initial scroll flag after a delay
+			setTimeout(() => {
+				isInitialScroll = false;
+				// Set the current diff chunk after scrolling completes
+				// This ensures diffChunks is populated
+				if (diffChunks.length > 0 && currentDiffChunkIndex === -1) {
+					currentDiffChunkIndex = 0;
+				}
+			}, 100);
 		});
 	} catch (error) {
 		console.error("Error in scrollToFirstDiff:", error);
 		isInitialScroll = false;
 	}
+}
+
+// Scroll sync handlers
+function _syncLeftScroll(): void {
+	scrollSync.syncFromLeft({
+		onSyncComplete: () => {
+			updateMinimapViewport();
+		},
+	});
+}
+
+function _syncRightScroll(): void {
+	scrollSync.syncFromRight({
+		onSyncComplete: () => {
+			updateMinimapViewport();
+		},
+	});
+}
+
+function _syncCenterScroll(): void {
+	scrollSync.syncFromCenter({
+		onSyncComplete: () => {
+			updateMinimapViewport();
+		},
+	});
 }
 
 onMount(async () => {
@@ -1479,6 +1449,8 @@ onMount(async () => {
 		if (leftPane) resizeObserver.observe(leftPane);
 		if (rightPane) resizeObserver.observe(rightPane);
 		checkHorizontalScrollbar();
+
+		// Scroll sync will be initialized via reactive statement
 	}, 0);
 
 	// Click outside handler for menu
