@@ -1,5 +1,5 @@
 <script lang="ts">
-import { createEventDispatcher } from "svelte";
+import { createEventDispatcher, onDestroy } from "svelte";
 import type {
 	DiffViewerEvents,
 	DiffViewerProps,
@@ -52,6 +52,16 @@ const dispatch = createEventDispatcher<DiffViewerEvents>();
 // Line chunks for grouping
 let lineChunks: LineChunk[] = [];
 let diffChunks: LineChunk[] = [];
+
+// Track timeout for cleanup
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Cleanup on destroy
+onDestroy(() => {
+	if (scrollTimeout) {
+		clearTimeout(scrollTimeout);
+	}
+});
 
 // Process chunks when diffResult changes
 $: if (diffResult) {
@@ -178,7 +188,9 @@ function handleSaveRight(): void {
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function syncLeftScroll(): void {
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const leftElement = leftPaneComponent.getElement();
+		const leftElement = leftPaneComponent.getElement?.();
+		if (!leftElement) return;
+
 		const scrollTop = leftElement.scrollTop;
 		rightPaneComponent.setScrollTop(scrollTop);
 		centerGutterComponent.setScrollTop(scrollTop);
@@ -189,7 +201,9 @@ function syncLeftScroll(): void {
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function syncRightScroll(): void {
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const rightElement = rightPaneComponent.getElement();
+		const rightElement = rightPaneComponent.getElement?.();
+		if (!rightElement) return;
+
 		const scrollTop = rightElement.scrollTop;
 		leftPaneComponent.setScrollTop(scrollTop);
 		centerGutterComponent.setScrollTop(scrollTop);
@@ -200,7 +214,9 @@ function syncRightScroll(): void {
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function syncCenterScroll(): void {
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const centerElement = centerGutterComponent.getElement();
+		const centerElement = centerGutterComponent.getElement?.();
+		if (!centerElement) return;
+
 		const scrollTop = centerElement.scrollTop;
 		leftPaneComponent.setScrollTop(scrollTop);
 		rightPaneComponent.setScrollTop(scrollTop);
@@ -211,7 +227,9 @@ function syncCenterScroll(): void {
 // Update minimap viewport
 function updateMinimapViewport(): void {
 	if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
-		const leftElement = leftPaneComponent.getElement();
+		const leftElement = leftPaneComponent.getElement?.();
+		if (!leftElement) return;
+
 		const scrollHeight = leftElement.scrollHeight;
 		const clientHeight = leftElement.clientHeight;
 		const scrollTop = leftElement.scrollTop;
@@ -230,7 +248,13 @@ $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 export function scrollToLine(lineIndex: number): void {
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
 		const lineHeight = 19.2; // from CSS var(--line-height)
-		const leftElement = leftPaneComponent.getElement();
+		const leftElement = leftPaneComponent.getElement?.();
+
+		// Safety check: ensure element exists
+		if (!leftElement) {
+			return;
+		}
+
 		const viewportHeight = leftElement.clientHeight;
 
 		// Find if this line is part of a diff chunk
@@ -272,13 +296,22 @@ $: if (
 ) {
 	// Only scroll if we haven't scrolled yet (initial load)
 	const leftElement = leftPaneComponent.getElement();
-	if (leftElement.scrollTop === 0) {
+	if (leftElement && leftElement.scrollTop === 0) {
 		const firstDiffLine = diffResult.lines.findIndex(
 			(line) => line.type !== "same",
 		);
 		if (firstDiffLine !== -1) {
-			setTimeout(() => {
-				scrollToLine(firstDiffLine);
+			// Clear any existing timeout
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
+
+			scrollTimeout = setTimeout(() => {
+				// Check components still exist before using them
+				if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
+					scrollToLine(firstDiffLine);
+				}
+				scrollTimeout = null;
 			}, 100);
 		}
 	}
