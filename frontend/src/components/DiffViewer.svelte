@@ -261,7 +261,6 @@ $: if (
 		}
 	}
 }
-
 </script>
 
 <div class="diff-viewer" class:comparing={isComparing}>
@@ -373,6 +372,12 @@ $: if (
 </div>
 
 <style>
+	:root {
+		--line-height: 19.2px;
+		--font-size: 0.8rem;
+		--gutter-width: 72px;
+	}
+
 	.diff-viewer {
 		flex: 1;
 		display: flex;
@@ -464,28 +469,42 @@ $: if (
 
 	/* Inline diff highlighting */
 	:global(.inline-diff-highlight) {
-		background-color: rgba(30, 102, 245, 0.3);
-		padding: 1px 2px;
-		border-radius: 2px;
+		background-color: rgba(30, 102, 245, 0.3) !important;
+		color: #4c4f69;
+		padding: 1px 2px !important;
+		border-radius: 2px !important;
+		font-weight: normal;
+		min-height: var(--line-height);
+		display: inline-block;
+		line-height: var(--line-height);
+		vertical-align: top;
 		margin: 0 1px;
 	}
 
 	:global([data-theme="dark"] .inline-diff-highlight) {
-		background-color: rgba(138, 173, 244, 0.4);
+		background-color: rgba(138, 173, 244, 0.3) !important;
+		color: #cad3f5;
 	}
 
 	/* Full line highlighting for added/removed lines */
 	:global(.inline-diff-highlight-full) {
-		background-color: rgba(30, 102, 245, 0.15);
-		padding: 0 2px;
-		border-radius: 2px;
+		background-color: rgba(30, 102, 245, 0.3) !important;
+		color: #4c4f69;
+		padding: 0 2px !important;
+		border-radius: 2px !important;
+		font-weight: normal;
+		min-height: var(--line-height);
 		display: inline-block;
+		line-height: var(--line-height);
+		vertical-align: top;
+		width: 100%;
 		min-width: 100%;
 		box-decoration-break: clone;
 		-webkit-box-decoration-break: clone;
 	}
 
 	:global([data-theme="dark"] .inline-diff-highlight-full) {
-		background-color: rgba(138, 173, 244, 0.2);
+		background-color: rgba(138, 173, 244, 0.3) !important;
+		color: #cad3f5;
 	}
 </style>

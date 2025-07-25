@@ -197,6 +197,7 @@ export function setScrollTop(scrollTop: number): void {
 		height: var(--line-height);
 		position: relative;
 		transition: background-color 0.15s ease;
+		padding-right: 20px; /* Prevent minimap overlap */
 	}
 
 	.line-number {
