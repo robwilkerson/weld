@@ -270,8 +270,10 @@ describe("Keyboard Utilities", () => {
 
 			handleKeydown(
 				mockEvent,
-				mockSaveLeftFile,
-				mockSaveRightFile,
+				{
+					saveLeftFile: mockSaveLeftFile,
+					saveRightFile: mockSaveRightFile,
+				},
 				leftFilePath,
 				rightFilePath,
 			);
@@ -303,8 +305,10 @@ describe("Keyboard Utilities", () => {
 
 			handleKeydown(
 				mockEvent,
-				mockSaveLeftFile,
-				mockSaveRightFile,
+				{
+					saveLeftFile: mockSaveLeftFile,
+					saveRightFile: mockSaveRightFile,
+				},
 				leftFilePath,
 				rightFilePath,
 			);
@@ -328,8 +332,10 @@ describe("Keyboard Utilities", () => {
 
 			handleKeydown(
 				mockEvent,
-				mockSaveLeftFile,
-				mockSaveRightFile,
+				{
+					saveLeftFile: mockSaveLeftFile,
+					saveRightFile: mockSaveRightFile,
+				},
 				"/path/left.txt",
 				"/path/right.txt",
 			);
