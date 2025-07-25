@@ -345,6 +345,302 @@ describe("Keyboard Utilities", () => {
 			expect(mockSaveLeftFile).not.toHaveBeenCalled();
 			expect(mockSaveRightFile).not.toHaveBeenCalled();
 		});
+
+		it("should handle Shift+L for copy right to left", () => {
+			const mockCopyRightToLeft = vi.fn();
+			
+			const mockEvent = {
+				key: "L",
+				shiftKey: true,
+				ctrlKey: false,
+				metaKey: false,
+				altKey: false,
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					copyCurrentDiffLeftToRight: mockCopyRightToLeft,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockCopyRightToLeft).toHaveBeenCalled();
+		});
+
+		it("should handle Shift+H for copy left to right", () => {
+			const mockCopyLeftToRight = vi.fn();
+			
+			const mockEvent = {
+				key: "H",
+				shiftKey: true,
+				ctrlKey: false,
+				metaKey: false,
+				altKey: false,
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					copyCurrentDiffRightToLeft: mockCopyLeftToRight,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockCopyLeftToRight).toHaveBeenCalled();
+		});
+
+		it("should handle ArrowDown for jump to next diff", () => {
+			const mockJumpToNext = vi.fn();
+			const mockJumpToPrev = vi.fn();
+			
+			const mockEvent = {
+				key: "ArrowDown",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					jumpToNextDiff: mockJumpToNext,
+					jumpToPrevDiff: mockJumpToPrev,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockJumpToNext).toHaveBeenCalled();
+			expect(mockJumpToPrev).not.toHaveBeenCalled();
+		});
+
+		it("should handle j key for jump to next diff", () => {
+			const mockJumpToNext = vi.fn();
+			const mockJumpToPrev = vi.fn();
+			
+			const mockEvent = {
+				key: "j",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					jumpToNextDiff: mockJumpToNext,
+					jumpToPrevDiff: mockJumpToPrev,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockJumpToNext).toHaveBeenCalled();
+		});
+
+		it("should handle ArrowUp for jump to previous diff", () => {
+			const mockJumpToNext = vi.fn();
+			const mockJumpToPrev = vi.fn();
+			
+			const mockEvent = {
+				key: "ArrowUp",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					jumpToNextDiff: mockJumpToNext,
+					jumpToPrevDiff: mockJumpToPrev,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockJumpToPrev).toHaveBeenCalled();
+			expect(mockJumpToNext).not.toHaveBeenCalled();
+		});
+
+		it("should handle k key for jump to previous diff", () => {
+			const mockJumpToNext = vi.fn();
+			const mockJumpToPrev = vi.fn();
+			
+			const mockEvent = {
+				key: "k",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					jumpToNextDiff: mockJumpToNext,
+					jumpToPrevDiff: mockJumpToPrev,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockJumpToPrev).toHaveBeenCalled();
+		});
+
+		it("should handle Ctrl+Z for undo on Windows/Linux", () => {
+			const mockUndo = vi.fn();
+			
+			// Mock Windows platform
+			Object.defineProperty(navigator, "platform", {
+				value: "Win32",
+				writable: true,
+			});
+
+			const mockEvent = {
+				key: "z",
+				ctrlKey: true,
+				metaKey: false,
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					undoLastChange: mockUndo,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockUndo).toHaveBeenCalled();
+		});
+
+		it("should handle Cmd+Z for undo on Mac", () => {
+			const mockUndo = vi.fn();
+			
+			// Mock Mac platform
+			Object.defineProperty(navigator, "platform", {
+				value: "MacIntel",
+				writable: true,
+			});
+
+			const mockEvent = {
+				key: "z",
+				ctrlKey: false,
+				metaKey: true,
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					undoLastChange: mockUndo,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockUndo).toHaveBeenCalled();
+		});
+
+		it("should handle u key for undo", () => {
+			const mockUndo = vi.fn();
+			
+			const mockEvent = {
+				key: "u",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					undoLastChange: mockUndo,
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			expect(mockUndo).toHaveBeenCalled();
+		});
+
+		it("should not call navigation callbacks if they are not provided", () => {
+			const mockEvent = {
+				key: "j",
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: vi.fn(),
+					saveRightFile: vi.fn(),
+					// No navigation callbacks provided
+				},
+				"/path/left.txt",
+				"/path/right.txt",
+			);
+
+			// Should not prevent default when callbacks are missing
+			expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+		});
+
+		it("should not save files when paths are empty", () => {
+			const mockSaveLeft = vi.fn();
+			const mockSaveRight = vi.fn();
+
+			// Mock Windows platform
+			Object.defineProperty(navigator, "platform", {
+				value: "Win32",
+				writable: true,
+			});
+
+			const mockEvent = {
+				key: "s",
+				ctrlKey: true,
+				metaKey: false,
+				preventDefault: vi.fn(),
+			} as any;
+
+			handleKeydown(
+				mockEvent,
+				{
+					saveLeftFile: mockSaveLeft,
+					saveRightFile: mockSaveRight,
+				},
+				"", // Empty left path
+				"", // Empty right path
+			);
+
+			// preventDefault is called when Ctrl+S is pressed regardless of paths
+			expect(mockEvent.preventDefault).toHaveBeenCalled();
+			// But save functions should not be called when paths are empty
+			expect(mockSaveLeft).not.toHaveBeenCalled();
+			expect(mockSaveRight).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("isMacOS", () => {
