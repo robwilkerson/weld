@@ -62,7 +62,7 @@ export async function copyChunkToLeft(
 	// Copy all lines in the chunk from right to left
 	// First, find the correct insertion position
 	let insertPosition = 1; // Default to beginning of file
-	
+
 	// Look for the nearest "same" line above this chunk to determine position
 	for (let i = chunk.startIndex - 1; i >= 0; i--) {
 		const line = diffResult.lines[i];
@@ -71,7 +71,7 @@ export async function copyChunkToLeft(
 			break;
 		}
 	}
-	
+
 	// Copy all lines in the chunk
 	let currentInsertPosition = insertPosition;
 	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
@@ -360,7 +360,7 @@ export async function copyLineToLeft(
 		// Copy from right to left
 		// Find the correct insertion position in the left file
 		let insertPosition = 1; // Default to beginning of file
-		
+
 		// Look for the nearest "same" line above this added line to determine position
 		for (let i = lineIndex - 1; i >= 0; i--) {
 			const line = diffResult.lines[i];
@@ -369,7 +369,7 @@ export async function copyLineToLeft(
 				break;
 			}
 		}
-		
+
 		await CopyToFile(
 			rightFilePath,
 			leftFilePath,

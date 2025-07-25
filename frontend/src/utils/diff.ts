@@ -48,6 +48,51 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Gets display path for file - shows relative path if files share a common directory
+ */
+export function getDisplayPath(
+	leftPath: string,
+	rightPath: string,
+	isLeft: boolean,
+): string {
+	const path = isLeft ? leftPath : rightPath;
+
+	// Find common directory prefix
+	const leftParts = leftPath.split("/");
+	const rightParts = rightPath.split("/");
+
+	let commonPrefixLength = 0;
+	for (
+		let i = 0;
+		i < Math.min(leftParts.length - 1, rightParts.length - 1);
+		i++
+	) {
+		if (leftParts[i] === rightParts[i]) {
+			commonPrefixLength++;
+		} else {
+			break;
+		}
+	}
+
+	// If files are in same directory, just show filename
+	if (
+		commonPrefixLength === leftParts.length - 1 &&
+		commonPrefixLength === rightParts.length - 1
+	) {
+		return path.split("/").pop() || path;
+	}
+
+	// Otherwise show relative path from common prefix
+	if (commonPrefixLength > 0) {
+		const parts = path.split("/");
+		return parts.slice(commonPrefixLength).join("/");
+	}
+
+	// No common prefix, show full path
+	return path;
+}
+
+/**
  * Computes inline diff highlights for modified lines
  * @param left - Left side text
  * @param right - Right side text
