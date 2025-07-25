@@ -18,7 +18,7 @@ let gutterElement: HTMLElement;
 
 // Event dispatcher
 const dispatch = createEventDispatcher<{
-	scroll: void;
+	scroll: undefined;
 	copyLineToLeft: number;
 	copyLineToRight: number;
 	copyChunkToLeft: LineChunk;

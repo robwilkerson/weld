@@ -130,8 +130,9 @@ describe("Minimap", () => {
 		const mockHandler = vi.fn();
 		component.$on("minimapClick", mockHandler);
 
-		const minimap = container.querySelector(".minimap")!;
-		await fireEvent.click(minimap);
+		const minimap = container.querySelector(".minimap");
+		expect(minimap).toBeTruthy();
+		if (minimap) await fireEvent.click(minimap);
 
 		expect(mockHandler).toHaveBeenCalledTimes(1);
 		expect(mockHandler).toHaveBeenCalledWith(
@@ -155,8 +156,9 @@ describe("Minimap", () => {
 		const mockHandler = vi.fn();
 		component.$on("viewportMouseDown", mockHandler);
 
-		const viewport = container.querySelector(".minimap-viewport")!;
-		await fireEvent.mouseDown(viewport);
+		const viewport = container.querySelector(".minimap-viewport");
+		expect(viewport).toBeTruthy();
+		if (viewport) await fireEvent.mouseDown(viewport);
 
 		expect(mockHandler).toHaveBeenCalledTimes(1);
 		expect(mockHandler).toHaveBeenCalledWith(

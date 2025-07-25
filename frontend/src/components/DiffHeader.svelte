@@ -13,8 +13,8 @@ export let lineNumberWidth: string;
 
 // Event dispatcher
 const dispatch = createEventDispatcher<{
-	saveLeft: void;
-	saveRight: void;
+	saveLeft: undefined;
+	saveRight: undefined;
 }>();
 
 // Event handlers

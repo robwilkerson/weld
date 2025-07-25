@@ -8,8 +8,8 @@ import {
 
 describe("scrollSync", () => {
 	let mockElements: ScrollElements;
-	let requestAnimationFrameSpy: any;
-	let setTimeoutSpy: any;
+	let requestAnimationFrameSpy: import("vitest").MockInstance;
+	let setTimeoutSpy: import("vitest").MockInstance;
 
 	beforeEach(() => {
 		// Mock DOM elements
@@ -45,9 +45,9 @@ describe("scrollSync", () => {
 		// Mock setTimeout
 		setTimeoutSpy = vi
 			.spyOn(window, "setTimeout")
-			.mockImplementation((cb: Function) => {
+			.mockImplementation((cb: () => void) => {
 				cb();
-				return 0 as any;
+				return 0 as unknown as ReturnType<typeof setTimeout>;
 			});
 	});
 
@@ -73,16 +73,18 @@ describe("scrollSync", () => {
 				syncer.setElements(mockElements);
 
 				// Set left pane scroll
-				mockElements.leftPane!.scrollTop = 100;
-				mockElements.leftPane!.scrollLeft = 50;
+				if (mockElements.leftPane) {
+					mockElements.leftPane.scrollTop = 100;
+					mockElements.leftPane.scrollLeft = 50;
+				}
 
 				// Sync
 				syncer.syncFromLeft();
 
 				// Check other panes were synced
-				expect(mockElements.rightPane!.scrollTop).toBe(100);
-				expect(mockElements.centerGutter!.scrollTop).toBe(100);
-				expect(mockElements.rightPane!.scrollLeft).toBe(50);
+				expect(mockElements.rightPane?.scrollTop).toBe(100);
+				expect(mockElements.centerGutter?.scrollTop).toBe(100);
+				expect(mockElements.rightPane?.scrollLeft).toBe(50);
 			});
 
 			it("should not sync if already syncing", () => {
@@ -90,22 +92,26 @@ describe("scrollSync", () => {
 				syncer.setElements(mockElements);
 				syncer.setSyncing(true);
 
-				mockElements.leftPane!.scrollTop = 100;
+				if (mockElements.leftPane) {
+					mockElements.leftPane.scrollTop = 100;
+				}
 				syncer.syncFromLeft();
 
 				// Should not have synced
-				expect(mockElements.rightPane!.scrollTop).toBe(0);
+				expect(mockElements.rightPane?.scrollTop).toBe(0);
 			});
 
 			it("should not sync during initial scroll", () => {
 				const syncer = createScrollSynchronizer();
 				syncer.setElements(mockElements);
 
-				mockElements.leftPane!.scrollTop = 100;
+				if (mockElements.leftPane) {
+					mockElements.leftPane.scrollTop = 100;
+				}
 				syncer.syncFromLeft({ isInitialScroll: true });
 
 				// Should not have synced
-				expect(mockElements.rightPane!.scrollTop).toBe(0);
+				expect(mockElements.rightPane?.scrollTop).toBe(0);
 			});
 
 			it("should call onSyncComplete callback", () => {
@@ -125,16 +131,18 @@ describe("scrollSync", () => {
 				syncer.setElements(mockElements);
 
 				// Set right pane scroll
-				mockElements.rightPane!.scrollTop = 200;
-				mockElements.rightPane!.scrollLeft = 75;
+				if (mockElements.rightPane) {
+					mockElements.rightPane.scrollTop = 200;
+					mockElements.rightPane.scrollLeft = 75;
+				}
 
 				// Sync
 				syncer.syncFromRight();
 
 				// Check other panes were synced
-				expect(mockElements.leftPane!.scrollTop).toBe(200);
-				expect(mockElements.centerGutter!.scrollTop).toBe(200);
-				expect(mockElements.leftPane!.scrollLeft).toBe(75);
+				expect(mockElements.leftPane?.scrollTop).toBe(200);
+				expect(mockElements.centerGutter?.scrollTop).toBe(200);
+				expect(mockElements.leftPane?.scrollLeft).toBe(75);
 			});
 		});
 
@@ -144,14 +152,16 @@ describe("scrollSync", () => {
 				syncer.setElements(mockElements);
 
 				// Set center gutter scroll
-				mockElements.centerGutter!.scrollTop = 300;
+				if (mockElements.centerGutter) {
+					mockElements.centerGutter.scrollTop = 300;
+				}
 
 				// Sync
 				syncer.syncFromCenter();
 
 				// Check content panes were synced
-				expect(mockElements.leftPane!.scrollTop).toBe(300);
-				expect(mockElements.rightPane!.scrollTop).toBe(300);
+				expect(mockElements.leftPane?.scrollTop).toBe(300);
+				expect(mockElements.rightPane?.scrollTop).toBe(300);
 			});
 
 			it("should use setTimeout for center sync", () => {
@@ -171,9 +181,9 @@ describe("scrollSync", () => {
 
 				await syncer.scrollToPosition(150);
 
-				expect(mockElements.leftPane!.scrollTop).toBe(150);
-				expect(mockElements.rightPane!.scrollTop).toBe(150);
-				expect(mockElements.centerGutter!.scrollTop).toBe(150);
+				expect(mockElements.leftPane?.scrollTop).toBe(150);
+				expect(mockElements.rightPane?.scrollTop).toBe(150);
+				expect(mockElements.centerGutter?.scrollTop).toBe(150);
 			});
 
 			it("should animate scroll when requested", async () => {
@@ -183,7 +193,7 @@ describe("scrollSync", () => {
 				await syncer.scrollToPosition(150, { animate: true });
 
 				expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(2);
-				expect(mockElements.leftPane!.scrollTop).toBe(150);
+				expect(mockElements.leftPane?.scrollTop).toBe(150);
 			});
 
 			it("should resolve even with missing elements", async () => {

@@ -57,9 +57,9 @@ function handleCompareClick(): void {
   </button>
   <button class="compare-btn" on:click={handleCompareClick} disabled={!leftFilePath || !rightFilePath || isComparing || hasCompletedComparison}>
     {#if isComparing}
-      Comparing files...
+      Comparing...
     {:else}
-      Compare Files
+      Compare
     {/if}
   </button>
 </div>
@@ -69,6 +69,7 @@ function handleCompareClick(): void {
     display: flex;
     gap: 1rem;
     margin-bottom: 0.5rem;
+    align-items: center;
   }
 
   .file-btn {
@@ -124,7 +125,7 @@ function handleCompareClick(): void {
   }
 
   .compare-btn {
-    padding: 0.5rem 1rem;
+    padding: 0 1.5rem;
     border: 1px solid #1e66f5;
     border-radius: 4px;
     background: #1e66f5;
@@ -132,8 +133,8 @@ function handleCompareClick(): void {
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 600;
-    min-width: 150px;
-    height: auto;
+    min-width: 120px;
+    height: 42px;
     transition: background-color 0.2s ease;
   }
 

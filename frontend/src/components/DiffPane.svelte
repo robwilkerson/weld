@@ -20,10 +20,10 @@ let paneElement: HTMLElement;
 
 // Event dispatcher
 const dispatch = createEventDispatcher<{
-	scroll: void;
+	scroll: undefined;
 	chunkClick: number;
 	chunkMouseEnter: number;
-	chunkMouseLeave: void;
+	chunkMouseLeave: undefined;
 }>();
 
 // Event handlers
@@ -32,7 +32,6 @@ function handleScroll(): void {
 	dispatch("scroll");
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleChunkClick(index: number): void {
 	const chunk = getChunkForLine(index);
 	if (chunk) {

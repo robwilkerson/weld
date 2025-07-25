@@ -36,11 +36,7 @@ import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getDisplayPath } from "./utils/path.js";
-import {
-	calculateScrollToCenterLine,
-	clampScrollPosition,
-	createScrollSynchronizer,
-} from "./utils/scrollSync.js";
+import { createScrollSynchronizer } from "./utils/scrollSync.js";
 
 // Shiki highlighter instance
 // biome-ignore lint/suspicious/noExplicitAny: Highlighter is disabled and set to null
@@ -217,9 +213,9 @@ let lineChunks: LineChunk[] = [];
 const viewportTop = 0;
 // biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
 const viewportHeight = 0;
-let isDraggingViewport = false;
-const dragStartY = 0;
-const dragStartScrollTop = 0;
+let _isDraggingViewport = false;
+const _dragStartY = 0;
+const _dragStartScrollTop = 0;
 
 // Minimap visibility state
 let _showMinimap = true;
@@ -1062,7 +1058,7 @@ function _handleViewportDrag(event: MouseEvent): void {
 
 function _handleViewportMouseUp(): void {
 	// TODO: This functionality needs to be moved to DiffViewer component
-	isDraggingViewport = false;
+	_isDraggingViewport = false;
 }
 
 function playInvalidSound(): void {
@@ -1138,15 +1134,16 @@ function jumpToPrevDiff(): void {
 	scrollToLine(chunk.startIndex);
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Svelte component ref
 let diffViewerComponent: any;
 
 function scrollToLine(lineIndex: number): void {
-	if (diffViewerComponent && diffViewerComponent.scrollToLine) {
+	if (diffViewerComponent?.scrollToLine) {
 		diffViewerComponent.scrollToLine(lineIndex);
 	}
 }
 
-function handleChunkClick(event: {
+function _handleChunkClick(event: {
 	chunkIndex: number;
 	lineIndex: number;
 }): void {
@@ -1458,42 +1455,6 @@ function checkHorizontalScrollbar() {
     border-bottom-color: #363a4f;
   }
 
-  :global([data-theme="dark"]) .file-btn {
-    background: #363a4f;
-    border-color: #5b6078;
-    color: #cad3f5;
-  }
-
-  :global([data-theme="dark"]) .file-btn:hover {
-    background: #414559;
-  }
-
-  :global([data-theme="dark"]) .file-icon {
-    background: transparent;
-    border-right-color: #5b6078;
-  }
-
-  :global([data-theme="dark"]) .file-btn:hover .file-icon {
-    background: transparent;
-  }
-
-  :global([data-theme="dark"]) .compare-btn {
-    background: #8aadf4;
-    border-color: #8aadf4;
-    color: #24273a;
-  }
-
-  :global([data-theme="dark"]) .compare-btn:hover:not(:disabled) {
-    background: #7dc4e4;
-  }
-
-  :global([data-theme="dark"]) .compare-btn:disabled {
-    background: #5b6078;
-    border-color: #5b6078;
-    color: #a5adcb;
-    opacity: 0.7;
-  }
-
   :global([data-theme="dark"]) .file-header {
     background: #1e2030;
   }
@@ -1655,85 +1616,6 @@ function checkHorizontalScrollbar() {
     color: #333;
   }
 
-  .file-selectors {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .file-btn {
-    display: flex;
-    align-items: stretch;
-    padding: 0;
-    border: 1px solid #acb0be;
-    border-radius: 4px;
-    background: #dce0e8;
-    cursor: pointer;
-    font-size: 0.9rem;
-    width: auto;
-    height: 42px;
-    text-align: left;
-    color: #4c4f69;
-    overflow: hidden;
-  }
-
-  .file-btn:hover {
-    background: #ccd0da;
-  }
-
-  .file-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 0.6rem;
-    height: 100%;
-    background: transparent;
-    border-right: 1px solid #acb0be;
-    min-width: 32px;
-  }
-
-  .file-btn:hover .file-icon {
-    background: transparent;
-  }
-
-  .file-icon :global(svg) {
-    width: 20px;
-    height: 20px;
-  }
-
-  .file-name {
-    padding: 0 0.75rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    width: 200px;
-  }
-
-  .compare-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid #1e66f5;
-    border-radius: 4px;
-    background: #1e66f5;
-    color: #eff1f5;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    min-width: 150px;
-    height: auto;
-  }
-
-  .compare-btn:hover:not(:disabled) {
-    background: #04a5e5;
-  }
-
-  .compare-btn:disabled {
-    background: #94a3b8;
-    border-color: #94a3b8;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
 
 
   .error {
