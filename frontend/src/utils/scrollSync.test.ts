@@ -224,18 +224,19 @@ describe("scrollSync", () => {
 			const lineHeight = 20;
 			const viewportHeight = 400;
 
-			// Line 10 should be at position 200, centered means scroll to 0
+			// Line 10: middle at position 210 (10*20 + 10), centered means scroll to 10
 			expect(calculateScrollToCenterLine(10, lineHeight, viewportHeight)).toBe(
-				0,
+				10,
 			);
 
-			// Line 50 should be at position 1000, centered means scroll to 800
+			// Line 50: middle at position 1010 (50*20 + 10), centered means scroll to 810
 			expect(calculateScrollToCenterLine(50, lineHeight, viewportHeight)).toBe(
-				800,
+				810,
 			);
 		});
 
 		it("should not return negative scroll values", () => {
+			// Line 5: middle at position 110 (5*20 + 10), centered would be -90, but clamped to 0
 			expect(calculateScrollToCenterLine(5, 20, 400)).toBe(0);
 		});
 	});

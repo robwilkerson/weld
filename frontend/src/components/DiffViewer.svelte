@@ -8,6 +8,7 @@ import type {
 } from "../types/diff";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getDisplayPath } from "../utils/diff";
+import { calculateScrollToCenterLine } from "../utils/scrollSync";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import DiffGutter from "./DiffGutter.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
@@ -97,7 +98,6 @@ function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
 	return lineIndex === chunk.startIndex;
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function getChunkForLine(lineIndex: number): LineChunk | null {
 	return (
 		lineChunks.find(
@@ -226,17 +226,38 @@ $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 	updateMinimapViewport();
 }
 
-// Scroll to a specific line
+// Scroll to a specific line (or chunk)
 export function scrollToLine(lineIndex: number): void {
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
 		const lineHeight = 19.2; // from CSS var(--line-height)
-		const scrollTop = lineIndex * lineHeight;
+		const leftElement = leftPaneComponent.getElement();
+		const viewportHeight = leftElement.clientHeight;
+
+		// Find if this line is part of a diff chunk
+		const chunk = getChunkForLine(lineIndex);
+		let targetLine = lineIndex;
+
+		// If it's part of a chunk, calculate the middle line of the chunk
+		if (chunk && chunk.type !== "same") {
+			const chunkMiddle = Math.floor((chunk.startIndex + chunk.endIndex) / 2);
+			targetLine = chunkMiddle;
+		}
+
+		// Calculate scroll position to center the target line in the viewport
+		const scrollTop = calculateScrollToCenterLine(
+			targetLine,
+			lineHeight,
+			viewportHeight,
+		);
 
 		leftPaneComponent.setScrollTop(scrollTop);
 		rightPaneComponent.setScrollTop(scrollTop);
 		centerGutterComponent.setScrollTop(scrollTop);
 
-		updateMinimapViewport();
+		// Update minimap viewport after a small delay to ensure scroll position is set
+		setTimeout(() => {
+			updateMinimapViewport();
+		}, 0);
 	}
 }
 
