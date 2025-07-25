@@ -30,7 +30,7 @@ describe("FileSelector", () => {
 
 		expect(getByText("Select left file...")).toBeInTheDocument();
 		expect(getByText("Select right file...")).toBeInTheDocument();
-		expect(getByText("Compare Files")).toBeInTheDocument();
+		expect(getByText("Compare")).toBeInTheDocument();
 	});
 
 	it("should display file names when provided", () => {
@@ -55,7 +55,7 @@ describe("FileSelector", () => {
 			},
 		});
 
-		const compareButton = getByText("Compare Files");
+		const compareButton = getByText("Compare");
 		expect(compareButton).toBeDisabled();
 	});
 
@@ -67,7 +67,7 @@ describe("FileSelector", () => {
 			},
 		});
 
-		const compareButton = getByText("Compare Files");
+		const compareButton = getByText("Compare");
 		expect(compareButton).not.toBeDisabled();
 	});
 
@@ -80,7 +80,7 @@ describe("FileSelector", () => {
 			},
 		});
 
-		expect(getByText("Comparing files...")).toBeInTheDocument();
+		expect(getByText("Comparing...")).toBeInTheDocument();
 	});
 
 	it("should disable compare button when comparison completed", () => {
@@ -92,13 +92,13 @@ describe("FileSelector", () => {
 			},
 		});
 
-		const compareButton = getByText("Compare Files");
+		const compareButton = getByText("Compare");
 		expect(compareButton).toBeDisabled();
 	});
 
 	it("should dispatch leftFileSelected event when left file selected", async () => {
 		const mockPath = "/path/to/selected.js";
-		(SelectFile as any).mockResolvedValue(mockPath);
+		vi.mocked(SelectFile).mockResolvedValue(mockPath);
 
 		const { getByText, component } = render(FileSelector);
 
@@ -118,7 +118,7 @@ describe("FileSelector", () => {
 
 	it("should dispatch rightFileSelected event when right file selected", async () => {
 		const mockPath = "/path/to/selected.py";
-		(SelectFile as any).mockResolvedValue(mockPath);
+		vi.mocked(SelectFile).mockResolvedValue(mockPath);
 
 		const { getByText, component } = render(FileSelector);
 
@@ -138,7 +138,7 @@ describe("FileSelector", () => {
 
 	it("should dispatch error event when file selection fails", async () => {
 		const mockError = new Error("File selection failed");
-		(SelectFile as any).mockRejectedValue(mockError);
+		vi.mocked(SelectFile).mockRejectedValue(mockError);
 
 		const { getByText, component } = render(FileSelector);
 
@@ -166,7 +166,7 @@ describe("FileSelector", () => {
 		const compareHandler = vi.fn();
 		component.$on("compare", compareHandler);
 
-		const compareButton = getByText("Compare Files");
+		const compareButton = getByText("Compare");
 		await fireEvent.click(compareButton);
 
 		expect(compareHandler).toHaveBeenCalled();

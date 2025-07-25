@@ -34,14 +34,15 @@ export let isSameFile: DiffViewerProps["isSameFile"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
 
 // Component refs for scroll synchronization
+// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
 let leftPaneComponent: any;
+// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
 let rightPaneComponent: any;
+// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
 let centerGutterComponent: any;
 
 // Viewport tracking for minimap
-// biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
 export let viewportTop = 0;
-// biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
 export let viewportHeight = 0;
 
 // Event dispatcher

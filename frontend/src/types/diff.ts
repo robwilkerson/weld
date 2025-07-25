@@ -48,8 +48,8 @@ export interface DiffViewerProps {
 
 // Events emitted by DiffViewer
 export interface DiffViewerEvents {
-	saveLeft: void;
-	saveRight: void;
+	saveLeft: undefined;
+	saveRight: undefined;
 	copyLineToLeft: number; // line index
 	copyLineToRight: number; // line index
 	copyChunkToLeft: LineChunk;
@@ -60,8 +60,8 @@ export interface DiffViewerEvents {
 	deleteChunkFromRight: LineChunk;
 	chunkClick: number; // line index
 	chunkHover: number; // line index
-	chunkLeave: void;
-	scrollSync: void;
+	chunkLeave: undefined;
+	scrollSync: undefined;
 	minimapClick: MouseEvent;
 	viewportMouseDown: MouseEvent;
 }

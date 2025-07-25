@@ -1,6 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import type { LineChunk } from "../types";
+import type { LineChunk } from "../types/diff";
 
 // biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
