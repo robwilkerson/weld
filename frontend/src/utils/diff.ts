@@ -2,6 +2,8 @@
  * Diff-related utility functions
  */
 
+import type { DiffLine, DiffResult } from "../../wailsjs/go/main/App";
+
 /**
  * Gets CSS class name for diff line type
  */
@@ -21,11 +23,11 @@ export function getLineClass(type: string): string {
 /**
  * Calculates width for line numbers based on max line number
  */
-export function getLineNumberWidth(diffResult: any): string {
+export function getLineNumberWidth(diffResult: DiffResult | null): string {
 	if (!diffResult || !diffResult.lines.length) return "32px";
 
 	const maxLineNumber = Math.max(
-		...diffResult.lines.map((line: any) =>
+		...diffResult.lines.map((line: DiffLine) =>
 			Math.max(line.leftNumber || 0, line.rightNumber || 0),
 		),
 	);
@@ -43,6 +45,51 @@ export function escapeHtml(text: string): string {
 	const div = document.createElement("div");
 	div.textContent = text;
 	return div.innerHTML;
+}
+
+/**
+ * Gets display path for file - shows relative path if files share a common directory
+ */
+export function getDisplayPath(
+	leftPath: string,
+	rightPath: string,
+	isLeft: boolean,
+): string {
+	const path = isLeft ? leftPath : rightPath;
+
+	// Find common directory prefix
+	const leftParts = leftPath.split("/");
+	const rightParts = rightPath.split("/");
+
+	let commonPrefixLength = 0;
+	for (
+		let i = 0;
+		i < Math.min(leftParts.length - 1, rightParts.length - 1);
+		i++
+	) {
+		if (leftParts[i] === rightParts[i]) {
+			commonPrefixLength++;
+		} else {
+			break;
+		}
+	}
+
+	// If files are in same directory, just show filename
+	if (
+		commonPrefixLength === leftParts.length - 1 &&
+		commonPrefixLength === rightParts.length - 1
+	) {
+		return path.split("/").pop() || path;
+	}
+
+	// Otherwise show relative path from common prefix
+	if (commonPrefixLength > 0) {
+		const parts = path.split("/");
+		return parts.slice(commonPrefixLength).join("/");
+	}
+
+	// No common prefix, show full path
+	return path;
 }
 
 /**

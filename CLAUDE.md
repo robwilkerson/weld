@@ -92,6 +92,8 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * Do not edit files in build/ or wailsjs/
 * Do not add or modify files in resources/sample-files unless specifically asked to do so
 * Do not use npm for package management, use Bun instead
+* Do not add new features directly to App.svelte - create components instead
+* Do not let any single file grow beyond 500 lines - refactor into smaller components
 
 ## Common Workflow
 
@@ -101,6 +103,27 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * **Frontend**: Use `npx @biomejs/biome check --write frontend/src/` after frontend changes
 * **TypeScript**: All frontend code uses TypeScript with proper type annotations
 * **CSS**: Avoid using `!important` - properly structure selectors and specificity instead
+
+### Component Architecture
+
+**IMPORTANT**: Always prefer creating Svelte components over adding to existing files:
+
+* **Component Size**: Keep components focused and under 300 lines when possible
+* **Single Responsibility**: Each component should have one clear purpose
+* **Extract Early**: When adding new features, create new components rather than expanding existing ones
+* **Component Structure**:
+  * Create components in `frontend/src/components/`
+  * Use PascalCase for component filenames (e.g., `FileSelector.svelte`)
+  * Include component-specific styles within the component's `<style>` block
+  * Export props using `export let` for reactivity
+* **Utilities**: Extract reusable logic into `frontend/src/utils/` as TypeScript modules
+* **Types**: Define shared types in `frontend/src/types.ts`
+
+**Examples of when to create a new component**:
+* Adding a new UI element (dialog, panel, button group)
+* Implementing a feature that adds >50 lines to an existing component
+* Creating reusable UI patterns
+* Extracting complex logic that makes a component hard to read
 
 ### Git Workflow
 
@@ -133,9 +156,11 @@ After a PR is merged:
 
 ### Testing and Validation
 
-* Test manually using sample files in `resources/sample-files/`
 * Run `go test ./... -v --cover` for backend unit tests with coverage
 * Run `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
+* **Component Testing**: Create test files for all new components (e.g., `ComponentName.test.ts`)
+* **Manual Testing**: Before committing any UI changes, ask the user to run `wails dev` and manually test the affected functionality
+* Test manually using sample files in `resources/sample-files/`
 * Verify app builds successfully with `wails build`
 
 ## Common Issues
