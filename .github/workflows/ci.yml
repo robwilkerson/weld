@@ -75,10 +75,21 @@ jobs:
     - name: Build application
       run: wails build
     
+    # Ad-hoc sign macOS app to prevent "damaged app" error
+    - name: Ad-hoc Sign macOS App
+      if: matrix.os == 'macos-latest'
+      run: |
+        echo "Cleaning extended attributes from Weld.app..."
+        xattr -cr build/bin/Weld.app
+        echo "Ad-hoc signing Weld.app..."
+        codesign --force --deep --sign - build/bin/Weld.app
+        echo "Verifying signature..."
+        codesign --verify --verbose build/bin/Weld.app
+      shell: bash
+    
     # Upload artifacts (optional - for debugging)
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
-      if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
       with:
         name: weld-${{ matrix.os }}
         path: |
