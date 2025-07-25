@@ -750,28 +750,26 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-	// Handle Shift+L and Shift+H for copying current diff
-	if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
-		if (event.key === "L") {
-			event.preventDefault();
-			copyCurrentDiffLeftToRight();
-			return;
-		} else if (event.key === "H") {
-			event.preventDefault();
-			copyCurrentDiffRightToLeft();
-			return;
-		}
-	}
-
 	handleKeyboardShortcut(
 		event,
-		saveLeftFile,
-		saveRightFile,
+		{
+			saveLeftFile,
+			saveRightFile,
+			jumpToNextDiff,
+			jumpToPrevDiff,
+			copyCurrentDiffLeftToRight,
+			copyCurrentDiffRightToLeft,
+			undoLastChange,
+		},
 		leftFilePath,
 		rightFilePath,
-		jumpToNextDiff,
-		jumpToPrevDiff,
 	);
+}
+
+function undoLastChange(): void {
+	// TODO: Implement undo functionality
+	console.log("Undo functionality not yet implemented");
+	_errorMessage = "Undo functionality coming soon!";
 }
 
 async function _highlightFileContent(
