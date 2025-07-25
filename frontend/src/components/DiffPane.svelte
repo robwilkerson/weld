@@ -118,6 +118,57 @@ export function setScrollTop(scrollTop: number): void {
 		background: #24273a;
 	}
 
+	/* Scrollbar styling */
+	.left-pane::-webkit-scrollbar,
+	.right-pane::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	.left-pane::-webkit-scrollbar-track,
+	.right-pane::-webkit-scrollbar-track {
+		background: #e6e9ef;
+	}
+
+	.left-pane::-webkit-scrollbar-thumb,
+	.right-pane::-webkit-scrollbar-thumb {
+		background: #9ca0b0;
+		border-radius: 4px;
+		border: 1px solid #e6e9ef;
+	}
+
+	.left-pane::-webkit-scrollbar-thumb:hover,
+	.right-pane::-webkit-scrollbar-thumb:hover {
+		background: #6c6f85;
+	}
+
+	:global([data-theme="dark"]) .left-pane::-webkit-scrollbar-track,
+	:global([data-theme="dark"]) .right-pane::-webkit-scrollbar-track {
+		background: #1e2030;
+	}
+
+	:global([data-theme="dark"]) .left-pane::-webkit-scrollbar-thumb,
+	:global([data-theme="dark"]) .right-pane::-webkit-scrollbar-thumb {
+		background: #5b6078;
+		border: 1px solid #1e2030;
+	}
+
+	:global([data-theme="dark"]) .left-pane::-webkit-scrollbar-thumb:hover,
+	:global([data-theme="dark"]) .right-pane::-webkit-scrollbar-thumb:hover {
+		background: #6e738d;
+	}
+
+	/* Scrollbar corner styling */
+	.left-pane::-webkit-scrollbar-corner,
+	.right-pane::-webkit-scrollbar-corner {
+		background: #e6e9ef;
+	}
+
+	:global([data-theme="dark"]) .left-pane::-webkit-scrollbar-corner,
+	:global([data-theme="dark"]) .right-pane::-webkit-scrollbar-corner {
+		background: #1e2030;
+	}
+
 	.left-pane::before,
 	.right-pane::before {
 		content: '';
@@ -152,7 +203,7 @@ export function setScrollTop(scrollTop: number): void {
 		width: var(--line-number-width);
 		text-align: right;
 		padding-right: 5px;
-		padding-left: 15px;
+		padding-left: 5px;
 		color: #9ca0b0;
 		user-select: none;
 		background: #dce0e8;
@@ -160,6 +211,7 @@ export function setScrollTop(scrollTop: number): void {
 		left: 0;
 		z-index: 2;
 		flex-shrink: 0;
+		font-size: 0.75rem;
 	}
 
 	:global([data-theme="dark"]) .line-number {
@@ -169,11 +221,13 @@ export function setScrollTop(scrollTop: number): void {
 
 	.line-text {
 		flex: 1;
-		padding-left: 1ch;
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
 		color: #4c4f69;
 		min-width: 0;
 		white-space: pre;
 		position: relative;
+		text-align: left;
 	}
 
 	:global([data-theme="dark"]) .line-text {
@@ -240,19 +294,28 @@ export function setScrollTop(scrollTop: number): void {
 	.line.line-added.current-diff,
 	.line.line-removed.current-diff {
 		position: relative;
-		background-color: rgba(30, 102, 245, 0.35);
-		box-shadow: 
-			inset 3px 0 0 #1e66f5,
-			0 0 8px rgba(30, 102, 245, 0.25);
+		background-color: rgba(30, 102, 245, 0.25);
+	}
+
+	/* Stronger left border for current diff */
+	.line.line-modified.current-diff .line-text,
+	.line.line-added.current-diff .line-text,
+	.line.line-removed.current-diff .line-text {
+		border-left-width: 4px;
+		border-left-color: #1e66f5;
 	}
 
 	:global([data-theme="dark"]) .line.line-modified.current-diff,
 	:global([data-theme="dark"]) .line.line-added.current-diff,
 	:global([data-theme="dark"]) .line.line-removed.current-diff {
-		background-color: rgba(138, 173, 244, 0.35);
-		box-shadow: 
-			inset 3px 0 0 #8aadf4,
-			0 0 8px rgba(138, 173, 244, 0.3);
+		background-color: rgba(138, 173, 244, 0.25);
+	}
+
+	:global([data-theme="dark"]) .line.line-modified.current-diff .line-text,
+	:global([data-theme="dark"]) .line.line-added.current-diff .line-text,
+	:global([data-theme="dark"]) .line.line-removed.current-diff .line-text {
+		border-left-width: 4px;
+		border-left-color: #8aadf4;
 	}
 
 	/* Chunk hover */

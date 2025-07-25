@@ -56,12 +56,12 @@ export function setScrollTop(scrollTop: number): void {
 			{@const isLastInChunk = chunk ? index === chunk.endIndex : false}
 			
 			<div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
-			{#if chunk && isFirstInChunk && isLineHighlighted(index)}
-				<div class="current-diff-indicator" style="--chunk-height: {chunk.lines};" title="Current diff"></div>
-			{/if}
 			{#if chunk && isFirstInChunk}
 				<!-- Show chunk arrows only on the first line of the chunk -->
 				<div class="chunk-actions" style="--chunk-height: {chunk.lines};">
+					{#if isLineHighlighted(index)}
+						<div class="current-diff-indicator" title="Current diff"></div>
+					{/if}
 					{#if chunk.type === 'added'}
 						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromRight', chunk)} title="Delete chunk from right ({chunk.lines} lines)">
 							→
@@ -111,7 +111,7 @@ export function setScrollTop(scrollTop: number): void {
 
 <style>
 	.center-gutter {
-		width: var(--gutter-width);
+		width: calc(var(--gutter-width) + 8px);
 		overflow-y: auto;
 		overflow-x: hidden;
 		border-left: 1px solid #9ca0b0;
@@ -120,6 +120,9 @@ export function setScrollTop(scrollTop: number): void {
 		position: relative;
 		scrollbar-width: none;
 		flex-shrink: 0;
+		box-sizing: border-box;
+		/* Match pane height by accounting for scrollbar-gutter */
+		padding-bottom: 8px;
 	}
 
 	:global([data-theme="dark"]) .center-gutter {
@@ -128,8 +131,14 @@ export function setScrollTop(scrollTop: number): void {
 		border-right-color: #363a4f;
 	}
 
+	/* Hide scrollbar for gutter - it should only scroll via the panes */
 	.center-gutter::-webkit-scrollbar {
 		display: none;
+	}
+	
+	.center-gutter {
+		-ms-overflow-style: none;  /* IE and Edge */
+		scrollbar-width: none;  /* Firefox */
 	}
 
 	.gutter-content {
@@ -140,9 +149,9 @@ export function setScrollTop(scrollTop: number): void {
 		height: var(--line-height);
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		justify-content: space-between;
 		position: relative;
-		gap: 2px;
+		padding: 0 4px 0 4px;
 	}
 
 	.gutter-line.chunk-start {
@@ -153,87 +162,125 @@ export function setScrollTop(scrollTop: number): void {
 	.chunk-actions {
 		position: absolute;
 		top: 50%;
-		left: 50%;
-		transform: translate(-50%, calc(-50% + (var(--chunk-height) - 1) * var(--line-height) / 2));
+		left: 0;
+		right: 0;
+		transform: translateY(calc(-50% + (var(--chunk-height) - 1) * var(--line-height) / 2));
 		display: flex;
-		gap: 2px;
 		align-items: center;
-		justify-content: center;
+		justify-content: space-between;
 		z-index: 10;
+		padding: 0 4px;
 	}
 
 	/* Gutter arrows */
 	.gutter-arrow {
-		background: #7287fd;
-		color: white;
+		background: transparent !important;
 		border: none;
-		width: 30px;
-		height: 22px;
-		font-size: 14px;
-		font-weight: bold;
-		cursor: pointer;
+		border-radius: 4px;
+		width: 20px;
+		height: 20px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 0;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: bold;
 		transition: all 0.2s ease;
-		border-radius: 3px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-	}
-
-	:global([data-theme="dark"]) .gutter-arrow {
-		background: #8aadf4;
-		color: #24273a;
+		box-shadow: none;
+		padding: 0;
+		line-height: 1;
+		color: #7287fd !important; /* Catppuccin Latte Blue */
+		-webkit-appearance: none;
+		appearance: none;
+		outline: none;
 	}
 
 	.gutter-arrow:hover {
-		background: #8839ef;
+		background: rgba(114, 135, 253, 0.1) !important;
 		transform: scale(1.1);
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	}
 
-	:global([data-theme="dark"]) .gutter-arrow:hover {
-		background: #7dc4e4;
+	:global([data-theme="dark"]) .center-gutter .gutter-arrow {
+		background: transparent !important;
+		color: #8aadf4 !important; /* Catppuccin Macchiato Blue */
 	}
+
+	:global([data-theme="dark"]) .center-gutter .gutter-arrow:hover {
+		background: rgba(138, 173, 244, 0.1) !important;
+		transform: scale(1.1);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	}
+
 
 	.gutter-arrow.chunk-arrow {
-		height: 24px;
-		width: 32px;
-		font-size: 16px;
+		height: 22px;
+		width: 22px;
+		font-size: 14px;
 	}
 
-	.gutter-arrow.modified-arrow {
-		background: #df8e1d;
-	}
-
-	:global([data-theme="dark"]) .gutter-arrow.modified-arrow {
-		background: #f9e2af;
-		color: #24273a;
-	}
-
-	.gutter-arrow.modified-arrow:hover {
-		background: #fe640b;
-	}
-
-	:global([data-theme="dark"]) .gutter-arrow.modified-arrow:hover {
-		background: #fab387;
-	}
+	/* Modified arrows use the same color as other arrows */
 
 	/* Current diff indicator */
 	.current-diff-indicator {
 		position: absolute;
-		width: 8px;
-		height: 8px;
+		width: 6px;
+		height: 6px;
 		background-color: #1e66f5;
 		border-radius: 50%;
-		left: 4px;
+		left: 50%;
 		top: 50%;
-		transform: translateY(calc(-50% + (var(--chunk-height) - 1) * var(--line-height) / 2));
+		transform: translate(-50%, -50%);
 		z-index: 20;
-		box-shadow: 0 0 4px rgba(30, 102, 245, 0.6);
+		box-shadow: 
+			0 0 0 1px rgba(255, 255, 255, 0.3),
+			0 0 8px rgba(30, 102, 245, 0.8),
+			0 0 12px rgba(30, 102, 245, 0.6),
+			0 0 16px rgba(30, 102, 245, 0.4);
+		animation: pulse-glow 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse-glow {
+		0%, 100% {
+			box-shadow: 
+				0 0 0 1px rgba(255, 255, 255, 0.3),
+				0 0 8px rgba(30, 102, 245, 0.8),
+				0 0 12px rgba(30, 102, 245, 0.6),
+				0 0 16px rgba(30, 102, 245, 0.4);
+		}
+		50% {
+			box-shadow: 
+				0 0 0 1px rgba(255, 255, 255, 0.5),
+				0 0 10px rgba(30, 102, 245, 1),
+				0 0 16px rgba(30, 102, 245, 0.8),
+				0 0 20px rgba(30, 102, 245, 0.6);
+		}
 	}
 
 	:global([data-theme="dark"]) .current-diff-indicator {
 		background-color: #8aadf4;
+		box-shadow: 
+			0 0 0 1px rgba(0, 0, 0, 0.3),
+			0 0 8px rgba(138, 173, 244, 0.8),
+			0 0 12px rgba(138, 173, 244, 0.6),
+			0 0 16px rgba(138, 173, 244, 0.4);
+		animation: pulse-glow-dark 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse-glow-dark {
+		0%, 100% {
+			box-shadow: 
+				0 0 0 1px rgba(0, 0, 0, 0.3),
+				0 0 8px rgba(138, 173, 244, 0.8),
+				0 0 12px rgba(138, 173, 244, 0.6),
+				0 0 16px rgba(138, 173, 244, 0.4);
+		}
+		50% {
+			box-shadow: 
+				0 0 0 1px rgba(0, 0, 0, 0.5),
+				0 0 10px rgba(138, 173, 244, 1),
+				0 0 16px rgba(138, 173, 244, 0.8),
+				0 0 20px rgba(138, 173, 244, 0.6);
+		}
 	}
 </style>

@@ -6,9 +6,15 @@ import type {
 	HighlightedDiffLine,
 	LineChunk,
 } from "../types/diff";
-import type DiffGutter from "./DiffGutter.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
+import { getDisplayPath } from "../utils/diff";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
+import DiffGutter from "./DiffGutter.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
 import DiffHeader from "./DiffHeader.svelte";
-import type DiffPane from "./DiffPane.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
+import DiffPane from "./DiffPane.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
 import Minimap from "./Minimap.svelte";
 
 // Props
@@ -28,9 +34,9 @@ export let isSameFile: DiffViewerProps["isSameFile"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
 
 // Component refs for scroll synchronization
-let leftPaneComponent: DiffPane;
-let rightPaneComponent: DiffPane;
-let centerGutterComponent: DiffGutter;
+let leftPaneComponent: any;
+let rightPaneComponent: any;
+let centerGutterComponent: any;
 
 // Viewport tracking for minimap
 // biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
@@ -99,12 +105,15 @@ function getChunkForLine(lineIndex: number): LineChunk | null {
 	);
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
-function isLineHighlighted(lineIndex: number): boolean {
+// Make this a reactive function so it updates when dependencies change
+$: isLineHighlighted = (lineIndex: number): boolean => {
 	if (currentDiffChunkIndex === -1) return false;
 	const chunk = diffChunks[currentDiffChunkIndex];
-	return chunk && lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
-}
+	const result =
+		chunk && lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
+
+	return result;
+};
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function isLineHovered(lineIndex: number): boolean {
@@ -134,7 +143,14 @@ function isFirstOfConsecutiveModified(index: number): boolean {
 // Event handlers
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleChunkClick(lineIndex: number): void {
-	dispatch("chunkClick", lineIndex);
+	// Find which diff chunk this line belongs to
+	const clickedChunkIndex = diffChunks.findIndex(
+		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
+	);
+
+	if (clickedChunkIndex !== -1) {
+		dispatch("chunkClick", { chunkIndex: clickedChunkIndex, lineIndex });
+	}
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
@@ -208,6 +224,44 @@ function updateMinimapViewport(): void {
 $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 	updateMinimapViewport();
 }
+
+// Scroll to a specific line
+export function scrollToLine(lineIndex: number): void {
+	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
+		const lineHeight = 19.2; // from CSS var(--line-height)
+		const scrollTop = lineIndex * lineHeight;
+
+		leftPaneComponent.setScrollTop(scrollTop);
+		rightPaneComponent.setScrollTop(scrollTop);
+		centerGutterComponent.setScrollTop(scrollTop);
+
+		updateMinimapViewport();
+	}
+}
+
+// Auto-scroll to first diff when content loads
+$: if (
+	leftPaneComponent &&
+	rightPaneComponent &&
+	centerGutterComponent &&
+	diffResult &&
+	diffResult.lines.length > 0 &&
+	diffChunks.length > 0
+) {
+	// Only scroll if we haven't scrolled yet (initial load)
+	const leftElement = leftPaneComponent.getElement();
+	if (leftElement.scrollTop === 0) {
+		const firstDiffLine = diffResult.lines.findIndex(
+			(line) => line.type !== "same",
+		);
+		if (firstDiffLine !== -1) {
+			setTimeout(() => {
+				scrollToLine(firstDiffLine);
+			}, 100);
+		}
+	}
+}
+
 </script>
 
 <div class="diff-viewer" class:comparing={isComparing}>
@@ -418,5 +472,20 @@ $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 
 	:global([data-theme="dark"] .inline-diff-highlight) {
 		background-color: rgba(138, 173, 244, 0.4);
+	}
+
+	/* Full line highlighting for added/removed lines */
+	:global(.inline-diff-highlight-full) {
+		background-color: rgba(30, 102, 245, 0.15);
+		padding: 0 2px;
+		border-radius: 2px;
+		display: inline-block;
+		min-width: 100%;
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
+	}
+
+	:global([data-theme="dark"] .inline-diff-highlight-full) {
+		background-color: rgba(138, 173, 244, 0.2);
 	}
 </style>

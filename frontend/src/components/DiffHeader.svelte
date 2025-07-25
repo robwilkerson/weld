@@ -47,7 +47,6 @@ function handleSaveRight(): void {
 	.file-header {
 		display: flex;
 		background: #e6e9ef;
-		border-bottom: 1px solid #9ca0b0;
 		overflow: hidden;
 		min-height: 40px;
 		align-items: stretch;
@@ -55,7 +54,6 @@ function handleSaveRight(): void {
 
 	:global([data-theme="dark"]) .file-header {
 		background: #1e2030;
-		border-bottom-color: #363a4f;
 	}
 
 	.file-header.first-line-diff {
@@ -76,13 +74,7 @@ function handleSaveRight(): void {
 		color: #cad3f5;
 	}
 
-	.file-info.left {
-		padding-left: calc(var(--line-number-width) + 1rem);
-	}
-
-	.file-info.right {
-		padding-right: 1rem;
-	}
+	/* Remove custom padding - let flex: 1 handle equal sizing */
 
 	.save-btn {
 		background: #acb0be;
@@ -141,11 +133,12 @@ function handleSaveRight(): void {
 	}
 
 	.action-gutter-header {
-		width: var(--gutter-width);
+		width: calc(var(--gutter-width) + 8px);
 		background: #e6e9ef;
 		border-left: 1px solid #9ca0b0;
 		border-right: 1px solid #9ca0b0;
 		flex-shrink: 0;
+		box-sizing: border-box; /* Include borders in width calculation */
 	}
 
 	:global([data-theme="dark"]) .action-gutter-header {

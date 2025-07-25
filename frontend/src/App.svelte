@@ -2,8 +2,6 @@
 import { onMount } from "svelte";
 import {
 	CompareFiles,
-	type DiffLine,
-	type DiffResult,
 	DiscardAllChanges,
 	GetInitialFiles,
 	GetMinimapVisible,
@@ -14,16 +12,21 @@ import {
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import DiffViewer from "./components/DiffViewer.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
-import Minimap from "./components/Minimap.svelte";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import QuitDialog from "./components/QuitDialog.svelte";
+import type {
+	DiffLine,
+	DiffResult,
+	HighlightedDiffLine,
+	HighlightedDiffResult,
+	LineChunk,
+} from "./types/diff.js";
 import {
 	computeInlineDiff,
 	escapeHtml,
-	// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
-	getLineClass,
 	getLineNumberWidth,
 } from "./utils/diff.js";
 import * as diffOps from "./utils/diffOperations.js";
@@ -46,7 +49,7 @@ let highlighter: any = null;
 // Cache for highlighted lines to avoid re-processing
 const highlightCache: Map<string, string> = new Map();
 
-// Create scroll synchronizer instance
+// Create scroll synchronizer instance (no longer used, will be removed with state management refactor)
 const scrollSync = createScrollSynchronizer();
 
 let leftFilePath: string = "";
@@ -56,9 +59,6 @@ let rightFileName: string = "Select right file...";
 let diffResult: DiffResult | null = null;
 let _isComparing: boolean = false;
 let _errorMessage: string = "";
-let leftPane: HTMLElement;
-let rightPane: HTMLElement;
-let centerGutter: HTMLElement;
 // biome-ignore lint/correctness/noUnusedVariables: Keep for backward compatibility during migration
 const isScrollSyncing: boolean = false;
 // Initialize theme immediately to prevent flash
@@ -180,16 +180,6 @@ $: lineNumberWidth = getLineNumberWidth(diffResult);
 // HIGHLIGHTING TYPES AND STATE
 // ===========================================
 
-// Extended type for highlighted diff lines
-type HighlightedDiffLine = DiffLine & {
-	leftLineHighlighted?: string;
-	rightLineHighlighted?: string;
-};
-
-type HighlightedDiffResult = {
-	lines: HighlightedDiffLine[];
-};
-
 // Highlighted diff result for template rendering
 let highlightedDiffResult: HighlightedDiffResult | null = null;
 
@@ -215,78 +205,31 @@ $: if (diffResult && highlighter && !isProcessingHighlight) {
 	highlightedDiffResult = {
 		lines: diffResult.lines.map((line) => processLineHighlighting(line)),
 	};
-	// Also trigger scroll when no highlighter is available
-	setTimeout(() => {
-		isInitialScroll = true;
-		scrollToFirstDiff();
-	}, 500);
+	// Auto-scroll is now handled by DiffViewer component
 } else if (!diffResult) {
 	highlightedDiffResult = null;
-}
-
-// Chunk information for grouping consecutive lines
-interface LineChunk {
-	startIndex: number;
-	endIndex: number;
-	type: string;
-	lines: number;
 }
 
 let lineChunks: LineChunk[] = [];
 
 // Viewport tracking for minimap
 // biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
-let viewportTop = 0;
+const viewportTop = 0;
 // biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
-let viewportHeight = 0;
+const viewportHeight = 0;
 let isDraggingViewport = false;
-let dragStartY = 0;
-let dragStartScrollTop = 0;
+const dragStartY = 0;
+const dragStartScrollTop = 0;
 
 // Minimap visibility state
 let _showMinimap = true;
-
-// Flag to indicate initial scroll is happening
-let isInitialScroll = false;
 
 // Process chunks when highlightedDiffResult changes
 $: if (highlightedDiffResult) {
 	lineChunks = detectLineChunks(highlightedDiffResult.lines);
 }
 
-// Function to update minimap viewport position
-function updateMinimapViewport(): void {
-	if (
-		leftPane &&
-		highlightedDiffResult &&
-		highlightedDiffResult.lines.length > 0
-	) {
-		const scrollHeight = leftPane.scrollHeight;
-		const clientHeight = leftPane.clientHeight;
-		const scrollTop = leftPane.scrollTop;
-
-		viewportTop = (scrollTop / scrollHeight) * 100;
-		viewportHeight = (clientHeight / scrollHeight) * 100;
-	}
-}
-
-// Update viewport position when content changes
-$: if (
-	leftPane &&
-	highlightedDiffResult &&
-	highlightedDiffResult.lines.length > 0
-) {
-	updateMinimapViewport();
-}
-
-// Initialize scroll synchronizer when all elements are available
-$: if (leftPane && rightPane && centerGutter) {
-	scrollSync.setElements({
-		leftPane,
-		rightPane,
-		centerGutter,
-	});
-}
+// Note: Minimap viewport updates are now handled in DiffViewer component
 
 // ===========================================
 // HIGHLIGHTING PROCESSING
@@ -329,12 +272,8 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 			lines: result.lines.map((line) => processLineHighlighting(line)),
 		};
 
-		// After highlighting is done, scroll to first diff
-		// Need to wait for DOM to update with new content
-		setTimeout(() => {
-			isInitialScroll = true;
-			scrollToFirstDiff();
-		}, 500);
+		// After highlighting is done, set initial diff chunk
+		// Auto-scroll is now handled by DiffViewer component
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
@@ -553,14 +492,9 @@ async function compareBothFiles(
 // ===========================================
 
 function _handleMinimapClick(event: MouseEvent): void {
-	if (
-		!highlightedDiffResult ||
-		!leftPane ||
-		!rightPane ||
-		!centerGutter ||
-		isInitialScroll
-	)
-		return;
+	// TODO: This functionality needs to be moved to DiffViewer component
+	// For now, just update the chunk index based on click position
+	if (!highlightedDiffResult) return;
 
 	const minimap = event.currentTarget as HTMLElement;
 	const minimapRect = minimap.getBoundingClientRect();
@@ -589,30 +523,6 @@ function _handleMinimapClick(event: MouseEvent): void {
 	if (clickedChunkIndex !== -1) {
 		currentDiffChunkIndex = clickedChunkIndex;
 	}
-
-	// Calculate scroll position to show the target line
-	const lineHeightPx = 19.2; // Line height from CSS variable
-	const targetScrollTop = boundedLineIndex * lineHeightPx;
-
-	// Get viewport height to center the target
-	const viewportHeight = leftPane.clientHeight;
-	const scrollTo = Math.max(0, targetScrollTop - viewportHeight / 2);
-
-	// Calculate the maximum scrollable position for each pane
-	const leftMaxScroll = leftPane.scrollHeight - leftPane.clientHeight;
-	const centerMaxScroll = centerGutter.scrollHeight - centerGutter.clientHeight;
-
-	// Clamp the scroll position to the actual scrollable range
-	const clampedScrollLeft = Math.min(scrollTo, leftMaxScroll);
-	const clampedScrollCenter = Math.min(scrollTo, centerMaxScroll);
-
-	// Use the minimum of the clamped values to keep all panes aligned
-	const finalScroll = Math.min(clampedScrollLeft, clampedScrollCenter);
-
-	// Use scroll synchronizer to update all panes
-	scrollSync.scrollToPosition(finalScroll).then(() => {
-		updateMinimapViewport();
-	});
 }
 
 function _toggleDarkMode(): void {
@@ -1140,54 +1050,19 @@ function navigateAfterCopy(
 // ===========================================
 
 function _handleViewportMouseDown(event: MouseEvent): void {
-	if (!leftPane) return;
-
-	isDraggingViewport = true;
-	dragStartY = event.clientY;
-	dragStartScrollTop = leftPane.scrollTop;
-
-	// Prevent text selection while dragging
+	// TODO: This functionality needs to be moved to DiffViewer component
+	// For now, just prevent default behavior
 	event.preventDefault();
-
-	// Add global mouse event listeners
-	document.addEventListener("mousemove", _handleViewportDrag);
-	document.addEventListener("mouseup", _handleViewportMouseUp);
 }
 
 function _handleViewportDrag(event: MouseEvent): void {
-	if (
-		!isDraggingViewport ||
-		isInitialScroll ||
-		!leftPane ||
-		!rightPane ||
-		!centerGutter ||
-		!highlightedDiffResult
-	)
-		return;
-
-	const minimap = document.querySelector(".minimap") as HTMLElement;
-	if (!minimap) return;
-
-	const minimapHeight = minimap.offsetHeight;
-	const deltaY = event.clientY - dragStartY;
-	const deltaPercent = (deltaY / minimapHeight) * 100;
-
-	// Calculate new scroll position
-	const scrollHeight = leftPane.scrollHeight;
-	const newScrollTop = dragStartScrollTop + (deltaPercent / 100) * scrollHeight;
-
-	// Apply scroll to all panes using scroll synchronizer
-	scrollSync.scrollToPosition(newScrollTop).then(() => {
-		updateMinimapViewport();
-	});
+	// TODO: This functionality needs to be moved to DiffViewer component
+	event.preventDefault();
 }
 
 function _handleViewportMouseUp(): void {
+	// TODO: This functionality needs to be moved to DiffViewer component
 	isDraggingViewport = false;
-
-	// Remove global mouse event listeners
-	document.removeEventListener("mousemove", _handleViewportDrag);
-	document.removeEventListener("mouseup", _handleViewportMouseUp);
 }
 
 function playInvalidSound(): void {
@@ -1210,7 +1085,7 @@ function playInvalidSound(): void {
 }
 
 function jumpToNextDiff(): void {
-	if (!diffChunks.length || !leftPane || !rightPane || !centerGutter) {
+	if (!diffChunks.length) {
 		return;
 	}
 
@@ -1237,7 +1112,7 @@ function jumpToNextDiff(): void {
 }
 
 function jumpToPrevDiff(): void {
-	if (!diffChunks.length || !leftPane || !rightPane || !centerGutter) {
+	if (!diffChunks.length) {
 		return;
 	}
 
@@ -1263,49 +1138,24 @@ function jumpToPrevDiff(): void {
 	scrollToLine(chunk.startIndex);
 }
 
+let diffViewerComponent: any;
+
 function scrollToLine(lineIndex: number): void {
-	if (!leftPane || !rightPane || !centerGutter) {
-		return;
+	if (diffViewerComponent && diffViewerComponent.scrollToLine) {
+		diffViewerComponent.scrollToLine(lineIndex);
 	}
-
-	const lineHeight = parseInt(
-		getComputedStyle(document.documentElement).getPropertyValue(
-			"--line-height",
-		) || "20",
-	);
-
-	// Calculate the target scroll position to center the line in view
-	const targetScrollTop = calculateScrollToCenterLine(
-		lineIndex,
-		lineHeight,
-		leftPane.clientHeight,
-	);
-
-	// Ensure we don't scroll past the bounds
-	const clampedScrollTop = clampScrollPosition(
-		targetScrollTop,
-		leftPane.scrollHeight,
-		leftPane.clientHeight,
-	);
-
-	// Use scroll synchronizer with animation
-	scrollSync.scrollToPosition(clampedScrollTop, { animate: true }).then(() => {
-		updateMinimapViewport();
-	});
 }
 
-function _handleChunkClick(lineIndex: number): void {
-	// Find which chunk this line belongs to
-	const clickedChunkIndex = diffChunks.findIndex(
-		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
-	);
+function handleChunkClick(event: {
+	chunkIndex: number;
+	lineIndex: number;
+}): void {
+	const { chunkIndex, lineIndex } = event;
 
-	if (clickedChunkIndex !== -1) {
-		// Update the current diff chunk index
-		currentDiffChunkIndex = clickedChunkIndex;
-		// Scroll to the start of the chunk
-		scrollToLine(diffChunks[clickedChunkIndex].startIndex);
-	}
+	// Update the current diff chunk index
+	currentDiffChunkIndex = chunkIndex;
+	// Scroll to the line that was clicked
+	scrollToLine(lineIndex);
 }
 
 function _handleChunkMouseEnter(lineIndex: number): void {
@@ -1323,53 +1173,19 @@ function _handleChunkMouseLeave(): void {
 	hoveredChunkIndex = -1;
 }
 
-function scrollToFirstDiff(): void {
-	try {
-		if (!highlightedDiffResult || !leftPane || !rightPane || !centerGutter) {
-			return;
-		}
+// Set initial diff chunk when diff result loads
+$: if (
+	highlightedDiffResult &&
+	diffChunks.length > 0 &&
+	currentDiffChunkIndex === -1
+) {
+	const firstDiffIndex = highlightedDiffResult.lines.findIndex(
+		(line) => line.type !== "same",
+	);
 
-		// Find the first line that's not "same"
-		const firstDiffIndex = highlightedDiffResult.lines.findIndex(
-			(line) => line.type !== "same",
-		);
-
-		if (firstDiffIndex === -1) {
-			return;
-		}
-
-		// Calculate the line height from CSS variable
-		const computedStyle = window.getComputedStyle(document.documentElement);
-		const lineHeightValue = computedStyle.getPropertyValue("--line-height");
-		// Parse the px value directly
-		const lineHeightPx = parseFloat(lineHeightValue) || 19.2;
-
-		// Calculate scroll position to center the first diff
-		const scrollTo = calculateScrollToCenterLine(
-			firstDiffIndex,
-			lineHeightPx,
-			leftPane.clientHeight,
-		);
-
-		// Ensure all panes are ready and synced
-		requestAnimationFrame(async () => {
-			// Use scroll synchronizer to position all panes
-			await scrollSync.scrollToPosition(scrollTo, { animate: true });
-			updateMinimapViewport();
-
-			// Reset initial scroll flag after a delay
-			setTimeout(() => {
-				isInitialScroll = false;
-				// Set the current diff chunk after scrolling completes
-				// This ensures diffChunks is populated
-				if (diffChunks.length > 0 && currentDiffChunkIndex === -1) {
-					currentDiffChunkIndex = 0;
-				}
-			}, 100);
-		});
-	} catch (error) {
-		console.error("Error in scrollToFirstDiff:", error);
-		isInitialScroll = false;
+	if (firstDiffIndex !== -1) {
+		// Set to the first diff chunk
+		currentDiffChunkIndex = 0;
 	}
 }
 
@@ -1454,13 +1270,10 @@ onMount(async () => {
 		}, 100);
 	});
 
-	// Wait for next tick to ensure elements are mounted
+	// TODO: ResizeObserver functionality needs to be moved to DiffViewer component
+	// For now, just call checkHorizontalScrollbar
 	setTimeout(() => {
-		if (leftPane) resizeObserver.observe(leftPane);
-		if (rightPane) resizeObserver.observe(rightPane);
 		checkHorizontalScrollbar();
-
-		// Scroll sync will be initialized via reactive statement
 	}, 0);
 
 	// Click outside handler for menu
@@ -1496,12 +1309,9 @@ onMount(async () => {
 });
 
 function checkHorizontalScrollbar() {
-	if (leftPane && rightPane) {
-		// Check if either pane has horizontal overflow
-		const leftHasScroll = leftPane.scrollWidth > leftPane.clientWidth;
-		const rightHasScroll = rightPane.scrollWidth > rightPane.clientWidth;
-		_hasHorizontalScrollbar = leftHasScroll || rightHasScroll;
-	}
+	// TODO: This functionality needs to be moved to DiffViewer component
+	// For now, just set to false
+	_hasHorizontalScrollbar = false;
 }
 </script>
 
@@ -1545,183 +1355,38 @@ function checkHorizontalScrollbar() {
     {/if}
   </div>
 
-  <div class="diff-container">
-    {#if diffResult}
-      <div class="file-header {highlightedDiffResult?.lines?.[0]?.type !== 'same' ? 'first-line-diff' : ''}" style="--line-number-width: {lineNumberWidth}">
-        <div class="file-info left">
-          <button class="save-btn" disabled={!_hasUnsavedLeftChanges} on:click={saveLeftFile} title="Save changes">📥</button>
-          <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, true)}</span>
-        </div>
-        <div class="action-gutter-header">
-          <!-- Empty header space above action gutter -->
-        </div>
-        <div class="file-info right">
-          <button class="save-btn" disabled={!_hasUnsavedRightChanges} on:click={saveRightFile} title="Save changes">📥</button>
-          <span class="file-path">{getDisplayPath(leftFilePath, rightFilePath, false)}</span>
-        </div>
-      </div>
-      
-      {#if isSameFile}
-        <div class="same-file-banner">
-          <div class="warning-icon">⚠️</div>
-          <div class="warning-text">
-            File <strong>{getDisplayPath(leftFilePath, rightFilePath, true)}</strong> is being compared to itself
-          </div>
-        </div>
-      {:else if areFilesIdentical}
-        <div class="identical-files-banner">
-          <div class="info-icon">💡</div>
-          <div class="info-text">
-            Files are identical
-          </div>
-        </div>
-      {/if}
-      
-      <div class="diff-content" style="--line-number-width: {lineNumberWidth}">
-        <div class="left-pane" bind:this={leftPane} on:scroll={_syncLeftScroll}>
-          <div class="pane-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
-            {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = _getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
-              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div 
-                class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
-                data-line-type={line.type}
-                on:click={() => chunk && handleChunkClick(index)}
-                on:mouseenter={() => chunk && _handleChunkMouseEnter(index)}
-                on:mouseleave={() => chunk && _handleChunkMouseLeave()}
-                on:keydown={(e) => {
-                  if (chunk && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    handleChunkClick(index);
-                  }
-                }}
-                role={chunk ? 'button' : undefined}
-                tabindex={chunk ? 0 : undefined}
-              >
-                <span class="line-number">{line.leftNumber || ' '}</span>
-                <span class="line-text">{@html line.leftLineHighlighted || escapeHtml(line.leftLine || ' ')}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-        
-        <div class="center-gutter" bind:this={centerGutter} on:scroll={_syncCenterScroll}>
-          <div class="gutter-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
-            {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = _getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
-              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              
-              <div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
-              {#if chunk && isFirstInChunk && isLineHighlighted(index)}
-                <div class="current-diff-indicator" style="--chunk-height: {chunk.lines};" title="Current diff"></div>
-              {/if}
-              {#if chunk && isFirstInChunk}
-                <!-- Show chunk arrows only on the first line of the chunk, but position them in the middle -->
-                <div class="chunk-actions" style="--chunk-height: {chunk.lines};">
-                  {#if chunk.type === 'added'}
-                    <!-- Content exists in RIGHT pane, so put copy arrow on RIGHT side and delete arrow on LEFT side -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => _deleteChunkFromRight(chunk)} title="Delete chunk from right ({chunk.lines} lines)">
-                      →
-                    </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => _copyChunkToLeft(chunk)} title="Copy chunk to left ({chunk.lines} lines)">
-                      ←
-                    </button>
-                  {:else if chunk.type === 'removed'}
-                    <!-- Content exists in LEFT pane, so put copy arrow on LEFT side and delete arrow on RIGHT side -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => _copyChunkToRight(chunk)} title="Copy chunk to right ({chunk.lines} lines)">
-                      →
-                    </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => _deleteChunkFromLeft(chunk)} title="Delete chunk from left ({chunk.lines} lines)">
-                      ←
-                    </button>
-                  {:else if chunk.type === 'modified'}
-                    <!-- Content exists in BOTH panes but is different, allow copying either direction -->
-                    <button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => _copyModifiedChunkToRight(chunk)} title="Copy left version to right ({chunk.lines} lines)">
-                      →
-                    </button>
-                    <button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => _copyModifiedChunkToLeft(chunk)} title="Copy right version to left ({chunk.lines} lines)">
-                      ←
-                    </button>
-                  {/if}
-                </div>
-              {:else if line.type === 'modified' && _isFirstOfConsecutiveModified(index)}
-                <!-- Show arrows only on the first of consecutive modified lines -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
-                  ←
-                </button>
-              {:else if !chunk && line.type === 'same' && line.leftLine && line.rightLine && line.leftLine !== line.rightLine}
-                <!-- Backend marked as 'same' but content actually differs - treat as modified -->
-                <button class="gutter-arrow left-side-arrow" on:click={() => copyLineToRight(index)} title="Copy left to right">
-                  →
-                </button>
-                <button class="gutter-arrow right-side-arrow" on:click={() => copyLineToLeft(index)} title="Copy right to left">
-                  ←
-                </button>
-              {/if}
-              <!-- Invisible content to match line structure -->
-              <span style="visibility: hidden; font-size: var(--font-size);">​</span>
-            </div>
-          {/each}
-          </div>
-        </div>
-        
-        <div class="right-pane" bind:this={rightPane} on:scroll={_syncRightScroll}>
-          <div class="pane-content" style="height: calc({(highlightedDiffResult?.lines || []).length} * var(--line-height));">
-            {#each (highlightedDiffResult?.lines || []) as line, index}
-              {@const chunk = _getChunkForLine(index)}
-              {@const isFirstInChunk = chunk ? _isFirstLineOfChunk(index, chunk) : false}
-              {@const isLastInChunk = chunk ? index === chunk.endIndex : false}
-              <div 
-                class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
-                data-line-type={line.type}
-                on:click={() => chunk && handleChunkClick(index)}
-                on:mouseenter={() => chunk && _handleChunkMouseEnter(index)}
-                on:mouseleave={() => chunk && _handleChunkMouseLeave()}
-                on:keydown={(e) => {
-                  if (chunk && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    handleChunkClick(index);
-                  }
-                }}
-                role={chunk ? 'button' : undefined}
-                tabindex={chunk ? 0 : undefined}
-              >
-                <span class="line-number">{line.rightNumber || ' '}</span>
-                <span class="line-text">{@html line.rightLineHighlighted || escapeHtml(line.rightLine || ' ')}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-        
-        <!-- Minimap Pane -->
-        <Minimap
-          show={_showMinimap && highlightedDiffResult && highlightedDiffResult.lines.length > 0}
-          {lineChunks}
-          totalLines={highlightedDiffResult?.lines.length || 0}
-          {currentDiffChunkIndex}
-          {diffChunks}
-          {viewportTop}
-          {viewportHeight}
-          {isDarkMode}
-          on:minimapClick={(e) => _handleMinimapClick(e.detail.event)}
-          on:viewportMouseDown={(e) => _handleViewportMouseDown(e.detail.event)}
-        />
-      </div>
-    {:else if leftFilePath && rightFilePath}
-      <div class="empty-state">
-        Files selected. Click "Compare Files" button above to see differences.
-      </div>
-    {:else}
-      <div class="empty-state">
-        Select two files to compare their differences
-      </div>
-    {/if}
-  </div>
+  <DiffViewer
+    bind:this={diffViewerComponent}
+    {leftFilePath}
+    {rightFilePath}
+    diffResult={highlightedDiffResult}
+    hasUnsavedLeftChanges={_hasUnsavedLeftChanges}
+    hasUnsavedRightChanges={_hasUnsavedRightChanges}
+    {currentDiffChunkIndex}
+    {hoveredChunkIndex}
+    showMinimap={_showMinimap}
+    {isDarkMode}
+    isComparing={_isComparing}
+    hasCompletedComparison={_hasCompletedComparison}
+    {areFilesIdentical}
+    {isSameFile}
+    {lineNumberWidth}
+    on:saveLeft={saveLeftFile}
+    on:saveRight={saveRightFile}
+    on:copyLineToLeft={(e) => copyLineToLeft(e.detail)}
+    on:copyLineToRight={(e) => copyLineToRight(e.detail)}
+    on:copyChunkToLeft={(e) => _copyChunkToLeft(e.detail)}
+    on:copyChunkToRight={(e) => _copyChunkToRight(e.detail)}
+    on:copyModifiedChunkToLeft={(e) => _copyModifiedChunkToLeft(e.detail)}
+    on:copyModifiedChunkToRight={(e) => _copyModifiedChunkToRight(e.detail)}
+    on:deleteChunkFromLeft={(e) => _deleteChunkFromLeft(e.detail)}
+    on:deleteChunkFromRight={(e) => _deleteChunkFromRight(e.detail)}
+    on:chunkClick={(e) => handleChunkClick(e.detail)}
+    on:chunkHover={(e) => _handleChunkMouseEnter(e.detail)}
+    on:chunkLeave={_handleChunkMouseLeave}
+    on:minimapClick={(e) => _handleMinimapClick(e.detail)}
+    on:viewportMouseDown={(e) => _handleViewportMouseDown(e.detail)}
+  />
 
   <!-- Quit Dialog Modal -->
   <QuitDialog
@@ -2130,370 +1795,12 @@ function checkHorizontalScrollbar() {
     overflow: hidden;
   }
 
-  .file-header {
-    display: grid;
-    grid-template-columns: 1fr 72px 1fr;
-    background: #e6e9ef;
-  }
-  
-
-  .action-gutter-header {
-    background: #e6e9ef;
-    border-left: 1px solid #9ca0b0;
-    border-right: 1px solid #9ca0b0;
-    box-sizing: border-box;
-  }
-
-  .file-info {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 0.5rem 0.5rem calc(var(--line-number-width, 32px) + 24px);
-    font-weight: 400;
-    color: #4c4f69;
-    text-align: left;
-    position: relative;
-  }
-
-  /* Add bottom borders to left and right file info sections */
-  .file-info.left,
-  .file-info.right {
-    border-bottom: 1px solid #9ca0b0;
-  }
-
-  .file-info:first-child {
-    border-right: none;
-  }
-
-  .file-info:last-child {
-    border-left: none;
-  }
-
-  .save-btn {
-    width: 24px;
-    height: 24px;
-    background: #bcc0cc;
-    border: 1px solid #acb0be;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.2s ease;
-    margin-right: 16px;
-    position: absolute;
-    left: 1rem;
-  }
-
-  .file-path {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .save-btn:disabled {
-    background: #dce0e8;
-    border: 1px solid #9ca0b0;
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-
-  .save-btn:not(:disabled):hover {
-    background: #a6adc8;
-    border-color: #9ca0b0;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .file-path {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-
-  .diff-content {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .left-pane, .right-pane {
-    flex: 1;
-    min-width: 0;
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    font-size: var(--font-size);
-    line-height: var(--line-height);
-    overflow: auto;
-    background: #eff1f5;
-    position: relative;
-    box-sizing: border-box;
-  }
-
-  /* Line number gutter background that extends full height */
-  .left-pane::before, .right-pane::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: calc(var(--line-number-width, 32px) + 1px);
-    bottom: 0;
-    background: #dce0e8;
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  .center-gutter {
-    width: var(--gutter-width);
-    background: #e6e9ef;
-    border-left: 1px solid #9ca0b0;
-    border-right: 1px solid #9ca0b0;
-    overflow: auto;
-    flex-shrink: 0;
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    font-size: var(--font-size);
-    line-height: var(--line-height);
-    /* Hide scrollbar - users should scroll via content panes */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-    box-sizing: border-box;
-  }
-
-  .gutter-content {
-    display: inline-block;
-    min-width: 100%;
-    width: fit-content;
-    position: relative;
-    /* padding-bottom handled dynamically based on horizontal scrollbar */
-    line-height: var(--line-height);
-    min-height: 100%; /* Ensure minimum height matches container */
-  }
-
-  /* Removed - causes height mismatch with panes
-  .gutter-content::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: calc(100% + 30px);
-    background: transparent;
-    z-index: -1;
-    pointer-events: none;
-  } */
-
-  /* Hide vertical scrollbar in gutter - users should scroll via content panes */
-  .center-gutter::-webkit-scrollbar:vertical {
-    width: 0; /* Hide scrollbar */
-  }
-  
-  .center-gutter::-webkit-scrollbar:horizontal {
-    height: 5px; /* Match the main scrollbar height */
-  }
-  
-  /* Ensure panes also have consistent scrollbar sizing */
-  .left-pane::-webkit-scrollbar,
-  .right-pane::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  
-  .left-pane::-webkit-scrollbar-track,
-  .right-pane::-webkit-scrollbar-track,
-  .center-gutter::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .left-pane::-webkit-scrollbar-thumb,
-  .right-pane::-webkit-scrollbar-thumb,
-  .center-gutter::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 6px;
-  }
-  
-  .left-pane::-webkit-scrollbar-thumb:hover,
-  .right-pane::-webkit-scrollbar-thumb:hover,
-  .center-gutter::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
 
   /* ===========================================
    * MINIMAP STYLES
    * =========================================== */
 
 
-  .gutter-line {
-    display: flex;
-    height: var(--line-height);
-    min-height: var(--line-height);
-    align-items: stretch;
-    justify-content: center;
-    position: relative;
-    margin: 0;
-    padding: 0;
-    white-space: pre;
-    width: 100%;
-    font-size: var(--font-size); /* Ensure same font size */
-    line-height: var(--line-height); /* Ensure same line height */
-    /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
-  }
-
-  /* Special styling for chunk start lines */
-  .gutter-line.chunk-start {
-    position: relative;
-  }
-  
-  /* Chunk-based arrow styling */
-  .chunk-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    position: absolute;
-    /* Dynamic positioning based on chunk size */
-    top: calc((var(--chunk-height) - 1) * var(--line-height) / 2);
-    left: 0;
-    z-index: 10;
-    height: var(--line-height);
-  }
-  
-  .chunk-arrow {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 14px !important;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .chunk-arrow:hover {
-    transform: scale(1.15);
-  }
-
-  .pane-content {
-    display: inline-block;
-    min-width: 100%;
-    width: fit-content;
-    position: relative;
-    /* padding-bottom: 30px; */ /* Removed - unnecessary dead space */
-    line-height: var(--line-height);
-    min-height: 100%; /* Ensure minimum height matches container */
-  }
-
-
-  /* Old approach - replaced with full-height gutter on panes
-  .pane-content::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: calc(var(--line-number-width, 32px) + 1px);
-    height: calc(100% + 30px);
-    background: #e6e9ef;
-    z-index: -1;
-    pointer-events: none;
-  } */
-
-  .line {
-    display: flex;
-    height: var(--line-height);
-    min-height: var(--line-height);
-    white-space: pre;
-    align-items: stretch;
-    width: 100%;
-    position: relative;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    border: none; /* Explicitly remove all borders from line elements */
-    /* border-bottom: 1px solid rgba(255, 0, 255, 0.3); */ /* Magenta border for visibility - uncomment for debugging */
-  }
-
-  /* Ensure no gaps between line elements */
-  .line + .line {
-    /* margin-top: -1px; */ /* Removed - was affecting arrow positioning */
-  }
-  
-  
-  /* Spacer line for breathing room */
-  .line-spacer {
-    height: 1.3em;
-    min-height: 1.3em;
-    background: transparent;
-  }
-  
-  .line-spacer .line-number {
-    background: transparent !important;
-    border-right: 1px solid #9ca0b0;
-  }
-  
-
-  .pane-action {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    font-size: 8px;
-  }
-
-  .line-number {
-    width: var(--line-number-width, 32px);
-    padding: 0 5px 0 15px;
-    text-align: right;
-    color: #6c6f85;
-    background: #dce0e8;
-    border: none; /* Explicitly remove all borders */
-    user-select: none;
-    flex-shrink: 0;
-    position: sticky;
-    left: 0;
-    z-index: 100;
-    font-size: 0.75rem;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    height: var(--line-height);
-    min-height: var(--line-height);
-    line-height: var(--line-height);
-    box-sizing: border-box;
-  }
-
-  /* Empty line numbers should show nothing */
-  .line-number:empty::before {
-    content: ''; /* No content for empty line numbers */
-  }
-
-  .line-text {
-    padding: 0 0.5rem;
-    color: #4c4f69;
-    white-space: pre;
-    text-align: left;
-    font-family: inherit;
-    tab-size: 4;
-    background: transparent;
-    min-width: max-content;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* Add borders to content area only, not line numbers */
-  .line-same .line-text {
-    border-left: 3px solid #eff1f5;
-  }
-
-  .line-added .line-text,
-  .line-removed .line-text,
-  .line-modified .line-text {
-    border-left: 3px solid #1e66f5;
-  }
 
 
   /* ===========================================
