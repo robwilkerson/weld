@@ -154,6 +154,36 @@ After a PR is merged:
 - [ ] Run tests if code was changed
 - [ ] Check commit subject line length: `echo -n "subject line" | wc -c` (MUST be ≤50 characters)
 
+### End-of-Day Checklist
+
+**Complete these tasks at the end of each development session:**
+
+1. **Run formatters and fix any issues**
+   - Frontend: `npx @biomejs/biome check --write frontend/src/`
+   - Backend: `go fmt ./...`
+
+2. **Run tests and review quality**
+   - Frontend: `bash -c "cd frontend && bun run test"`
+   - Backend: `go test ./... -v`
+   - Review test results qualitatively:
+     - Are we testing the right behaviors?
+     - Do the tests cover critical user paths?
+     - Are there edge cases we're missing?
+
+3. **Report test coverage metrics**
+   - Frontend coverage: `bash -c "cd frontend && bun run test:coverage"`
+   - Backend coverage: `go test ./... -v --cover`
+   - Note: Focus on test quality over coverage numbers
+
+4. **Code review and improvement suggestions**
+   - Review the day's changes for:
+     - Components that are growing too large (>300 lines)
+     - Repeated code patterns that could be extracted
+     - Complex logic that could be simplified
+     - Missing tests for new functionality
+     - Performance concerns or potential optimizations
+   - Add any identified improvements to the todo list
+
 ### Testing and Validation
 
 * Run `go test ./... -v --cover` for backend unit tests with coverage
