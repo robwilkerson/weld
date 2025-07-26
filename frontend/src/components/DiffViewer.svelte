@@ -426,7 +426,8 @@ $: if (
 				{viewportTop}
 				{viewportHeight}
 				{isDarkMode}
-				on:minimapClick={(e) => dispatch('minimapClick', e.detail.event)}
+				diffLines={diffResult?.lines || []}
+				on:minimapClick={(e) => dispatch('minimapClick', e.detail)}
 				on:viewportMouseDown={(e) => dispatch('viewportMouseDown', e.detail.event)}
 			/>
 		</div>

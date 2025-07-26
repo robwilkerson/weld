@@ -1,6 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import type { LineChunk } from "../types/diff";
+import type { HighlightedDiffLine, LineChunk } from "../types/diff";
 
 // biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
@@ -11,13 +11,76 @@ export let diffChunks: Array<{ startIndex: number; endIndex: number }> = [];
 export let viewportTop: number = 0;
 export let viewportHeight: number = 0;
 export let isDarkMode: boolean = false;
+export let diffLines: HighlightedDiffLine[] = [];
 // biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
 const dispatch = createEventDispatcher();
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
+function getChunkTooltip(chunk: LineChunk): string {
+	if (!diffLines || diffLines.length === 0) {
+		return `Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
+	}
+
+	// Get the actual line numbers from the diff lines
+	const startLine = diffLines[chunk.startIndex];
+	const endLine = diffLines[chunk.endIndex];
+
+	// For added/removed chunks, show the line numbers from the side that has content
+	if (chunk.type === "added") {
+		const startNum = startLine?.rightNumber || 0;
+		const endNum = endLine?.rightNumber || 0;
+		return `Right: Lines ${startNum}-${endNum}`;
+	} else if (chunk.type === "removed") {
+		const startNum = startLine?.leftNumber || 0;
+		const endNum = endLine?.leftNumber || 0;
+		return `Left: Lines ${startNum}-${endNum}`;
+	} else if (chunk.type === "modified") {
+		// For modified, show both sides
+		const leftStart = startLine?.leftNumber || 0;
+		const leftEnd = endLine?.leftNumber || 0;
+		const rightStart = startLine?.rightNumber || 0;
+		const rightEnd = endLine?.rightNumber || 0;
+		return `Left: ${leftStart}-${leftEnd}, Right: ${rightStart}-${rightEnd}`;
+	}
+
+	// Fallback
+	return `Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleMinimapClick(event: MouseEvent): void {
-	dispatch("minimapClick", { event });
+	event.stopPropagation();
+
+	// Check if we clicked on a specific chunk
+	const target = event.target as HTMLElement;
+
+	// If we clicked on a chunk element, get its data
+	if (target.classList.contains("minimap-chunk")) {
+		const chunkStart = parseInt(
+			target.getAttribute("data-chunk-start") || "0",
+			10,
+		);
+		const chunk = lineChunks.find((c) => c.startIndex === chunkStart);
+
+		if (chunk) {
+			// For diff chunks, find the matching diff chunk index
+			const diffChunkIndex = diffChunks.findIndex(
+				(dc) =>
+					dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex,
+			);
+			dispatch("minimapClick", { chunk, diffChunkIndex });
+			return;
+		}
+	}
+
+	// Otherwise, calculate based on click position
+	const minimap = event.currentTarget as HTMLElement;
+	const minimapRect = minimap.getBoundingClientRect();
+	const clickY = event.clientY - minimapRect.top;
+	const clickPercentage = clickY / minimapRect.height;
+
+	dispatch("minimapClick", { clickPercentage });
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
@@ -40,6 +103,7 @@ function handleViewportMouseDown(event: MouseEvent): void {
 						       height: {(chunk.lines / totalLines) * 100}%;"
 						data-chunk-start={chunk.startIndex}
 						data-chunk-lines={chunk.lines}
+						title={getChunkTooltip(chunk)}
 					></div>
 				{/if}
 			{/each}
