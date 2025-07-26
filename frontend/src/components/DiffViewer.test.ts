@@ -1,8 +1,8 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom";
-import DiffViewer from "./DiffViewer.svelte";
 import type { DiffViewerProps, HighlightedDiffLine } from "../types/diff";
+import DiffViewer from "./DiffViewer.svelte";
 
 // Mock the utilities
 vi.mock("../utils/diff", () => ({
@@ -15,9 +15,11 @@ vi.mock("../utils/diff", () => ({
 }));
 
 vi.mock("../utils/scrollSync", () => ({
-	calculateScrollToCenterLine: vi.fn((lineIndex, lineHeight, viewportHeight) => {
-		return lineIndex * lineHeight - viewportHeight / 2;
-	}),
+	calculateScrollToCenterLine: vi.fn(
+		(lineIndex, lineHeight, viewportHeight) => {
+			return lineIndex * lineHeight - viewportHeight / 2;
+		},
+	),
 }));
 
 describe("DiffViewer", () => {
@@ -91,7 +93,9 @@ describe("DiffViewer", () => {
 				hasCompletedComparison: false,
 			},
 		});
-		expect(getByText("Select two files to compare their differences")).toBeInTheDocument();
+		expect(
+			getByText("Select two files to compare their differences"),
+		).toBeInTheDocument();
 	});
 
 	it("should show empty state when files selected but not compared", () => {
@@ -102,7 +106,11 @@ describe("DiffViewer", () => {
 				hasCompletedComparison: false,
 			},
 		});
-		expect(getByText('Files selected. Click "Compare Files" button above to see differences.')).toBeInTheDocument();
+		expect(
+			getByText(
+				'Files selected. Click "Compare Files" button above to see differences.',
+			),
+		).toBeInTheDocument();
 	});
 
 	it("should show comparing state", () => {
@@ -138,17 +146,17 @@ describe("DiffViewer", () => {
 
 	it("should render all sub-components", () => {
 		const { container } = render(DiffViewer, { props: defaultProps });
-		
+
 		// Check for DiffHeader
 		expect(container.querySelector(".file-header")).toBeInTheDocument();
-		
+
 		// Check for DiffPanes
 		expect(container.querySelector(".left-pane")).toBeInTheDocument();
 		expect(container.querySelector(".right-pane")).toBeInTheDocument();
-		
+
 		// Check for DiffGutter
 		expect(container.querySelector(".center-gutter")).toBeInTheDocument();
-		
+
 		// Check for Minimap
 		expect(container.querySelector(".minimap")).toBeInTheDocument();
 	});
@@ -174,7 +182,9 @@ describe("DiffViewer", () => {
 		const saveHandler = vi.fn();
 		component.$on("saveLeft", saveHandler);
 
-		const saveButtons = getAllByRole("button").filter(btn => btn.title === "Save changes");
+		const saveButtons = getAllByRole("button").filter(
+			(btn) => btn.title === "Save changes",
+		);
 		await fireEvent.click(saveButtons[0]);
 
 		expect(saveHandler).toHaveBeenCalled();
@@ -191,14 +201,18 @@ describe("DiffViewer", () => {
 		const saveHandler = vi.fn();
 		component.$on("saveRight", saveHandler);
 
-		const saveButtons = getAllByRole("button").filter(btn => btn.title === "Save changes");
+		const saveButtons = getAllByRole("button").filter(
+			(btn) => btn.title === "Save changes",
+		);
 		await fireEvent.click(saveButtons[1]);
 
 		expect(saveHandler).toHaveBeenCalled();
 	});
 
 	it("should dispatch chunkClick event", async () => {
-		const { container, component } = render(DiffViewer, { props: defaultProps });
+		const { container, component } = render(DiffViewer, {
+			props: defaultProps,
+		});
 
 		const clickHandler = vi.fn();
 		component.$on("chunkClick", (event) => clickHandler(event.detail));
@@ -214,15 +228,19 @@ describe("DiffViewer", () => {
 	});
 
 	it("should dispatch copy events from gutter", async () => {
-		const { container, component } = render(DiffViewer, { props: defaultProps });
+		const { container, component } = render(DiffViewer, {
+			props: defaultProps,
+		});
 
 		const copyToRightHandler = vi.fn();
-		component.$on("copyChunkToRight", (event) => copyToRightHandler(event.detail));
+		component.$on("copyChunkToRight", (event) =>
+			copyToRightHandler(event.detail),
+		);
 
 		// Find and click the copy to right arrow for removed chunk
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const copyButton = gutterLines[1].querySelector(".left-side-arrow");
-		
+
 		if (copyButton) {
 			await fireEvent.click(copyButton);
 		}
@@ -231,7 +249,9 @@ describe("DiffViewer", () => {
 	});
 
 	it("should handle chunk hover", async () => {
-		const { container, component } = render(DiffViewer, { props: defaultProps });
+		const { container, component } = render(DiffViewer, {
+			props: defaultProps,
+		});
 
 		const hoverHandler = vi.fn();
 		const leaveHandler = vi.fn();
@@ -239,16 +259,18 @@ describe("DiffViewer", () => {
 		component.$on("chunkLeave", leaveHandler);
 
 		const lines = container.querySelectorAll(".left-pane .line");
-		
+
 		await fireEvent.mouseEnter(lines[1]);
 		expect(hoverHandler).toHaveBeenCalledWith(1);
-		
+
 		await fireEvent.mouseLeave(lines[1]);
 		expect(leaveHandler).toHaveBeenCalled();
 	});
 
 	it("should handle minimap click", async () => {
-		const { container, component } = render(DiffViewer, { props: defaultProps });
+		const { container, component } = render(DiffViewer, {
+			props: defaultProps,
+		});
 
 		const minimapClickHandler = vi.fn();
 		component.$on("minimapClick", (event) => minimapClickHandler(event.detail));
@@ -266,7 +288,7 @@ describe("DiffViewer", () => {
 
 		// Since the component refs are not exposed directly, we'll verify the method exists
 		expect(typeof component.scrollToLine).toBe("function");
-		
+
 		// We can't easily test the internal implementation without
 		// access to the component refs, so we'll just ensure
 		// the method can be called without errors

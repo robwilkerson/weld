@@ -1,8 +1,8 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom";
-import DiffGutter from "./DiffGutter.svelte";
 import type { HighlightedDiffLine, LineChunk } from "../types/diff";
+import DiffGutter from "./DiffGutter.svelte";
 
 describe("DiffGutter", () => {
 	const mockLines: HighlightedDiffLine[] = [
@@ -66,9 +66,11 @@ describe("DiffGutter", () => {
 	];
 
 	const mockGetChunkForLine = vi.fn((index: number): LineChunk | null => {
-		return mockDiffChunks.find(
-			chunk => index >= chunk.startIndex && index <= chunk.endIndex
-		) || null;
+		return (
+			mockDiffChunks.find(
+				(chunk) => index >= chunk.startIndex && index <= chunk.endIndex,
+			) || null
+		);
 	});
 
 	const mockIsFirstLineOfChunk = vi.fn((index: number, chunk: LineChunk) => {
@@ -76,7 +78,9 @@ describe("DiffGutter", () => {
 	});
 
 	const mockIsLineHighlighted = vi.fn((index: number) => index === 1);
-	const mockIsFirstOfConsecutiveModified = vi.fn((index: number) => index === 3);
+	const mockIsFirstOfConsecutiveModified = vi.fn(
+		(index: number) => index === 3,
+	);
 
 	const defaultProps = {
 		lines: mockLines,
@@ -105,7 +109,9 @@ describe("DiffGutter", () => {
 
 	it("should show current diff indicator for highlighted line", () => {
 		const { container } = render(DiffGutter, { props: defaultProps });
-		const currentDiffIndicator = container.querySelector(".current-diff-indicator");
+		const currentDiffIndicator = container.querySelector(
+			".current-diff-indicator",
+		);
 		expect(currentDiffIndicator).toBeInTheDocument();
 		expect(currentDiffIndicator).toHaveAttribute("title", "Current diff");
 	});
@@ -114,7 +120,7 @@ describe("DiffGutter", () => {
 		const { container } = render(DiffGutter, { props: defaultProps });
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const removedLineButtons = gutterLines[1].querySelectorAll("button");
-		
+
 		expect(removedLineButtons).toHaveLength(2);
 		expect(removedLineButtons[0]).toHaveClass("left-side-arrow");
 		expect(removedLineButtons[0]).toHaveTextContent("→");
@@ -126,7 +132,7 @@ describe("DiffGutter", () => {
 		const { container } = render(DiffGutter, { props: defaultProps });
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const addedLineButtons = gutterLines[2].querySelectorAll("button");
-		
+
 		expect(addedLineButtons).toHaveLength(2);
 		expect(addedLineButtons[0]).toHaveClass("left-side-arrow");
 		expect(addedLineButtons[0]).toHaveTextContent("→");
@@ -138,20 +144,22 @@ describe("DiffGutter", () => {
 		const { container } = render(DiffGutter, { props: defaultProps });
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const modifiedLineButtons = gutterLines[3].querySelectorAll("button");
-		
+
 		expect(modifiedLineButtons).toHaveLength(2);
 		expect(modifiedLineButtons[0]).toHaveClass("modified-arrow");
 		expect(modifiedLineButtons[1]).toHaveClass("modified-arrow");
 	});
 
 	it("should dispatch copyChunkToRight event for removed chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const copyHandler = vi.fn();
 		component.$on("copyChunkToRight", (event) => copyHandler(event.detail));
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const leftArrow = gutterLines[1].querySelector(".left-side-arrow");
-		
+
 		if (leftArrow) {
 			await fireEvent.click(leftArrow);
 		}
@@ -160,13 +168,17 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch deleteChunkFromLeft event for removed chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const deleteHandler = vi.fn();
-		component.$on("deleteChunkFromLeft", (event) => deleteHandler(event.detail));
+		component.$on("deleteChunkFromLeft", (event) =>
+			deleteHandler(event.detail),
+		);
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const rightArrow = gutterLines[1].querySelector(".right-side-arrow");
-		
+
 		if (rightArrow) {
 			await fireEvent.click(rightArrow);
 		}
@@ -175,13 +187,15 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch copyChunkToLeft event for added chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const copyHandler = vi.fn();
 		component.$on("copyChunkToLeft", (event) => copyHandler(event.detail));
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const rightArrow = gutterLines[2].querySelector(".right-side-arrow");
-		
+
 		if (rightArrow) {
 			await fireEvent.click(rightArrow);
 		}
@@ -190,13 +204,17 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch deleteChunkFromRight event for added chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const deleteHandler = vi.fn();
-		component.$on("deleteChunkFromRight", (event) => deleteHandler(event.detail));
+		component.$on("deleteChunkFromRight", (event) =>
+			deleteHandler(event.detail),
+		);
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const leftArrow = gutterLines[2].querySelector(".left-side-arrow");
-		
+
 		if (leftArrow) {
 			await fireEvent.click(leftArrow);
 		}
@@ -205,13 +223,17 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch copyModifiedChunkToRight event for modified chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const copyHandler = vi.fn();
-		component.$on("copyModifiedChunkToRight", (event) => copyHandler(event.detail));
+		component.$on("copyModifiedChunkToRight", (event) =>
+			copyHandler(event.detail),
+		);
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const leftArrow = gutterLines[3].querySelector(".left-side-arrow");
-		
+
 		if (leftArrow) {
 			await fireEvent.click(leftArrow);
 		}
@@ -220,13 +242,17 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch copyModifiedChunkToLeft event for modified chunk", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const copyHandler = vi.fn();
-		component.$on("copyModifiedChunkToLeft", (event) => copyHandler(event.detail));
+		component.$on("copyModifiedChunkToLeft", (event) =>
+			copyHandler(event.detail),
+		);
 
 		const gutterLines = container.querySelectorAll(".gutter-line");
 		const rightArrow = gutterLines[3].querySelector(".right-side-arrow");
-		
+
 		if (rightArrow) {
 			await fireEvent.click(rightArrow);
 		}
@@ -235,7 +261,9 @@ describe("DiffGutter", () => {
 	});
 
 	it("should dispatch scroll event", async () => {
-		const { container, component } = render(DiffGutter, { props: defaultProps });
+		const { container, component } = render(DiffGutter, {
+			props: defaultProps,
+		});
 		const scrollHandler = vi.fn();
 		component.$on("scroll", scrollHandler);
 
@@ -250,7 +278,7 @@ describe("DiffGutter", () => {
 	it("should apply chunk-start and chunk-end classes", () => {
 		const { container } = render(DiffGutter, { props: defaultProps });
 		const gutterLines = container.querySelectorAll(".gutter-line");
-		
+
 		expect(gutterLines[1]).toHaveClass("chunk-start");
 		expect(gutterLines[1]).toHaveClass("chunk-end");
 		expect(gutterLines[2]).toHaveClass("chunk-start");
@@ -267,7 +295,7 @@ describe("DiffGutter", () => {
 	it("should expose setScrollTop method", () => {
 		const { component } = render(DiffGutter, { props: defaultProps });
 		const element = component.getElement();
-		
+
 		component.setScrollTop(100);
 		expect(element.scrollTop).toBe(100);
 	});
@@ -275,7 +303,7 @@ describe("DiffGutter", () => {
 	it("should expose setScrollLeft method", () => {
 		const { component } = render(DiffGutter, { props: defaultProps });
 		const element = component.getElement();
-		
+
 		component.setScrollLeft(50);
 		expect(element.scrollLeft).toBe(50);
 	});

@@ -348,7 +348,7 @@ describe("Keyboard Utilities", () => {
 
 		it("should handle Shift+L for copy right to left", () => {
 			const mockCopyRightToLeft = vi.fn();
-			
+
 			const mockEvent = {
 				key: "L",
 				shiftKey: true,
@@ -375,7 +375,7 @@ describe("Keyboard Utilities", () => {
 
 		it("should handle Shift+H for copy left to right", () => {
 			const mockCopyLeftToRight = vi.fn();
-			
+
 			const mockEvent = {
 				key: "H",
 				shiftKey: true,
@@ -403,7 +403,7 @@ describe("Keyboard Utilities", () => {
 		it("should handle ArrowDown for jump to next diff", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
-			
+
 			const mockEvent = {
 				key: "ArrowDown",
 				preventDefault: vi.fn(),
@@ -429,7 +429,7 @@ describe("Keyboard Utilities", () => {
 		it("should handle j key for jump to next diff", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
-			
+
 			const mockEvent = {
 				key: "j",
 				preventDefault: vi.fn(),
@@ -454,7 +454,7 @@ describe("Keyboard Utilities", () => {
 		it("should handle ArrowUp for jump to previous diff", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
-			
+
 			const mockEvent = {
 				key: "ArrowUp",
 				preventDefault: vi.fn(),
@@ -480,7 +480,7 @@ describe("Keyboard Utilities", () => {
 		it("should handle k key for jump to previous diff", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
-			
+
 			const mockEvent = {
 				key: "k",
 				preventDefault: vi.fn(),
@@ -504,7 +504,7 @@ describe("Keyboard Utilities", () => {
 
 		it("should handle Ctrl+Z for undo on Windows/Linux", () => {
 			const mockUndo = vi.fn();
-			
+
 			// Mock Windows platform
 			Object.defineProperty(navigator, "platform", {
 				value: "Win32",
@@ -535,7 +535,7 @@ describe("Keyboard Utilities", () => {
 
 		it("should handle Cmd+Z for undo on Mac", () => {
 			const mockUndo = vi.fn();
-			
+
 			// Mock Mac platform
 			Object.defineProperty(navigator, "platform", {
 				value: "MacIntel",
@@ -566,7 +566,7 @@ describe("Keyboard Utilities", () => {
 
 		it("should handle u key for undo", () => {
 			const mockUndo = vi.fn();
-			
+
 			const mockEvent = {
 				key: "u",
 				preventDefault: vi.fn(),
