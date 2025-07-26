@@ -138,7 +138,7 @@ describe("Minimap", () => {
 		expect(mockHandler).toHaveBeenCalledWith(
 			expect.objectContaining({
 				detail: expect.objectContaining({
-					event: expect.any(MouseEvent),
+					clickPercentage: expect.any(Number),
 				}),
 			}),
 		);

@@ -492,37 +492,54 @@ async function compareBothFiles(
 // MINIMAP FUNCTIONALITY
 // ===========================================
 
-function _handleMinimapClick(event: MouseEvent): void {
+function _handleMinimapClick(eventData: {
+	chunk?: LineChunk;
+	diffChunkIndex?: number;
+	clickPercentage?: number;
+}): void {
 	// TODO: This functionality needs to be moved to DiffViewer component
 	// For now, just update the chunk index based on click position
 	if (!highlightedDiffResult) return;
 
-	const minimap = event.currentTarget as HTMLElement;
-	const minimapRect = minimap.getBoundingClientRect();
-	const clickY = event.clientY - minimapRect.top;
+	// If we have a specific chunk, use it directly
+	if (eventData.chunk && eventData.diffChunkIndex !== undefined) {
+		const { chunk, diffChunkIndex } = eventData;
 
-	// Calculate the percentage of the minimap that was clicked
-	const clickPercentage = clickY / minimapRect.height;
+		if (diffChunkIndex !== -1) {
+			currentDiffChunkIndex = diffChunkIndex;
+			// Scroll to the start of the chunk to match what the tooltip shows
+			scrollToLine(chunk.startIndex);
+		}
+		return;
+	}
 
-	// Calculate the corresponding line index in the actual content
-	const totalLines = highlightedDiffResult.lines.length;
-	const targetLineIndex = Math.floor(clickPercentage * totalLines);
+	// Otherwise, use click percentage
+	if (eventData.clickPercentage !== undefined) {
+		const { clickPercentage } = eventData;
 
-	// Ensure line index is within bounds
-	const boundedLineIndex = Math.max(
-		0,
-		Math.min(targetLineIndex, totalLines - 1),
-	);
+		// Calculate the corresponding line index in the actual content
+		const totalLines = highlightedDiffResult.lines.length;
+		const targetLineIndex = Math.floor(clickPercentage * totalLines);
 
-	// Find which diff chunk this line belongs to and set it as current
-	const clickedChunkIndex = diffChunks.findIndex(
-		(chunk) =>
-			boundedLineIndex >= chunk.startIndex &&
-			boundedLineIndex <= chunk.endIndex,
-	);
+		// Ensure line index is within bounds
+		const boundedLineIndex = Math.max(
+			0,
+			Math.min(targetLineIndex, totalLines - 1),
+		);
 
-	if (clickedChunkIndex !== -1) {
-		currentDiffChunkIndex = clickedChunkIndex;
+		// Find which diff chunk this line belongs to and set it as current
+		const clickedChunkIndex = diffChunks.findIndex(
+			(chunk) =>
+				boundedLineIndex >= chunk.startIndex &&
+				boundedLineIndex <= chunk.endIndex,
+		);
+
+		if (clickedChunkIndex !== -1) {
+			currentDiffChunkIndex = clickedChunkIndex;
+		}
+
+		// Scroll to the clicked location
+		scrollToLine(boundedLineIndex);
 	}
 }
 
@@ -1155,12 +1172,11 @@ function _handleChunkClick(event: {
 	chunkIndex: number;
 	lineIndex: number;
 }): void {
-	const { chunkIndex, lineIndex } = event;
+	const { chunkIndex } = event;
 
 	// Update the current diff chunk index
 	currentDiffChunkIndex = chunkIndex;
-	// Scroll to the line that was clicked
-	scrollToLine(lineIndex);
+	// Don't scroll - just highlight the chunk where it is
 }
 
 function _handleChunkMouseEnter(lineIndex: number): void {
@@ -1386,7 +1402,7 @@ function checkHorizontalScrollbar() {
     on:copyModifiedChunkToRight={(e) => _copyModifiedChunkToRight(e.detail)}
     on:deleteChunkFromLeft={(e) => _deleteChunkFromLeft(e.detail)}
     on:deleteChunkFromRight={(e) => _deleteChunkFromRight(e.detail)}
-    on:chunkClick={(e) => handleChunkClick(e.detail)}
+    on:chunkClick={(e) => _handleChunkClick(e.detail)}
     on:chunkHover={(e) => _handleChunkMouseEnter(e.detail)}
     on:chunkLeave={_handleChunkMouseLeave}
     on:minimapClick={(e) => _handleMinimapClick(e.detail)}
