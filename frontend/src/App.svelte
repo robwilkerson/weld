@@ -1155,12 +1155,11 @@ function _handleChunkClick(event: {
 	chunkIndex: number;
 	lineIndex: number;
 }): void {
-	const { chunkIndex, lineIndex } = event;
+	const { chunkIndex } = event;
 
 	// Update the current diff chunk index
 	currentDiffChunkIndex = chunkIndex;
-	// Scroll to the line that was clicked
-	scrollToLine(lineIndex);
+	// Don't scroll - just highlight the chunk where it is
 }
 
 function _handleChunkMouseEnter(lineIndex: number): void {
@@ -1386,7 +1385,7 @@ function checkHorizontalScrollbar() {
     on:copyModifiedChunkToRight={(e) => _copyModifiedChunkToRight(e.detail)}
     on:deleteChunkFromLeft={(e) => _deleteChunkFromLeft(e.detail)}
     on:deleteChunkFromRight={(e) => _deleteChunkFromRight(e.detail)}
-    on:chunkClick={(e) => handleChunkClick(e.detail)}
+    on:chunkClick={(e) => _handleChunkClick(e.detail)}
     on:chunkHover={(e) => _handleChunkMouseEnter(e.detail)}
     on:chunkLeave={_handleChunkMouseLeave}
     on:minimapClick={(e) => _handleMinimapClick(e.detail)}
