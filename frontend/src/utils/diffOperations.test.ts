@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CopyToFile, RemoveLineFromFile } from "../../wailsjs/go/main/App.js";
+import {
+	BeginOperationGroup,
+	CommitOperationGroup,
+	CopyToFile,
+	RemoveLineFromFile,
+	RollbackOperationGroup,
+} from "../../wailsjs/go/main/App.js";
 import type { DiffResult, LineChunk } from "../types";
 import * as diffOps from "./diffOperations";
 
@@ -7,6 +13,9 @@ import * as diffOps from "./diffOperations";
 vi.mock("../../wailsjs/go/main/App.js", () => ({
 	CopyToFile: vi.fn(),
 	RemoveLineFromFile: vi.fn(),
+	BeginOperationGroup: vi.fn(),
+	CommitOperationGroup: vi.fn(),
+	RollbackOperationGroup: vi.fn(),
 }));
 
 describe("diffOperations", () => {
@@ -16,6 +25,7 @@ describe("diffOperations", () => {
 		diffResult: null,
 		compareBothFiles: vi.fn(),
 		updateUnsavedChangesStatus: vi.fn(),
+		refreshUndoState: vi.fn(),
 	};
 
 	const mockDiffResult: DiffResult = {
@@ -54,6 +64,10 @@ describe("diffOperations", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockContext.diffResult = mockDiffResult;
+		// Set up default mock behavior for transaction methods
+		vi.mocked(BeginOperationGroup).mockResolvedValue("transaction-id");
+		vi.mocked(CommitOperationGroup).mockResolvedValue(undefined);
+		vi.mocked(RollbackOperationGroup).mockResolvedValue(undefined);
 	});
 
 	describe("copyChunkToRight", () => {
@@ -337,6 +351,126 @@ describe("diffOperations", () => {
 				3,
 				"new line",
 			);
+		});
+	});
+
+	describe("Transaction Management", () => {
+		it("should begin and commit transaction for copyChunkToRight", async () => {
+			const chunk: LineChunk = {
+				startIndex: 1,
+				endIndex: 1,
+				type: "removed",
+			};
+
+			await diffOps.copyChunkToRight(chunk, mockContext);
+
+			expect(BeginOperationGroup).toHaveBeenCalledWith("Copy chunk to right");
+			expect(CommitOperationGroup).toHaveBeenCalled();
+			expect(RollbackOperationGroup).not.toHaveBeenCalled();
+		});
+
+		it("should rollback transaction on error in copyChunkToRight", async () => {
+			const chunk: LineChunk = {
+				startIndex: 1,
+				endIndex: 1,
+				type: "removed",
+			};
+
+			// Make CopyToFile throw an error
+			vi.mocked(CopyToFile).mockRejectedValueOnce(new Error("Copy failed"));
+
+			await expect(
+				diffOps.copyChunkToRight(chunk, mockContext),
+			).rejects.toThrow("Copy failed");
+
+			expect(BeginOperationGroup).toHaveBeenCalled();
+			expect(RollbackOperationGroup).toHaveBeenCalled();
+			expect(CommitOperationGroup).not.toHaveBeenCalled();
+		});
+
+		it("should refresh undo state after successful operation", async () => {
+			const chunk: LineChunk = {
+				startIndex: 1,
+				endIndex: 1,
+				type: "removed",
+			};
+
+			await diffOps.copyChunkToRight(chunk, mockContext);
+
+			expect(mockContext.refreshUndoState).toHaveBeenCalled();
+		});
+
+		it("should begin and commit transaction for deleteChunkFromRight", async () => {
+			const chunk: LineChunk = {
+				startIndex: 2,
+				endIndex: 2,
+				type: "added",
+			};
+
+			await diffOps.deleteChunkFromRight(chunk, mockContext);
+
+			expect(BeginOperationGroup).toHaveBeenCalledWith(
+				"Delete chunk from right",
+			);
+			expect(CommitOperationGroup).toHaveBeenCalled();
+			expect(RollbackOperationGroup).not.toHaveBeenCalled();
+		});
+
+		it("should rollback transaction on error in deleteChunkFromLeft", async () => {
+			const chunk: LineChunk = {
+				startIndex: 1,
+				endIndex: 1,
+				type: "removed",
+			};
+
+			// Make RemoveLineFromFile throw an error
+			vi.mocked(RemoveLineFromFile).mockRejectedValueOnce(
+				new Error("Remove failed"),
+			);
+
+			await expect(
+				diffOps.deleteChunkFromLeft(chunk, mockContext),
+			).rejects.toThrow("Remove failed");
+
+			expect(BeginOperationGroup).toHaveBeenCalled();
+			expect(RollbackOperationGroup).toHaveBeenCalled();
+			expect(CommitOperationGroup).not.toHaveBeenCalled();
+		});
+
+		it("should handle multiple operations in a transaction", async () => {
+			const chunk: LineChunk = {
+				startIndex: 3,
+				endIndex: 3,
+				type: "modified",
+			};
+
+			await diffOps.copyModifiedChunkToRight(chunk, mockContext);
+
+			expect(BeginOperationGroup).toHaveBeenCalledWith(
+				"Replace modified chunk in right",
+			);
+			expect(RemoveLineFromFile).toHaveBeenCalled();
+			expect(CopyToFile).toHaveBeenCalled();
+			expect(CommitOperationGroup).toHaveBeenCalled();
+			expect(RollbackOperationGroup).not.toHaveBeenCalled();
+		});
+
+		it("should handle refreshUndoState being optional", async () => {
+			const contextWithoutRefresh = {
+				...mockContext,
+				refreshUndoState: undefined,
+			};
+
+			const chunk: LineChunk = {
+				startIndex: 1,
+				endIndex: 1,
+				type: "removed",
+			};
+
+			// Should not throw when refreshUndoState is undefined
+			await expect(
+				diffOps.copyChunkToRight(chunk, contextWithoutRefresh),
+			).resolves.not.toThrow();
 		});
 	});
 });

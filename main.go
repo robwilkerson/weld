@@ -34,8 +34,24 @@ func BuildMenu(app *App) *menu.Menu {
 		runtime.Quit(app.ctx)
 	})
 
-	// Edit menu
-	appMenu.Append(menu.EditMenu())
+	// Edit menu - custom implementation to add undo
+	editMenu := appMenu.AddSubmenu("Edit")
+	editMenu.AddText("Cut", keys.CmdOrCtrl("x"), nil)
+	editMenu.AddText("Copy", keys.CmdOrCtrl("c"), nil)
+	editMenu.AddText("Paste", keys.CmdOrCtrl("v"), nil)
+	editMenu.AddText("Select All", keys.CmdOrCtrl("a"), nil)
+	editMenu.AddSeparator()
+
+	// Undo menu item
+	undoItem := editMenu.AddText("Undo", keys.CmdOrCtrl("z"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-undo")
+	})
+
+	// Store reference to undo menu item
+	app.SetUndoMenuItem(undoItem)
+
+	// Set initial state
+	undoItem.Disabled = true
 
 	// View menu
 	viewMenu := appMenu.AddSubmenu("View")

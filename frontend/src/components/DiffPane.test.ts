@@ -1,8 +1,8 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom";
-import DiffPane from "./DiffPane.svelte";
 import type { HighlightedDiffLine, LineChunk } from "../types/diff";
+import DiffPane from "./DiffPane.svelte";
 
 // Mock the diff utilities
 vi.mock("../utils/diff", () => ({
@@ -103,7 +103,7 @@ describe("DiffPane", () => {
 	it("should display line numbers correctly", () => {
 		const { container } = render(DiffPane, { props: defaultProps });
 		const lineNumbers = container.querySelectorAll(".line-number");
-		
+
 		expect(lineNumbers[0]).toHaveTextContent("1");
 		expect(lineNumbers[1]).toHaveTextContent("2");
 		expect(lineNumbers[2]).toHaveTextContent("");
@@ -112,7 +112,7 @@ describe("DiffPane", () => {
 	it("should display line content correctly", () => {
 		const { container } = render(DiffPane, { props: defaultProps });
 		const lineTexts = container.querySelectorAll(".line-text");
-		
+
 		expect(lineTexts[0]).toHaveTextContent("const a = 1;");
 		expect(lineTexts[1]).toHaveTextContent("const b = 2;");
 		expect(lineTexts[2]).toHaveTextContent("");
@@ -156,7 +156,9 @@ describe("DiffPane", () => {
 	it("should dispatch chunkMouseEnter event", async () => {
 		const { container, component } = render(DiffPane, { props: defaultProps });
 		const mouseEnterHandler = vi.fn();
-		component.$on("chunkMouseEnter", (event) => mouseEnterHandler(event.detail));
+		component.$on("chunkMouseEnter", (event) =>
+			mouseEnterHandler(event.detail),
+		);
 
 		const lines = container.querySelectorAll(".line");
 		await fireEvent.mouseEnter(lines[1]);
@@ -178,7 +180,7 @@ describe("DiffPane", () => {
 	it("should apply current-diff class to highlighted lines", () => {
 		const { container } = render(DiffPane, { props: defaultProps });
 		const lines = container.querySelectorAll(".line");
-		
+
 		expect(lines[1]).toHaveClass("current-diff");
 		expect(lines[0]).not.toHaveClass("current-diff");
 		expect(lines[2]).not.toHaveClass("current-diff");
@@ -187,7 +189,7 @@ describe("DiffPane", () => {
 	it("should apply chunk-hover class to hovered lines", () => {
 		const { container } = render(DiffPane, { props: defaultProps });
 		const lines = container.querySelectorAll(".line");
-		
+
 		expect(lines[2]).toHaveClass("chunk-hover");
 		expect(lines[0]).not.toHaveClass("chunk-hover");
 		expect(lines[1]).not.toHaveClass("chunk-hover");
@@ -199,11 +201,11 @@ describe("DiffPane", () => {
 		component.$on("chunkClick", (event) => clickHandler(event.detail));
 
 		const lines = container.querySelectorAll(".line");
-		
+
 		// Test Enter key
 		await fireEvent.keyDown(lines[1], { key: "Enter" });
 		expect(clickHandler).toHaveBeenCalledWith(1);
-		
+
 		// Test Space key
 		clickHandler.mockClear();
 		await fireEvent.keyDown(lines[2], { key: " " });
@@ -220,7 +222,7 @@ describe("DiffPane", () => {
 	it("should expose setScrollTop method", () => {
 		const { component } = render(DiffPane, { props: defaultProps });
 		const element = component.getElement();
-		
+
 		component.setScrollTop(100);
 		expect(element.scrollTop).toBe(100);
 	});
@@ -228,7 +230,7 @@ describe("DiffPane", () => {
 	it("should expose setScrollLeft method", () => {
 		const { component } = render(DiffPane, { props: defaultProps });
 		const element = component.getElement();
-		
+
 		component.setScrollLeft(50);
 		expect(element.scrollLeft).toBe(50);
 	});

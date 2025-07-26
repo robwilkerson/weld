@@ -17,6 +17,8 @@ import DiffViewer from "./components/DiffViewer.svelte";
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import QuitDialog from "./components/QuitDialog.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import UndoManager from "./components/UndoManager.svelte";
 import type {
 	DiffLine,
 	DiffResult,
@@ -91,6 +93,9 @@ let currentDiffChunkIndex: number = -1;
 
 // Hover tracking for chunks
 let hoveredChunkIndex: number = -1;
+
+// UndoManager component instance
+let undoManager: UndoManager;
 
 // Create a reactive function for checking if a line is in the current chunk
 $: isLineHighlighted = (lineIndex: number) => {
@@ -598,6 +603,11 @@ function getDiffOperationContext(): diffOps.DiffOperationContext {
 		diffResult,
 		compareBothFiles,
 		updateUnsavedChangesStatus,
+		refreshUndoState: async () => {
+			if (undoManager) {
+				await undoManager.refreshUndoState();
+			}
+		},
 	};
 }
 
@@ -766,10 +776,10 @@ function handleKeydown(event: KeyboardEvent): void {
 	);
 }
 
-function undoLastChange(): void {
-	// TODO: Implement undo functionality
-	console.log("Undo functionality not yet implemented");
-	_errorMessage = "Undo functionality coming soon!";
+async function undoLastChange(): Promise<void> {
+	if (undoManager) {
+		await undoManager.undo();
+	}
 }
 
 async function _highlightFileContent(
@@ -1381,6 +1391,19 @@ function checkHorizontalScrollbar() {
     on:chunkLeave={_handleChunkMouseLeave}
     on:minimapClick={(e) => _handleMinimapClick(e.detail)}
     on:viewportMouseDown={(e) => _handleViewportMouseDown(e.detail)}
+  />
+
+  <!-- UndoManager (headless component) -->
+  <UndoManager
+    bind:this={undoManager}
+    on:statusUpdate={(e) => console.log("Undo status:", e.detail.message)}
+    on:undoStateChanged={async () => {
+      // Re-fetch diff after undo
+      if (leftFilePath && rightFilePath) {
+        await compareBothFiles(true);
+        await updateUnsavedChangesStatus();
+      }
+    }}
   />
 
   <!-- Quit Dialog Modal -->

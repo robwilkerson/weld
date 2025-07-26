@@ -1,4 +1,10 @@
-import { CopyToFile, RemoveLineFromFile } from "../../wailsjs/go/main/App.js";
+import {
+	BeginOperationGroup,
+	CommitOperationGroup,
+	CopyToFile,
+	RemoveLineFromFile,
+	RollbackOperationGroup,
+} from "../../wailsjs/go/main/App.js";
 import type { DiffResult, LineChunk } from "../types";
 
 export interface DiffOperationContext {
@@ -7,6 +13,7 @@ export interface DiffOperationContext {
 	diffResult: DiffResult | null;
 	compareBothFiles: (preserveCurrentDiff: boolean) => Promise<void>;
 	updateUnsavedChangesStatus: () => Promise<void>;
+	refreshUndoState?: () => Promise<void>;
 }
 
 export async function copyChunkToRight(
@@ -25,22 +32,39 @@ export async function copyChunkToRight(
 		throw new Error("No diff result available");
 	}
 
-	// Copy all lines in the chunk from left to right
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (line.type === "removed" && line.leftNumber !== null) {
-			await CopyToFile(
-				leftFilePath,
-				rightFilePath,
-				line.leftNumber,
-				line.leftLine,
-			);
-		}
-	}
+	// Start transaction
+	await BeginOperationGroup("Copy chunk to right");
 
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
+	try {
+		// Copy all lines in the chunk from left to right
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "removed" && line.leftNumber !== null) {
+				await CopyToFile(
+					leftFilePath,
+					rightFilePath,
+					line.leftNumber,
+					line.leftLine,
+				);
+			}
+		}
+
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
+	}
 }
 
 export async function copyChunkToLeft(
@@ -59,37 +83,54 @@ export async function copyChunkToLeft(
 		throw new Error("No diff result available");
 	}
 
-	// Copy all lines in the chunk from right to left
-	// First, find the correct insertion position
-	let insertPosition = 1; // Default to beginning of file
+	// Start transaction
+	await BeginOperationGroup("Copy chunk to left");
 
-	// Look for the nearest "same" line above this chunk to determine position
-	for (let i = chunk.startIndex - 1; i >= 0; i--) {
-		const line = diffResult.lines[i];
-		if (line.type === "same" && line.leftNumber !== null) {
-			insertPosition = line.leftNumber + 1;
-			break;
+	try {
+		// Copy all lines in the chunk from right to left
+		// First, find the correct insertion position
+		let insertPosition = 1; // Default to beginning of file
+
+		// Look for the nearest "same" line above this chunk to determine position
+		for (let i = chunk.startIndex - 1; i >= 0; i--) {
+			const line = diffResult.lines[i];
+			if (line.type === "same" && line.leftNumber !== null) {
+				insertPosition = line.leftNumber + 1;
+				break;
+			}
 		}
-	}
 
-	// Copy all lines in the chunk
-	let currentInsertPosition = insertPosition;
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (line.type === "added" && line.rightNumber !== null) {
-			await CopyToFile(
-				rightFilePath,
-				leftFilePath,
-				currentInsertPosition,
-				line.rightLine,
-			);
-			currentInsertPosition++; // Increment for next line in chunk
+		// Copy all lines in the chunk
+		let currentInsertPosition = insertPosition;
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "added" && line.rightNumber !== null) {
+				await CopyToFile(
+					rightFilePath,
+					leftFilePath,
+					currentInsertPosition,
+					line.rightLine,
+				);
+				currentInsertPosition++; // Increment for next line in chunk
+			}
 		}
-	}
 
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
+	}
 }
 
 export async function copyModifiedChunkToRight(
@@ -108,30 +149,47 @@ export async function copyModifiedChunkToRight(
 		throw new Error("No diff result available");
 	}
 
-	// For modified chunks, we need to handle lines that have type "modified"
-	// These lines have both leftLine and rightLine content
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (
-			line.type === "modified" &&
-			line.leftNumber !== null &&
-			line.rightNumber !== null
-		) {
-			// First delete the current right line
-			await RemoveLineFromFile(rightFilePath, line.rightNumber);
-			// Then copy the left line to the right
-			await CopyToFile(
-				leftFilePath,
-				rightFilePath,
-				line.leftNumber,
-				line.leftLine,
-			);
-		}
-	}
+	// Start transaction
+	await BeginOperationGroup("Replace modified chunk in right");
 
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
+	try {
+		// For modified chunks, we need to handle lines that have type "modified"
+		// These lines have both leftLine and rightLine content
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (
+				line.type === "modified" &&
+				line.leftNumber !== null &&
+				line.rightNumber !== null
+			) {
+				// First delete the current right line
+				await RemoveLineFromFile(rightFilePath, line.rightNumber);
+				// Then copy the left line to the right
+				await CopyToFile(
+					leftFilePath,
+					rightFilePath,
+					line.leftNumber,
+					line.leftLine,
+				);
+			}
+		}
+
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
+	}
 }
 
 export async function copyModifiedChunkToLeft(
@@ -150,30 +208,47 @@ export async function copyModifiedChunkToLeft(
 		throw new Error("No diff result available");
 	}
 
-	// For modified chunks, we need to handle lines that have type "modified"
-	// These lines have both leftLine and rightLine content
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (
-			line.type === "modified" &&
-			line.leftNumber !== null &&
-			line.rightNumber !== null
-		) {
-			// First delete the current left line
-			await RemoveLineFromFile(leftFilePath, line.leftNumber);
-			// Then copy the right line to the left
-			await CopyToFile(
-				rightFilePath,
-				leftFilePath,
-				line.rightNumber,
-				line.rightLine,
-			);
-		}
-	}
+	// Start transaction
+	await BeginOperationGroup("Replace modified chunk in left");
 
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
+	try {
+		// For modified chunks, we need to handle lines that have type "modified"
+		// These lines have both leftLine and rightLine content
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (
+				line.type === "modified" &&
+				line.leftNumber !== null &&
+				line.rightNumber !== null
+			) {
+				// First delete the current left line
+				await RemoveLineFromFile(leftFilePath, line.leftNumber);
+				// Then copy the right line to the left
+				await CopyToFile(
+					rightFilePath,
+					leftFilePath,
+					line.rightNumber,
+					line.rightLine,
+				);
+			}
+		}
+
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
+	}
 }
 
 export async function deleteChunkFromRight(
@@ -191,26 +266,43 @@ export async function deleteChunkFromRight(
 		throw new Error("No diff result available");
 	}
 
-	// Collect all line numbers to delete first (in reverse order to avoid index shifting)
-	const linesToDelete: number[] = [];
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (line.type === "added" && line.rightNumber !== null) {
-			linesToDelete.push(line.rightNumber);
+	// Start transaction
+	await BeginOperationGroup("Delete chunk from right");
+
+	try {
+		// Collect all line numbers to delete first (in reverse order to avoid index shifting)
+		const linesToDelete: number[] = [];
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "added" && line.rightNumber !== null) {
+				linesToDelete.push(line.rightNumber);
+			}
 		}
+
+		// Sort in descending order to delete from bottom to top
+		linesToDelete.sort((a, b) => b - a);
+
+		// Delete lines from bottom to top to avoid index shifting issues
+		for (const lineNumber of linesToDelete) {
+			await RemoveLineFromFile(rightFilePath, lineNumber);
+		}
+
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
 	}
-
-	// Sort in descending order to delete from bottom to top
-	linesToDelete.sort((a, b) => b - a);
-
-	// Delete lines from bottom to top to avoid index shifting issues
-	for (const lineNumber of linesToDelete) {
-		await RemoveLineFromFile(rightFilePath, lineNumber);
-	}
-
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
 }
 
 export async function deleteChunkFromLeft(
@@ -228,26 +320,43 @@ export async function deleteChunkFromLeft(
 		throw new Error("No diff result available");
 	}
 
-	// Collect all line numbers to delete first (in reverse order to avoid index shifting)
-	const linesToDelete: number[] = [];
-	for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
-		const line = diffResult.lines[i];
-		if (line.type === "removed" && line.leftNumber !== null) {
-			linesToDelete.push(line.leftNumber);
+	// Start transaction
+	await BeginOperationGroup("Delete chunk from left");
+
+	try {
+		// Collect all line numbers to delete first (in reverse order to avoid index shifting)
+		const linesToDelete: number[] = [];
+		for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+			const line = diffResult.lines[i];
+			if (line.type === "removed" && line.leftNumber !== null) {
+				linesToDelete.push(line.leftNumber);
+			}
 		}
+
+		// Sort in descending order to delete from bottom to top
+		linesToDelete.sort((a, b) => b - a);
+
+		// Delete lines from bottom to top to avoid index shifting issues
+		for (const lineNumber of linesToDelete) {
+			await RemoveLineFromFile(leftFilePath, lineNumber);
+		}
+
+		// Commit transaction
+		await CommitOperationGroup();
+
+		// Refresh the diff
+		await compareBothFiles(true);
+		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoState) {
+			await context.refreshUndoState();
+		}
+	} catch (error) {
+		// Rollback on error
+		await RollbackOperationGroup();
+		throw error;
 	}
-
-	// Sort in descending order to delete from bottom to top
-	linesToDelete.sort((a, b) => b - a);
-
-	// Delete lines from bottom to top to avoid index shifting issues
-	for (const lineNumber of linesToDelete) {
-		await RemoveLineFromFile(leftFilePath, lineNumber);
-	}
-
-	// Refresh the diff
-	await compareBothFiles(true);
-	await updateUnsavedChangesStatus();
 }
 
 export async function deleteLineFromRight(

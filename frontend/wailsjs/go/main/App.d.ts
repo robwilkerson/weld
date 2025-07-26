@@ -3,6 +3,12 @@
 import {main} from '../models';
 import {menu} from '../models';
 
+export function BeginOperationGroup(arg1:string):Promise<string>;
+
+export function CanUndo():Promise<boolean>;
+
+export function CommitOperationGroup():Promise<void>;
+
 export function CompareFiles(arg1:string,arg2:string):Promise<main.DiffResult>;
 
 export function CopyToFile(arg1:string,arg2:string,arg3:number,arg4:string):Promise<void>;
@@ -10,6 +16,8 @@ export function CopyToFile(arg1:string,arg2:string,arg3:number,arg4:string):Prom
 export function DiscardAllChanges():Promise<void>;
 
 export function GetInitialFiles():Promise<string|string>;
+
+export function GetLastOperationDescription():Promise<string>;
 
 export function GetMinimapVisible():Promise<boolean>;
 
@@ -25,6 +33,8 @@ export function ReadFileContentWithCache(arg1:string):Promise<Array<string>>;
 
 export function RemoveLineFromFile(arg1:string,arg2:number):Promise<void>;
 
+export function RollbackOperationGroup():Promise<void>;
+
 export function SaveChanges(arg1:string):Promise<void>;
 
 export function SaveSelectedFilesAndQuit(arg1:Array<string>):Promise<void>;
@@ -34,3 +44,7 @@ export function SelectFile():Promise<string>;
 export function SetMinimapMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetMinimapVisible(arg1:boolean):Promise<void>;
+
+export function SetUndoMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function UndoLastOperation():Promise<void>;
