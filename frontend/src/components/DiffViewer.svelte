@@ -56,6 +56,9 @@ let diffChunks: LineChunk[] = [];
 // Track timeout for cleanup
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// Track if we've already auto-scrolled to prevent repeated scrolling
+let hasAutoScrolled = false;
+
 // Cleanup on destroy
 onDestroy(() => {
 	if (scrollTimeout) {
@@ -67,6 +70,8 @@ onDestroy(() => {
 $: if (diffResult) {
 	lineChunks = detectLineChunks(diffResult.lines);
 	diffChunks = lineChunks.filter((chunk) => chunk.type !== "same");
+	// Reset auto-scroll flag when new diff is loaded
+	hasAutoScrolled = false;
 }
 
 // Helper functions
@@ -192,8 +197,12 @@ function syncLeftScroll(): void {
 		if (!leftElement) return;
 
 		const scrollTop = leftElement.scrollTop;
+		const scrollLeft = leftElement.scrollLeft;
+
 		rightPaneComponent.setScrollTop(scrollTop);
+		rightPaneComponent.setScrollLeft(scrollLeft);
 		centerGutterComponent.setScrollTop(scrollTop);
+		centerGutterComponent.setScrollLeft(scrollLeft);
 		updateMinimapViewport();
 	}
 }
@@ -205,8 +214,12 @@ function syncRightScroll(): void {
 		if (!rightElement) return;
 
 		const scrollTop = rightElement.scrollTop;
+		const scrollLeft = rightElement.scrollLeft;
+
 		leftPaneComponent.setScrollTop(scrollTop);
+		leftPaneComponent.setScrollLeft(scrollLeft);
 		centerGutterComponent.setScrollTop(scrollTop);
+		centerGutterComponent.setScrollLeft(scrollLeft);
 		updateMinimapViewport();
 	}
 }
@@ -218,8 +231,12 @@ function syncCenterScroll(): void {
 		if (!centerElement) return;
 
 		const scrollTop = centerElement.scrollTop;
+		const scrollLeft = centerElement.scrollLeft;
+
 		leftPaneComponent.setScrollTop(scrollTop);
+		leftPaneComponent.setScrollLeft(scrollLeft);
 		rightPaneComponent.setScrollTop(scrollTop);
+		rightPaneComponent.setScrollLeft(scrollLeft);
 		updateMinimapViewport();
 	}
 }
@@ -287,6 +304,7 @@ export function scrollToLine(lineIndex: number): void {
 
 // Auto-scroll to first diff when content loads
 $: if (
+	!hasAutoScrolled &&
 	leftPaneComponent &&
 	rightPaneComponent &&
 	centerGutterComponent &&
@@ -294,26 +312,23 @@ $: if (
 	diffResult.lines.length > 0 &&
 	diffChunks.length > 0
 ) {
-	// Only scroll if we haven't scrolled yet (initial load)
-	const leftElement = leftPaneComponent.getElement();
-	if (leftElement && leftElement.scrollTop === 0) {
-		const firstDiffLine = diffResult.lines.findIndex(
-			(line) => line.type !== "same",
-		);
-		if (firstDiffLine !== -1) {
-			// Clear any existing timeout
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-
-			scrollTimeout = setTimeout(() => {
-				// Check components still exist before using them
-				if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-					scrollToLine(firstDiffLine);
-				}
-				scrollTimeout = null;
-			}, 100);
+	const firstDiffLine = diffResult.lines.findIndex(
+		(line) => line.type !== "same",
+	);
+	if (firstDiffLine !== -1) {
+		// Clear any existing timeout
+		if (scrollTimeout) {
+			clearTimeout(scrollTimeout);
 		}
+
+		scrollTimeout = setTimeout(() => {
+			// Check components still exist before using them
+			if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
+				scrollToLine(firstDiffLine);
+				hasAutoScrolled = true;
+			}
+			scrollTimeout = null;
+		}, 100);
 	}
 }
 </script>

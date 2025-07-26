@@ -72,6 +72,12 @@ export function setScrollTop(scrollTop: number): void {
 		paneElement.scrollTop = scrollTop;
 	}
 }
+
+export function setScrollLeft(scrollLeft: number): void {
+	if (paneElement) {
+		paneElement.scrollLeft = scrollLeft;
+	}
+}
 </script>
 
 <div class="{side}-pane" bind:this={paneElement} on:scroll={handleScroll}>
