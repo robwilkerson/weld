@@ -271,4 +271,12 @@ describe("DiffGutter", () => {
 		component.setScrollTop(100);
 		expect(element.scrollTop).toBe(100);
 	});
+
+	it("should expose setScrollLeft method", () => {
+		const { component } = render(DiffGutter, { props: defaultProps });
+		const element = component.getElement();
+		
+		component.setScrollLeft(50);
+		expect(element.scrollLeft).toBe(50);
+	});
 });

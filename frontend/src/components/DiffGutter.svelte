@@ -46,6 +46,12 @@ export function setScrollTop(scrollTop: number): void {
 		gutterElement.scrollTop = scrollTop;
 	}
 }
+
+export function setScrollLeft(scrollLeft: number): void {
+	if (gutterElement) {
+		gutterElement.scrollLeft = scrollLeft;
+	}
+}
 </script>
 
 <div class="center-gutter" bind:this={gutterElement} on:scroll={handleScroll}>
