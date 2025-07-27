@@ -17,7 +17,7 @@ import DiffViewer from "./components/DiffViewer.svelte";
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import QuitDialog from "./components/QuitDialog.svelte";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+// biome-ignore lint/style/useImportType: UndoManager is used as a component, not just a type
 import UndoManager from "./components/UndoManager.svelte";
 import type {
 	DiffLine,
@@ -777,6 +777,13 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
+	// Handle Escape key to close menu
+	if (event.key === "Escape" && _showMenu) {
+		event.preventDefault();
+		_showMenu = false;
+		return;
+	}
+
 	handleKeyboardShortcut(
 		event,
 		{
