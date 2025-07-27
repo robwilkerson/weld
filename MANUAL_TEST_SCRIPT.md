@@ -50,7 +50,7 @@ This script covers functionality that our automated integration tests cannot ver
 
 ### Test: Save Button State Management
 - [ ] Load any two different files and compare
-- [ ] Verify save buttons are disabled initially (KNOWN BUG: currently not working)
+- [ ] Verify save buttons are disabled initially
 - [ ] Make a copy operation (`Shift+L`)
 - [ ] Verify right save button enables
 - [ ] Click save button - verify:
@@ -220,12 +220,11 @@ This script covers functionality that our automated integration tests cannot ver
 
 Based on our automated testing gaps, pay special attention to:
 
-1. **Save button state** - Should disable when no unsaved changes
-2. **Binary file rejection** - Should show error, not garbled content  
-3. **Cursor advancement** - Should move to next diff after copy operations
-4. **Scroll synchronization** - Both panes should stay in sync
-5. **Theme persistence** - Settings should survive app restart
-6. **Performance** - Large files should remain responsive
+1. **Binary file rejection** - Should show error, not garbled content (KNOWN BUG)
+2. **Cursor advancement** - Should move to next diff after copy operations
+3. **Scroll synchronization** - Both panes should stay in sync
+4. **Theme persistence** - Settings should survive app restart
+5. **Performance** - Large files should remain responsive
 
 ---
 
