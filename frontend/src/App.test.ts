@@ -1013,3 +1013,236 @@ describe("App Component - Copy Operations", () => {
 		expect(diffViewer?.classList.contains("comparing")).toBe(false);
 	});
 });
+
+describe("App Component - Menu and Settings", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		// Default mocks
+		vi.mocked(GetInitialFiles).mockResolvedValue(["", ""]);
+		vi.mocked(GetMinimapVisible).mockResolvedValue(true);
+	});
+
+	it("should toggle hamburger menu on click (smoke test)", async () => {
+		const { container } = render(App);
+
+		// Find the hamburger menu button
+		const menuButton = container.querySelector(".menu-toggle");
+		expect(menuButton).toBeTruthy();
+
+		// SMOKE TEST: Only verifies menu toggle doesn't crash
+		// TODO: Make this comprehensive - verify menu opens/closes and state changes
+		
+		// Click to open menu
+		await fireEvent.click(menuButton!);
+		
+		// Small delay for any async operations
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// Verify UI is still intact after clicking menu
+		expect(container.querySelector(".menu-toggle")).toBeTruthy();
+		
+		// Click again to close menu (should not crash)
+		await fireEvent.click(menuButton!);
+		
+		// Small delay for any async operations
+		await new Promise(resolve => setTimeout(resolve, 50));
+		
+		// Verify basic UI structure is still intact
+		const header = container.querySelector(".header");
+		expect(header).toBeTruthy();
+		expect(container.querySelector(".menu-container")).toBeTruthy();
+	});
+
+	it("should close menu on outside click (smoke test)", async () => {
+		const { container } = render(App);
+
+		// Find the hamburger menu button
+		const menuButton = container.querySelector(".menu-toggle");
+		expect(menuButton).toBeTruthy();
+
+		// SMOKE TEST: Only verifies outside click doesn't crash
+		// TODO: Make this comprehensive - verify menu actually closes on outside click
+		
+		// Click to open menu
+		await fireEvent.click(menuButton!);
+		
+		// Small delay for menu to open
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// Click outside the menu (on the main content area)
+		const mainContent = container.querySelector("main");
+		if (mainContent) {
+			await fireEvent.click(mainContent);
+			
+			// Small delay for any async operations
+			await new Promise(resolve => setTimeout(resolve, 50));
+		}
+
+		// Verify UI is still intact
+		expect(container.querySelector(".menu-toggle")).toBeTruthy();
+		expect(container.querySelector(".header")).toBeTruthy();
+		
+		// Click on body as another outside click test
+		await fireEvent.click(document.body);
+		await new Promise(resolve => setTimeout(resolve, 50));
+		
+		// Verify everything still works
+		expect(container.querySelector(".menu-container")).toBeTruthy();
+	});
+
+	it("should toggle dark mode from menu (smoke test)", async () => {
+		const { container } = render(App);
+
+		// Find the hamburger menu button
+		const menuButton = container.querySelector(".menu-toggle");
+		expect(menuButton).toBeTruthy();
+
+		// SMOKE TEST: Only verifies dark mode toggle doesn't crash
+		// TODO: Make this comprehensive - verify theme actually changes
+		
+		// Click to open menu
+		await fireEvent.click(menuButton!);
+		
+		// Small delay for menu to open
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// Find the theme toggle button - look for Light/Dark Mode text
+		const menuItems = container.querySelectorAll(".menu-item");
+		let themeToggle: Element | null = null;
+		
+		menuItems.forEach(item => {
+			const text = item.textContent || "";
+			if (text.includes("Light Mode") || text.includes("Dark Mode")) {
+				themeToggle = item;
+			}
+		});
+
+		if (themeToggle) {
+			// Click the theme toggle
+			await fireEvent.click(themeToggle);
+			
+			// Small delay for theme change
+			await new Promise(resolve => setTimeout(resolve, 50));
+		}
+
+		// Verify UI is still intact after theme toggle
+		expect(container.querySelector(".menu-toggle")).toBeTruthy();
+		expect(container.querySelector(".header")).toBeTruthy();
+		
+		// Click theme toggle again if found (toggle back)
+		if (themeToggle) {
+			await fireEvent.click(menuButton!); // Re-open menu
+			await new Promise(resolve => setTimeout(resolve, 50));
+			
+			// Find theme toggle again (text might have changed)
+			const updatedMenuItems = container.querySelectorAll(".menu-item");
+			updatedMenuItems.forEach(item => {
+				const text = item.textContent || "";
+				if (text.includes("Light Mode") || text.includes("Dark Mode")) {
+					themeToggle = item;
+				}
+			});
+			
+			if (themeToggle) {
+				await fireEvent.click(themeToggle);
+				await new Promise(resolve => setTimeout(resolve, 50));
+			}
+		}
+		
+		// Verify everything still works
+		expect(container.querySelector(".menu-container")).toBeTruthy();
+	});
+
+	it("should toggle minimap visibility from menu (smoke test)", async () => {
+		// Mock file selection and comparison first to have a diff view
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{ type: "added", leftNumber: null, rightNumber: 2, content: "added" },
+				{ type: "same", leftNumber: 2, rightNumber: 3, content: "line2" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockResolvedValue(mockDiffResult);
+
+		const { container } = render(App);
+
+		// First, set up a comparison so minimap toggle is enabled
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+		await fireEvent.click(compareButton!);
+
+		// Wait for diff to load
+		await waitFor(() => {
+			const diffContent = container.querySelector(".diff-content");
+			expect(diffContent).toBeTruthy();
+		});
+
+		// Find the hamburger menu button
+		const menuButton = container.querySelector(".menu-toggle");
+		expect(menuButton).toBeTruthy();
+
+		// SMOKE TEST: Only verifies minimap toggle doesn't crash
+		// TODO: Make this comprehensive - verify minimap actually shows/hides
+		
+		// Click to open menu
+		await fireEvent.click(menuButton!);
+		
+		// Small delay for menu to open
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// Find the minimap toggle button - look for Show/Hide Minimap text
+		const menuItems = container.querySelectorAll(".menu-item");
+		let minimapToggle: Element | null = null;
+		
+		menuItems.forEach(item => {
+			const text = item.textContent || "";
+			if (text.includes("Show Minimap") || text.includes("Hide Minimap")) {
+				minimapToggle = item;
+			}
+		});
+
+		if (minimapToggle && !minimapToggle.hasAttribute("disabled")) {
+			// Click the minimap toggle
+			await fireEvent.click(minimapToggle);
+			
+			// Small delay for minimap change
+			await new Promise(resolve => setTimeout(resolve, 50));
+		}
+
+		// Verify UI is still intact
+		expect(container.querySelector(".diff-viewer")).toBeTruthy();
+		expect(container.querySelector(".header")).toBeTruthy();
+		
+		// Try toggling again
+		if (minimapToggle && !minimapToggle.hasAttribute("disabled")) {
+			await fireEvent.click(menuButton!); // Re-open menu
+			await new Promise(resolve => setTimeout(resolve, 50));
+			
+			// Find minimap toggle again (text might have changed)
+			const updatedMenuItems = container.querySelectorAll(".menu-item");
+			updatedMenuItems.forEach(item => {
+				const text = item.textContent || "";
+				if (text.includes("Show Minimap") || text.includes("Hide Minimap")) {
+					minimapToggle = item;
+				}
+			});
+			
+			if (minimapToggle && !minimapToggle.hasAttribute("disabled")) {
+				await fireEvent.click(minimapToggle);
+				await new Promise(resolve => setTimeout(resolve, 50));
+			}
+		}
+		
+		// Verify everything still works
+		expect(container.querySelector(".menu-container")).toBeTruthy();
+	});
+});
