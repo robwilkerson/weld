@@ -21,6 +21,8 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 	QuitWithoutSaving: vi.fn(),
 	SaveSelectedFilesAndQuit: vi.fn(),
 	SelectFile: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 import {
