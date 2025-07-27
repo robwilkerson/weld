@@ -25,13 +25,9 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 
 import {
 	CompareFiles,
-	CopyToFile,
 	GetInitialFiles,
 	GetMinimapVisible,
-	HasUnsavedChanges,
-	SaveChanges,
 	SelectFile,
-	SetMinimapVisible,
 } from "../../../wailsjs/go/main/App.js";
 
 import { EventsOn } from "../../../wailsjs/runtime/runtime.js";
@@ -221,7 +217,7 @@ describe("App Component - Menu and Settings", () => {
 		});
 
 		// Start with light mode in localStorage
-		mockLocalStorage["theme"] = "light";
+		mockLocalStorage.theme = "light";
 
 		const { container } = render(App);
 
@@ -263,7 +259,7 @@ describe("App Component - Menu and Settings", () => {
 
 		// Verify localStorage was updated
 		expect(localStorageMock.setItem).toHaveBeenCalledWith("theme", "dark");
-		expect(mockLocalStorage["theme"]).toBe("dark");
+		expect(mockLocalStorage.theme).toBe("dark");
 
 		// Re-open menu to verify button text changed
 		await fireEvent.click(menuButton!);
@@ -294,7 +290,7 @@ describe("App Component - Menu and Settings", () => {
 
 		// Verify localStorage was updated again
 		expect(localStorageMock.setItem).toHaveBeenLastCalledWith("theme", "light");
-		expect(mockLocalStorage["theme"]).toBe("light");
+		expect(mockLocalStorage.theme).toBe("light");
 
 		// Verify the component still works
 		expect(container.querySelector("main")).toBeTruthy();

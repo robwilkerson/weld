@@ -78,6 +78,10 @@ export function SelectFile() {
   return window['go']['main']['App']['SelectFile']();
 }
 
+export function SetDiscardMenuItem(arg1) {
+  return window['go']['main']['App']['SetDiscardMenuItem'](arg1);
+}
+
 export function SetMinimapMenuItem(arg1) {
   return window['go']['main']['App']['SetMinimapMenuItem'](arg1);
 }
@@ -86,10 +90,26 @@ export function SetMinimapVisible(arg1) {
   return window['go']['main']['App']['SetMinimapVisible'](arg1);
 }
 
+export function SetSaveAllMenuItem(arg1) {
+  return window['go']['main']['App']['SetSaveAllMenuItem'](arg1);
+}
+
+export function SetSaveLeftMenuItem(arg1) {
+  return window['go']['main']['App']['SetSaveLeftMenuItem'](arg1);
+}
+
+export function SetSaveRightMenuItem(arg1) {
+  return window['go']['main']['App']['SetSaveRightMenuItem'](arg1);
+}
+
 export function SetUndoMenuItem(arg1) {
   return window['go']['main']['App']['SetUndoMenuItem'](arg1);
 }
 
 export function UndoLastOperation() {
   return window['go']['main']['App']['UndoLastOperation']();
+}
+
+export function UpdateSaveMenuItems(arg1, arg2) {
+  return window['go']['main']['App']['UpdateSaveMenuItems'](arg1, arg2);
 }

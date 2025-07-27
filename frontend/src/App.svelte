@@ -9,6 +9,7 @@ import {
 	QuitWithoutSaving,
 	SaveChanges,
 	SaveSelectedFilesAndQuit,
+	UpdateSaveMenuItems,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
@@ -345,6 +346,9 @@ async function updateUnsavedChangesStatus(): Promise<void> {
 	if (rightFilePath) {
 		_hasUnsavedRightChanges = await HasUnsavedChanges(rightFilePath);
 	}
+
+	// Update menu items in the backend
+	await UpdateSaveMenuItems(_hasUnsavedLeftChanges, _hasUnsavedRightChanges);
 }
 
 // Quit dialog functions
@@ -1269,6 +1273,20 @@ onMount(async () => {
 	document.addEventListener("keydown", handleKeydown);
 	EventsOn("show-quit-dialog", handleQuitDialog);
 
+	// Menu event handlers
+	EventsOn("menu-save-left", saveLeftFile);
+	EventsOn("menu-save-right", saveRightFile);
+	EventsOn("menu-save-all", async () => {
+		// Save both files if they have unsaved changes
+		if (_hasUnsavedLeftChanges) {
+			await saveLeftFile();
+		}
+		if (_hasUnsavedRightChanges) {
+			await saveRightFile();
+		}
+	});
+	EventsOn("menu-discard-all", _handleDiscardChanges);
+
 	// Check for initial files from command line
 	try {
 		const [initialLeft, initialRight] = await GetInitialFiles();
@@ -1280,6 +1298,8 @@ onMount(async () => {
 
 			// Automatically compare the files
 			await compareBothFiles();
+			// Update menu state
+			await updateUnsavedChangesStatus();
 		}
 	} catch (error) {
 		console.error("Error getting initial files:", error);
@@ -1323,6 +1343,9 @@ onMount(async () => {
 	GetMinimapVisible().then((visible) => {
 		_showMinimap = visible;
 	});
+
+	// Initialize menu state
+	updateUnsavedChangesStatus();
 
 	// Cleanup on destroy
 	return () => {

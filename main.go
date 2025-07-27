@@ -30,6 +30,32 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// File menu
 	fileMenu := appMenu.AddSubmenu("File")
+
+	// Save submenu
+	saveMenu := fileMenu.AddSubmenu("Save")
+
+	// Save Left Pane
+	saveLeftItem := saveMenu.AddText("Save Left Pane", nil, func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-save-left")
+	})
+	app.SetSaveLeftMenuItem(saveLeftItem)
+	saveLeftItem.Disabled = true
+
+	// Save Right Pane
+	saveRightItem := saveMenu.AddText("Save Right Pane", nil, func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-save-right")
+	})
+	app.SetSaveRightMenuItem(saveRightItem)
+	saveRightItem.Disabled = true
+
+	// Save All
+	saveAllItem := saveMenu.AddText("Save All", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-save-all")
+	})
+	app.SetSaveAllMenuItem(saveAllItem)
+	saveAllItem.Disabled = true
+
+	fileMenu.AddSeparator()
 	fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
 		runtime.Quit(app.ctx)
 	})
@@ -52,6 +78,13 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Set initial state
 	undoItem.Disabled = true
+
+	// Discard All Changes menu item
+	discardItem := editMenu.AddText("Discard All Changes", nil, func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-discard-all")
+	})
+	app.SetDiscardMenuItem(discardItem)
+	discardItem.Disabled = true
 
 	// View menu
 	viewMenu := appMenu.AddSubmenu("View")

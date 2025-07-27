@@ -2,7 +2,7 @@
  * Keyboard event handling utilities
  *
  * Available keyboard shortcuts:
- * - Cmd/Ctrl + S: Save both files
+ * - Cmd/Ctrl + S: Save all files with changes
  * - ArrowDown or j: Jump to next diff
  * - ArrowUp or k: Jump to previous diff
  * - Shift + L: Copy current diff from right to left

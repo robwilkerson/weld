@@ -406,7 +406,7 @@ describe("Minimap Interaction Tests", () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Look for tooltip element (might be in document body or near minimap)
-			const tooltip = document.querySelector(
+			const _tooltip = document.querySelector(
 				".minimap-tooltip, .tooltip, [role='tooltip']",
 			);
 			// Just verify tooltip mechanism exists, actual content would require proper initialization

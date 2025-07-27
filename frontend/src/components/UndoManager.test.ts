@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import UndoManager from "./UndoManager.svelte";
 
 // Mock the Wails runtime
-const mockEventHandlers = new Map<string, Function>();
+const mockEventHandlers = new Map<string, () => void>();
 
 vi.mock("../../wailsjs/runtime/runtime", () => ({
-	EventsOn: vi.fn((event: string, handler: Function) => {
+	EventsOn: vi.fn((event: string, handler: () => void) => {
 		mockEventHandlers.set(event, handler);
 	}),
 	EventsOff: vi.fn((event: string) => {
@@ -26,7 +26,6 @@ import {
 	GetLastOperationDescription,
 	UndoLastOperation,
 } from "../../wailsjs/go/main/App";
-import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 
 describe("UndoManager", () => {
 	beforeEach(() => {
