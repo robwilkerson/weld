@@ -40,95 +40,97 @@ describe("App Component - File Selection", () => {
 		vi.mocked(GetMinimapVisible).mockResolvedValue(true);
 	});
 
-	it("should select left file via button click and show correct icon", async () => {
-		vi.mocked(SelectFile).mockResolvedValue("/path/to/script.js");
-
-		const { container } = render(App);
-
-		// Find the first file button (left file)
-		const leftFileButton = container.querySelector(".file-btn");
-		expect(leftFileButton).toBeTruthy();
-
-		// Click the button
-		await fireEvent.click(leftFileButton!);
-
-		// Wait for the update
-		await waitFor(() => {
-			expect(SelectFile).toHaveBeenCalled();
-			expect(leftFileButton?.textContent).toContain("script.js");
-
-			// Check that the icon exists and has the correct title
-			const fileIcon = leftFileButton?.querySelector(".file-icon");
-			expect(fileIcon).toBeTruthy();
-			expect(fileIcon?.getAttribute("title")).toBe("JavaScript");
-
-			// Check that an SVG icon is rendered
-			const svgIcon = fileIcon?.querySelector("svg");
-			expect(svgIcon).toBeTruthy();
-		});
-	});
-
-	it("should select right file via button click and show correct icon", async () => {
-		vi.mocked(SelectFile).mockResolvedValue("/path/to/styles.css");
-
-		const { container } = render(App);
-
-		// Find the second file button (right file)
-		const fileButtons = container.querySelectorAll(".file-btn");
-		const rightFileButton = fileButtons[1];
-		expect(rightFileButton).toBeTruthy();
-
-		// Click the button
-		await fireEvent.click(rightFileButton!);
-
-		// Wait for the update
-		await waitFor(() => {
-			expect(SelectFile).toHaveBeenCalled();
-			expect(rightFileButton?.textContent).toContain("styles.css");
-
-			// Check that the icon exists and has the correct title
-			const fileIcon = rightFileButton?.querySelector(".file-icon");
-			expect(fileIcon).toBeTruthy();
-			expect(fileIcon?.getAttribute("title")).toBe("CSS");
-
-			// Check that an SVG icon is rendered
-			const svgIcon = fileIcon?.querySelector("svg");
-			expect(svgIcon).toBeTruthy();
-		});
-	});
-
-	it("should enable compare button when both files are selected", async () => {
+	it("should handle file selection and update UI accordingly", async () => {
+		// Mock different file selections
 		vi.mocked(SelectFile)
-			.mockResolvedValueOnce("/path/to/left.txt")
-			.mockResolvedValueOnce("/path/to/right.txt");
+			.mockResolvedValueOnce("/path/to/script.js")
+			.mockResolvedValueOnce("/path/to/styles.css")
+			.mockResolvedValueOnce("") // Cancel scenario
+			.mockResolvedValueOnce("/path/to/index.html");
 
 		const { container } = render(App);
 
-		const compareButton = container.querySelector(".compare-btn");
-		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		// Get all file buttons and compare button
+		const fileButtons = container.querySelectorAll(".file-btn");
+		const leftFileButton = fileButtons[0] as HTMLButtonElement;
+		const rightFileButton = fileButtons[1] as HTMLButtonElement;
+		const compareButton = container.querySelector(".compare-btn") as HTMLButtonElement;
+
+		expect(leftFileButton).toBeTruthy();
+		expect(rightFileButton).toBeTruthy();
+		expect(compareButton).toBeTruthy();
 
 		// Initially, compare button should be disabled
-		expect(compareButton).toBeTruthy();
-		expect(compareButton).toHaveProperty("disabled", true);
+		expect(compareButton.disabled).toBe(true);
+		expect(leftFileButton.textContent).toContain("Select left file...");
+		expect(rightFileButton.textContent).toContain("Select right file...");
 
 		// Select left file
-		await fireEvent.click(leftButton);
+		await fireEvent.click(leftFileButton);
 
-		// Compare button should still be disabled with only one file
+		// Verify left file selection
 		await waitFor(() => {
-			expect(leftButton.textContent).toContain("left.txt");
-			expect(compareButton).toHaveProperty("disabled", true);
+			expect(SelectFile).toHaveBeenCalledTimes(1);
+			expect(leftFileButton.textContent).toContain("script.js");
+			
+			// Check icon update
+			const leftIcon = leftFileButton.querySelector(".file-icon");
+			expect(leftIcon?.getAttribute("title")).toBe("JavaScript");
+			
+			// Compare button should still be disabled (only one file selected)
+			expect(compareButton.disabled).toBe(true);
 		});
 
 		// Select right file
-		await fireEvent.click(rightButton);
+		await fireEvent.click(rightFileButton);
 
-		// Compare button should now be enabled
+		// Verify right file selection
 		await waitFor(() => {
-			expect(rightButton.textContent).toContain("right.txt");
-			expect(compareButton).toHaveProperty("disabled", false);
+			expect(SelectFile).toHaveBeenCalledTimes(2);
+			expect(rightFileButton.textContent).toContain("styles.css");
+			
+			// Check icon update
+			const rightIcon = rightFileButton.querySelector(".file-icon");
+			expect(rightIcon?.getAttribute("title")).toBe("CSS");
+			
+			// Compare button should now be enabled
+			expect(compareButton.disabled).toBe(false);
 		});
+
+		// Test cancel scenario - click left file again but cancel
+		await fireEvent.click(leftFileButton);
+
+		// Verify file remains unchanged when cancelled
+		await waitFor(() => {
+			expect(SelectFile).toHaveBeenCalledTimes(3);
+			// File should remain the same
+			expect(leftFileButton.textContent).toContain("script.js");
+			expect(compareButton.disabled).toBe(false);
+		});
+
+		// Test file replacement - select different right file
+		await fireEvent.click(rightFileButton);
+
+		// Verify file replacement
+		await waitFor(() => {
+			expect(SelectFile).toHaveBeenCalledTimes(4);
+			expect(rightFileButton.textContent).toContain("index.html");
+			
+			// Check icon update for HTML file
+			const rightIcon = rightFileButton.querySelector(".file-icon");
+			expect(rightIcon?.getAttribute("title")).toBe("HTML");
+			
+			// Compare button should remain enabled
+			expect(compareButton.disabled).toBe(false);
+		});
+
+		// Verify both files are properly set
+		const leftFileName = leftFileButton.querySelector(".file-name");
+		const rightFileName = rightFileButton.querySelector(".file-name");
+		expect(leftFileName?.textContent).toBe("script.js");
+		expect(rightFileName?.textContent).toBe("index.html");
 	});
+
 });
 
 describe("App Component - File Comparison", () => {
