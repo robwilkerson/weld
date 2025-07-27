@@ -1092,68 +1092,6 @@ describe("App Component - Menu and Settings", () => {
 		expect(container.querySelector(".menu-container")).toBeTruthy();
 	});
 
-	it("should toggle dark mode from menu (smoke test)", async () => {
-		const { container } = render(App);
-
-		// Find the hamburger menu button
-		const menuButton = container.querySelector(".menu-toggle");
-		expect(menuButton).toBeTruthy();
-
-		// SMOKE TEST: Only verifies dark mode toggle doesn't crash
-		// TODO: Make this comprehensive - verify theme actually changes
-		
-		// Click to open menu
-		await fireEvent.click(menuButton!);
-		
-		// Small delay for menu to open
-		await new Promise(resolve => setTimeout(resolve, 50));
-
-		// Find the theme toggle button - look for Light/Dark Mode text
-		const menuItems = container.querySelectorAll(".menu-item");
-		let themeToggle: Element | null = null;
-		
-		menuItems.forEach(item => {
-			const text = item.textContent || "";
-			if (text.includes("Light Mode") || text.includes("Dark Mode")) {
-				themeToggle = item;
-			}
-		});
-
-		if (themeToggle) {
-			// Click the theme toggle
-			await fireEvent.click(themeToggle);
-			
-			// Small delay for theme change
-			await new Promise(resolve => setTimeout(resolve, 50));
-		}
-
-		// Verify UI is still intact after theme toggle
-		expect(container.querySelector(".menu-toggle")).toBeTruthy();
-		expect(container.querySelector(".header")).toBeTruthy();
-		
-		// Click theme toggle again if found (toggle back)
-		if (themeToggle) {
-			await fireEvent.click(menuButton!); // Re-open menu
-			await new Promise(resolve => setTimeout(resolve, 50));
-			
-			// Find theme toggle again (text might have changed)
-			const updatedMenuItems = container.querySelectorAll(".menu-item");
-			updatedMenuItems.forEach(item => {
-				const text = item.textContent || "";
-				if (text.includes("Light Mode") || text.includes("Dark Mode")) {
-					themeToggle = item;
-				}
-			});
-			
-			if (themeToggle) {
-				await fireEvent.click(themeToggle);
-				await new Promise(resolve => setTimeout(resolve, 50));
-			}
-		}
-		
-		// Verify everything still works
-		expect(container.querySelector(".menu-container")).toBeTruthy();
-	});
 
 	it("should toggle minimap visibility from menu bar (smoke test)", async () => {
 		// NOTE: Minimap toggle is in the menu bar by design, not the hamburger menu
@@ -1248,6 +1186,106 @@ describe("App Component - Menu and Settings", () => {
 		
 		// Verify everything still works
 		expect(container.querySelector(".menu-container")).toBeTruthy();
+	});
+
+	it("should toggle dark mode from menu and persist preference", async () => {
+		// Mock localStorage
+		const mockLocalStorage: { [key: string]: string } = {};
+		const localStorageMock = {
+			getItem: vi.fn((key: string) => mockLocalStorage[key] || null),
+			setItem: vi.fn((key: string, value: string) => {
+				mockLocalStorage[key] = value;
+			}),
+			removeItem: vi.fn((key: string) => {
+				delete mockLocalStorage[key];
+			}),
+			clear: vi.fn(() => {
+				Object.keys(mockLocalStorage).forEach(key => delete mockLocalStorage[key]);
+			}),
+			key: vi.fn((index: number) => Object.keys(mockLocalStorage)[index] || null),
+			length: Object.keys(mockLocalStorage).length,
+		};
+		Object.defineProperty(window, "localStorage", {
+			value: localStorageMock,
+			writable: true,
+		});
+
+		// Start with light mode in localStorage
+		mockLocalStorage["theme"] = "light";
+
+		const { container } = render(App);
+
+		// Wait for component to mount and apply theme
+		await waitFor(() => {
+			// Verify light mode is applied initially
+			const htmlElement = document.documentElement;
+			expect(htmlElement.getAttribute("data-theme")).toBe("light");
+		});
+
+		// Open the menu
+		const menuButton = container.querySelector(".menu-toggle");
+		expect(menuButton).toBeTruthy();
+		await fireEvent.click(menuButton!);
+
+		// Wait for menu to open
+		await waitFor(() => {
+			const dropdown = container.querySelector(".dropdown-menu");
+			expect(dropdown).toBeTruthy();
+		});
+
+		// Find the dark mode toggle button - should show "🌙 Dark Mode" in light mode
+		const menuItems = Array.from(container.querySelectorAll(".menu-item"));
+		const darkModeToggle = menuItems.find(item => 
+			item.textContent?.includes("Dark Mode")
+		);
+		
+		expect(darkModeToggle).toBeTruthy();
+		expect(darkModeToggle?.textContent).toContain("🌙 Dark Mode");
+
+		// Click to toggle to dark mode
+		await fireEvent.click(darkModeToggle!);
+
+		// Verify theme changed to dark
+		await waitFor(() => {
+			const htmlElement = document.documentElement;
+			expect(htmlElement.getAttribute("data-theme")).toBe("dark");
+		});
+
+		// Verify localStorage was updated
+		expect(localStorageMock.setItem).toHaveBeenCalledWith("theme", "dark");
+		expect(mockLocalStorage["theme"]).toBe("dark");
+
+		// Re-open menu to verify button text changed
+		await fireEvent.click(menuButton!);
+		await waitFor(() => {
+			const dropdown = container.querySelector(".dropdown-menu");
+			expect(dropdown).toBeTruthy();
+		});
+
+		// Button should now show "☀️ Light Mode" in dark mode
+		const updatedMenuItems = Array.from(container.querySelectorAll(".menu-item"));
+		const lightModeToggle = updatedMenuItems.find(item => 
+			item.textContent?.includes("Light Mode")
+		);
+		
+		expect(lightModeToggle).toBeTruthy();
+		expect(lightModeToggle?.textContent).toContain("☀️ Light Mode");
+
+		// Toggle back to light mode
+		await fireEvent.click(lightModeToggle!);
+
+		// Verify theme changed back to light
+		await waitFor(() => {
+			const htmlElement = document.documentElement;
+			expect(htmlElement.getAttribute("data-theme")).toBe("light");
+		});
+
+		// Verify localStorage was updated again
+		expect(localStorageMock.setItem).toHaveBeenLastCalledWith("theme", "light");
+		expect(mockLocalStorage["theme"]).toBe("light");
+
+		// Verify the component still works
+		expect(container.querySelector("main")).toBeTruthy();
 	});
 });
 
