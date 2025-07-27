@@ -248,6 +248,28 @@ Based on our automated testing gaps, pay special attention to:
 
 ---
 
+## 7. Go Menu Testing
+
+### Previous/Next Diff Navigation
+1. Compare two files with multiple differences
+2. Verify Go menu exists with Previous Diff and Next Diff options
+3. Test Previous Diff:
+   - Initially disabled when no diff is selected
+   - Press `k` key or use Go > Previous Diff
+   - Navigates to previous difference
+   - Shows notification sound when at first diff
+   - Menu item disabled when at first diff
+4. Test Next Diff:
+   - Initially enabled when at first diff
+   - Press `j` key or use Go > Next Diff
+   - Navigates to next difference
+   - Shows notification sound when at last diff
+   - Menu item disabled when at last diff
+5. Test state updates:
+   - After each navigation, menu items update enable/disable state
+   - Current diff is highlighted in UI
+   - Minimap shows current position
+
 ## Post-Refactoring Verification
 
 After any significant refactoring, run through this entire script to ensure:

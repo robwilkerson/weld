@@ -72,6 +72,8 @@ type App struct {
 	saveLeftMenuItem  *menu.MenuItem
 	saveRightMenuItem *menu.MenuItem
 	saveAllMenuItem   *menu.MenuItem
+	prevDiffMenuItem  *menu.MenuItem
+	nextDiffMenuItem  *menu.MenuItem
 }
 
 // NewApp creates a new App application struct
@@ -683,6 +685,16 @@ func (a *App) SetSaveAllMenuItem(item *menu.MenuItem) {
 	a.saveAllMenuItem = item
 }
 
+// SetPrevDiffMenuItem stores a reference to the previous diff menu item
+func (a *App) SetPrevDiffMenuItem(item *menu.MenuItem) {
+	a.prevDiffMenuItem = item
+}
+
+// SetNextDiffMenuItem stores a reference to the next diff menu item
+func (a *App) SetNextDiffMenuItem(item *menu.MenuItem) {
+	a.nextDiffMenuItem = item
+}
+
 // UpdateSaveMenuItems updates the state of all save-related menu items
 func (a *App) UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight bool) {
 	// Update individual save items
@@ -703,6 +715,17 @@ func (a *App) UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight bool) {
 		a.discardMenuItem.Disabled = !hasUnsavedLeft && !hasUnsavedRight
 	}
 
+	runtime.MenuUpdateApplicationMenu(a.ctx)
+}
+
+// UpdateDiffNavigationMenuItems updates the state of the diff navigation menu items
+func (a *App) UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff bool) {
+	if a.prevDiffMenuItem != nil {
+		a.prevDiffMenuItem.Disabled = !hasPrevDiff
+	}
+	if a.nextDiffMenuItem != nil {
+		a.nextDiffMenuItem.Disabled = !hasNextDiff
+	}
 	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
 

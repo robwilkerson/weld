@@ -102,6 +102,23 @@ func BuildMenu(app *App) *menu.Menu {
 		minimapItem.Checked = true
 	}
 
+	// Go menu
+	goMenu := appMenu.AddSubmenu("Go")
+
+	// Previous Diff
+	prevDiffItem := goMenu.AddText("Previous Diff", keys.Key("k"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-prev-diff")
+	})
+	app.SetPrevDiffMenuItem(prevDiffItem)
+	prevDiffItem.Disabled = true
+
+	// Next Diff
+	nextDiffItem := goMenu.AddText("Next Diff", keys.Key("j"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-next-diff")
+	})
+	app.SetNextDiffMenuItem(nextDiffItem)
+	nextDiffItem.Disabled = true
+
 	return appMenu
 }
 

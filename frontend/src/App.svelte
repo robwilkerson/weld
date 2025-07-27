@@ -9,6 +9,7 @@ import {
 	QuitWithoutSaving,
 	SaveChanges,
 	SaveSelectedFilesAndQuit,
+	UpdateDiffNavigationMenuItems,
 	UpdateSaveMenuItems,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
@@ -166,6 +167,14 @@ $: diffChunks = (() => {
 
 	return chunks;
 })();
+
+// Update diff navigation menu items whenever diff state changes
+$: {
+	const hasPrevDiff = diffChunks.length > 0 && currentDiffChunkIndex > 0;
+	const hasNextDiff =
+		diffChunks.length > 0 && currentDiffChunkIndex < diffChunks.length - 1;
+	UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff);
+}
 
 $: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
 
@@ -1286,6 +1295,8 @@ onMount(async () => {
 		}
 	});
 	EventsOn("menu-discard-all", _handleDiscardChanges);
+	EventsOn("menu-prev-diff", jumpToPrevDiff);
+	EventsOn("menu-next-diff", jumpToNextDiff);
 
 	// Check for initial files from command line
 	try {

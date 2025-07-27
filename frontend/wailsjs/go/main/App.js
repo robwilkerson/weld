@@ -90,6 +90,14 @@ export function SetMinimapVisible(arg1) {
   return window['go']['main']['App']['SetMinimapVisible'](arg1);
 }
 
+export function SetNextDiffMenuItem(arg1) {
+  return window['go']['main']['App']['SetNextDiffMenuItem'](arg1);
+}
+
+export function SetPrevDiffMenuItem(arg1) {
+  return window['go']['main']['App']['SetPrevDiffMenuItem'](arg1);
+}
+
 export function SetSaveAllMenuItem(arg1) {
   return window['go']['main']['App']['SetSaveAllMenuItem'](arg1);
 }
@@ -108,6 +116,10 @@ export function SetUndoMenuItem(arg1) {
 
 export function UndoLastOperation() {
   return window['go']['main']['App']['UndoLastOperation']();
+}
+
+export function UpdateDiffNavigationMenuItems(arg1, arg2) {
+  return window['go']['main']['App']['UpdateDiffNavigationMenuItems'](arg1, arg2);
 }
 
 export function UpdateSaveMenuItems(arg1, arg2) {
