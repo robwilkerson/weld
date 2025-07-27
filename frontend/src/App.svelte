@@ -777,6 +777,13 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
+	// Handle Escape key to close menu
+	if (event.key === "Escape" && _showMenu) {
+		event.preventDefault();
+		_showMenu = false;
+		return;
+	}
+
 	handleKeyboardShortcut(
 		event,
 		{
