@@ -23,6 +23,7 @@ vi.mock("../wailsjs/go/main/App.js", () => ({
 }));
 
 import {
+	CompareFiles,
 	GetInitialFiles,
 	GetMinimapVisible,
 	SelectFile,
@@ -125,5 +126,62 @@ describe("App Component - File Selection", () => {
 			expect(rightButton.textContent).toContain("right.txt");
 			expect(compareButton).toHaveProperty("disabled", false);
 		});
+	});
+});
+
+describe("App Component - File Comparison", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		// Default mocks
+		vi.mocked(GetInitialFiles).mockResolvedValue(["", ""]);
+		vi.mocked(GetMinimapVisible).mockResolvedValue(true);
+	});
+
+	it("should show activity indicator during comparison", async () => {
+		// Mock file selection
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		// Mock CompareFiles to have a delay to see the loading state
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{ type: "added", leftNumber: null, rightNumber: 2, content: "added" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockImplementation(
+			() =>
+				new Promise((resolve) =>
+					setTimeout(() => resolve(mockDiffResult), 200),
+				),
+		);
+
+		const { container } = render(App);
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		// Select files
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+
+		// Click compare
+		await fireEvent.click(compareButton!);
+
+		// Should immediately show "Comparing..."
+		expect(compareButton?.textContent).toBe("Comparing...");
+		expect(compareButton).toHaveProperty("disabled", true);
+
+		// Wait for comparison to complete
+		await waitFor(
+			() => {
+				expect(compareButton?.textContent).toBe("Compare");
+				// Button should remain disabled after comparison completes
+				expect(compareButton).toHaveProperty("disabled", true);
+			},
+			{ timeout: 300 },
+		);
 	});
 });
