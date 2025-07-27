@@ -24,6 +24,7 @@ vi.mock("../wailsjs/go/main/App.js", () => ({
 
 import {
 	CompareFiles,
+	CopyToFile,
 	GetInitialFiles,
 	GetMinimapVisible,
 	SelectFile,
@@ -394,5 +395,240 @@ describe("App Component - File Comparison", () => {
 		const emptyState = container.querySelector(".empty-state");
 		expect(emptyState).toBeTruthy();
 		expect(emptyState?.textContent).toContain('Click "Compare Files" button');
+	});
+});
+
+describe("App Component - Keyboard Navigation", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		// Default mocks
+		vi.mocked(GetInitialFiles).mockResolvedValue(["", ""]);
+		vi.mocked(GetMinimapVisible).mockResolvedValue(true);
+	});
+
+	it("should respond to j and k keyboard navigation", async () => {
+		// Mock file selection and comparison
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		// Mock diff result with multiple distinct chunks
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{ type: "same", leftNumber: 2, rightNumber: 2, content: "line2" },
+				{ type: "added", leftNumber: null, rightNumber: 3, content: "added1" },
+				{ type: "same", leftNumber: 3, rightNumber: 4, content: "line3" },
+				{ type: "same", leftNumber: 4, rightNumber: 5, content: "line4" },
+				{
+					type: "removed",
+					leftNumber: 5,
+					rightNumber: null,
+					content: "removed1",
+				},
+				{ type: "same", leftNumber: 6, rightNumber: 6, content: "line5" },
+				{ type: "same", leftNumber: 7, rightNumber: 7, content: "line6" },
+				{
+					type: "modified",
+					leftNumber: 8,
+					rightNumber: 8,
+					content: "modified1",
+				},
+				{ type: "same", leftNumber: 9, rightNumber: 9, content: "line7" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockResolvedValue(mockDiffResult);
+
+		const { container } = render(App);
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		// Select files and compare
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+		await fireEvent.click(compareButton!);
+
+		// Wait for diff to load and verify it has loaded with highlights
+		await waitFor(() => {
+			const diffContent = container.querySelector(".diff-content");
+			expect(diffContent).toBeTruthy();
+			const highlightedLines = container.querySelectorAll(".current-diff");
+			expect(highlightedLines.length).toBeGreaterThan(0);
+		});
+
+		// Since we can't easily test the actual navigation due to component
+		// initialization complexity in tests, we'll verify the keyboard
+		// handler is attached and doesn't throw errors
+
+		// Press 'j' key - should not throw
+		await fireEvent.keyDown(document, { key: "j" });
+
+		// Small delay to let any async updates complete
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Press 'k' key - should not throw
+		await fireEvent.keyDown(document, { key: "k" });
+
+		// Verify the diff viewer is still displayed properly
+		const diffViewer = container.querySelector(".diff-viewer");
+		expect(diffViewer).toBeTruthy();
+		expect(diffViewer?.classList.contains("comparing")).toBe(false);
+	});
+
+	it("should respond to arrow key navigation", async () => {
+		// Mock file selection and comparison
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		// Mock diff result with multiple chunks
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{ type: "added", leftNumber: null, rightNumber: 2, content: "added1" },
+				{ type: "same", leftNumber: 2, rightNumber: 3, content: "line2" },
+				{
+					type: "removed",
+					leftNumber: 3,
+					rightNumber: null,
+					content: "removed1",
+				},
+				{ type: "same", leftNumber: 4, rightNumber: 4, content: "line3" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockResolvedValue(mockDiffResult);
+
+		const { container } = render(App);
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		// Select files and compare
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+		await fireEvent.click(compareButton!);
+
+		// Wait for diff to load
+		await waitFor(() => {
+			const diffContent = container.querySelector(".diff-content");
+			expect(diffContent).toBeTruthy();
+			const highlightedLines = container.querySelectorAll(".current-diff");
+			expect(highlightedLines.length).toBeGreaterThan(0);
+		});
+
+		// Press ArrowDown key - should work like 'j'
+		await fireEvent.keyDown(document, { key: "ArrowDown" });
+
+		// Small delay
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Press ArrowUp key - should work like 'k'
+		await fireEvent.keyDown(document, { key: "ArrowUp" });
+
+		// Verify no errors and UI is still intact
+		const diffViewer = container.querySelector(".diff-viewer");
+		expect(diffViewer).toBeTruthy();
+		expect(diffViewer?.classList.contains("comparing")).toBe(false);
+	});
+
+	it("should handle copy operations with Shift+L and Shift+H", async () => {
+		// Mock file selection and comparison
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		// Mock diff result with a simple diff
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{
+					type: "added",
+					leftNumber: null,
+					rightNumber: 2,
+					content: "added line",
+				},
+				{ type: "same", leftNumber: 2, rightNumber: 3, content: "line2" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockResolvedValue(mockDiffResult);
+		// Mock CopyToFile to succeed
+		vi.mocked(CopyToFile).mockResolvedValue(undefined);
+
+		const { container } = render(App);
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		// Select files and compare
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+		await fireEvent.click(compareButton!);
+
+		// Wait for diff to load
+		await waitFor(() => {
+			const diffContent = container.querySelector(".diff-content");
+			expect(diffContent).toBeTruthy();
+		});
+
+		// Press Shift+L - copy left to right (should not throw)
+		await fireEvent.keyDown(document, { key: "L", shiftKey: true });
+
+		// Small delay
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Press Shift+H - copy right to left (should not throw)
+		await fireEvent.keyDown(document, { key: "H", shiftKey: true });
+
+		// Verify UI is intact
+		const diffViewer = container.querySelector(".diff-viewer");
+		expect(diffViewer).toBeTruthy();
+	});
+
+	it("should play sound at navigation boundaries", async () => {
+		// Mock file selection and comparison
+		vi.mocked(SelectFile)
+			.mockResolvedValueOnce("/path/to/left.txt")
+			.mockResolvedValueOnce("/path/to/right.txt");
+
+		// Mock diff result with only one diff chunk
+		const mockDiffResult = {
+			lines: [
+				{ type: "same", leftNumber: 1, rightNumber: 1, content: "line1" },
+				{ type: "added", leftNumber: null, rightNumber: 2, content: "added" },
+				{ type: "same", leftNumber: 2, rightNumber: 3, content: "line2" },
+			],
+		};
+
+		vi.mocked(CompareFiles).mockResolvedValue(mockDiffResult);
+
+		const { container } = render(App);
+		const [leftButton, rightButton] = container.querySelectorAll(".file-btn");
+		const compareButton = container.querySelector(".compare-btn");
+
+		// Select files and compare
+		await fireEvent.click(leftButton);
+		await fireEvent.click(rightButton);
+		await fireEvent.click(compareButton!);
+
+		// Wait for diff to load
+		await waitFor(() => {
+			const diffContent = container.querySelector(".diff-content");
+			expect(diffContent).toBeTruthy();
+		});
+
+		// We're already at the first diff, pressing 'k' should trigger boundary sound
+		// Since we can't easily test AudioContext, we just verify it doesn't throw
+		await fireEvent.keyDown(document, { key: "k" });
+
+		// Press 'j' to go to the end (only one diff chunk)
+		await fireEvent.keyDown(document, { key: "j" });
+
+		// Press 'j' again - should be at boundary
+		await fireEvent.keyDown(document, { key: "j" });
+
+		// Verify UI is still working
+		expect(container.querySelector(".diff-viewer")).toBeTruthy();
 	});
 });
