@@ -1130,6 +1130,21 @@ func TestIsBinaryFile(t *testing.T) {
 			content:    []byte("Hello\tworld\nThis\ris\ta\ntest"),
 			wantBinary: false,
 		},
+		{
+			name:       "empty_file",
+			content:    []byte{},
+			wantBinary: false,
+		},
+		{
+			name:       "single_null_byte",
+			content:    []byte{0x00},
+			wantBinary: true,
+		},
+		{
+			name:       "mostly_binary",
+			content:    []byte("Hello\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"),
+			wantBinary: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1190,6 +1205,54 @@ func TestApp_ReadFileContent_BinaryRejection(t *testing.T) {
 	}
 	if len(lines) != 2 {
 		t.Errorf("Expected 2 lines, got %d", len(lines))
+	}
+}
+
+func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
+	app := &App{}
+	testDir := t.TempDir()
+
+	// Create a binary file
+	binaryFile := filepath.Join(testDir, "binary.dat")
+	binaryContent := []byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD}
+	err := os.WriteFile(binaryFile, binaryContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create binary file: %v", err)
+	}
+
+	// Create a text file
+	textFile := filepath.Join(testDir, "text.txt")
+	textContent := []byte("This is a normal text file")
+	err = os.WriteFile(textFile, textContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create text file: %v", err)
+	}
+
+	// Test comparing binary file as left file
+	_, err = app.CompareFiles(binaryFile, textFile)
+	if err == nil {
+		t.Error("CompareFiles should return error when left file is binary")
+	}
+	if !strings.Contains(err.Error(), "error reading left file") || !strings.Contains(err.Error(), "cannot read binary file") {
+		t.Errorf("Expected error about binary file, got: %v", err)
+	}
+
+	// Test comparing binary file as right file
+	_, err = app.CompareFiles(textFile, binaryFile)
+	if err == nil {
+		t.Error("CompareFiles should return error when right file is binary")
+	}
+	if !strings.Contains(err.Error(), "error reading right file") || !strings.Contains(err.Error(), "cannot read binary file") {
+		t.Errorf("Expected error about binary file, got: %v", err)
+	}
+
+	// Test comparing two binary files
+	_, err = app.CompareFiles(binaryFile, binaryFile)
+	if err == nil {
+		t.Error("CompareFiles should return error when both files are binary")
+	}
+	if !strings.Contains(err.Error(), "cannot read binary file") {
+		t.Errorf("Expected error about binary file, got: %v", err)
 	}
 }
 
