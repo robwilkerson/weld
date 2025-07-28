@@ -41,10 +41,26 @@ export function SaveSelectedFilesAndQuit(arg1:Array<string>):Promise<void>;
 
 export function SelectFile():Promise<string>;
 
+export function SetDiscardMenuItem(arg1:menu.MenuItem):Promise<void>;
+
 export function SetMinimapMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetMinimapVisible(arg1:boolean):Promise<void>;
 
+export function SetNextDiffMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetPrevDiffMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetSaveAllMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetSaveLeftMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetSaveRightMenuItem(arg1:menu.MenuItem):Promise<void>;
+
 export function SetUndoMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function UndoLastOperation():Promise<void>;
+
+export function UpdateDiffNavigationMenuItems(arg1:boolean,arg2:boolean):Promise<void>;
+
+export function UpdateSaveMenuItems(arg1:boolean,arg2:boolean):Promise<void>;

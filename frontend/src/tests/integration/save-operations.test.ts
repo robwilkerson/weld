@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
 
@@ -21,6 +21,8 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 	QuitWithoutSaving: vi.fn(),
 	SaveSelectedFilesAndQuit: vi.fn(),
 	SelectFile: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 import {
@@ -31,10 +33,7 @@ import {
 	HasUnsavedChanges,
 	SaveChanges,
 	SelectFile,
-	SetMinimapVisible,
 } from "../../../wailsjs/go/main/App.js";
-
-import { EventsOn } from "../../../wailsjs/runtime/runtime.js";
 
 describe("Save and Unsaved Changes Tests", () => {
 	beforeEach(() => {
@@ -150,7 +149,7 @@ describe("Save and Unsaved Changes Tests", () => {
 		// but due to test environment limitations with event handlers, we can't test this fully
 
 		// Test keyboard shortcut structure
-		const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+		const _isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 		// Note: keyboard shortcuts also have limitations in test environment
 		// In a real app, Cmd/Ctrl+S would save files with unsaved changes
 	});

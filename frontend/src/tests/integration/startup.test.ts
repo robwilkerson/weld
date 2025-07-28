@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
 
@@ -21,12 +21,13 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 	QuitWithoutSaving: vi.fn(),
 	SaveSelectedFilesAndQuit: vi.fn(),
 	SelectFile: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 import {
 	CompareFiles,
 	GetInitialFiles,
-	GetMinimapVisible,
 	SelectFile,
 } from "../../../wailsjs/go/main/App.js";
 

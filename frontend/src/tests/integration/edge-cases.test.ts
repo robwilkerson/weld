@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
 
@@ -21,6 +21,8 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 	QuitWithoutSaving: vi.fn(),
 	SaveSelectedFilesAndQuit: vi.fn(),
 	SelectFile: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 import {
@@ -470,8 +472,8 @@ describe("Edge Cases and Special File Handling", () => {
 		// Create very long file names
 		const longPath =
 			"/very/deep/directory/structure/with/many/nested/folders/that/goes/on/and/on/and/on";
-		const longFileName = "a".repeat(100) + ".txt";
-		const longFullPath = longPath + "/" + longFileName;
+		const longFileName = `${"a".repeat(100)}.txt`;
+		const longFullPath = `${longPath}/${longFileName}`;
 
 		// Mock SelectFile for long paths
 		vi.mocked(SelectFile)

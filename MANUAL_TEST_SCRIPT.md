@@ -138,6 +138,26 @@ This script covers functionality that our automated integration tests cannot ver
   - [ ] Layout adjusts properly
   - [ ] Setting persists after restart
 
+### Test: File > Save Menu Items
+- [ ] Load two different files and compare
+- [ ] Verify File > Save submenu shows with all items disabled
+- [ ] Make changes via copy operation (Shift+L)
+- [ ] Verify File > Save > Save Right Pane enables
+- [ ] Click Save Right Pane - verify file saves and menu item disables
+- [ ] Make changes to both files
+- [ ] Verify Save Left Pane, Save Right Pane, and Save All enable
+- [ ] Test keyboard shortcuts:
+  - [ ] Cmd/Ctrl+S for Save All (saves both files if they have changes)
+
+### Test: Edit > Discard All Changes Menu Item
+- [ ] Make changes to both files
+- [ ] Verify Edit > Discard All Changes enables
+- [ ] Click Discard All Changes - verify:
+  - [ ] All changes are discarded
+  - [ ] Files reload from disk
+  - [ ] Menu item disables
+  - [ ] Save menu items all disable
+
 ---
 
 ## 6. Quit Dialog & Session Management
@@ -227,6 +247,28 @@ Based on our automated testing gaps, pay special attention to:
 5. **Performance** - Large files should remain responsive
 
 ---
+
+## 7. Go Menu Testing
+
+### Previous/Next Diff Navigation
+1. Compare two files with multiple differences
+2. Verify Go menu exists with Previous Diff and Next Diff options
+3. Test Previous Diff:
+   - Initially disabled when no diff is selected
+   - Press `k` key or use Go > Previous Diff
+   - Navigates to previous difference
+   - Shows notification sound when at first diff
+   - Menu item disabled when at first diff
+4. Test Next Diff:
+   - Initially enabled when at first diff
+   - Press `j` key or use Go > Next Diff
+   - Navigates to next difference
+   - Shows notification sound when at last diff
+   - Menu item disabled when at last diff
+5. Test state updates:
+   - After each navigation, menu items update enable/disable state
+   - Current diff is highlighted in UI
+   - Minimap shows current position
 
 ## Post-Refactoring Verification
 

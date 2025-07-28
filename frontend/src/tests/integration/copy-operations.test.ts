@@ -32,6 +32,11 @@ vi.mock("../../../wailsjs/go/main/App.js", () => ({
 	SetMinimapVisible: vi.fn(),
 	GetScrollSyncEnabled: vi.fn(),
 	SetScrollSyncEnabled: vi.fn(),
+	DiscardAllChanges: vi.fn(),
+	QuitWithoutSaving: vi.fn(),
+	SaveSelectedFilesAndQuit: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 describe("App Component - Copy Operations", () => {

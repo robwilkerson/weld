@@ -62,12 +62,18 @@ var (
 
 // App struct
 type App struct {
-	ctx              context.Context
-	InitialLeftFile  string
-	InitialRightFile string
-	minimapVisible   bool
-	minimapMenuItem  *menu.MenuItem
-	undoMenuItem     *menu.MenuItem
+	ctx               context.Context
+	InitialLeftFile   string
+	InitialRightFile  string
+	minimapVisible    bool
+	minimapMenuItem   *menu.MenuItem
+	undoMenuItem      *menu.MenuItem
+	discardMenuItem   *menu.MenuItem
+	saveLeftMenuItem  *menu.MenuItem
+	saveRightMenuItem *menu.MenuItem
+	saveAllMenuItem   *menu.MenuItem
+	prevDiffMenuItem  *menu.MenuItem
+	nextDiffMenuItem  *menu.MenuItem
 }
 
 // NewApp creates a new App application struct
@@ -657,6 +663,70 @@ func (a *App) SetMinimapMenuItem(item *menu.MenuItem) {
 // SetUndoMenuItem stores a reference to the undo menu item
 func (a *App) SetUndoMenuItem(item *menu.MenuItem) {
 	a.undoMenuItem = item
+}
+
+// SetDiscardMenuItem stores a reference to the discard menu item
+func (a *App) SetDiscardMenuItem(item *menu.MenuItem) {
+	a.discardMenuItem = item
+}
+
+// SetSaveLeftMenuItem stores a reference to the save left menu item
+func (a *App) SetSaveLeftMenuItem(item *menu.MenuItem) {
+	a.saveLeftMenuItem = item
+}
+
+// SetSaveRightMenuItem stores a reference to the save right menu item
+func (a *App) SetSaveRightMenuItem(item *menu.MenuItem) {
+	a.saveRightMenuItem = item
+}
+
+// SetSaveAllMenuItem stores a reference to the save all menu item
+func (a *App) SetSaveAllMenuItem(item *menu.MenuItem) {
+	a.saveAllMenuItem = item
+}
+
+// SetPrevDiffMenuItem stores a reference to the previous diff menu item
+func (a *App) SetPrevDiffMenuItem(item *menu.MenuItem) {
+	a.prevDiffMenuItem = item
+}
+
+// SetNextDiffMenuItem stores a reference to the next diff menu item
+func (a *App) SetNextDiffMenuItem(item *menu.MenuItem) {
+	a.nextDiffMenuItem = item
+}
+
+// UpdateSaveMenuItems updates the state of all save-related menu items
+func (a *App) UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight bool) {
+	// Update individual save items
+	if a.saveLeftMenuItem != nil {
+		a.saveLeftMenuItem.Disabled = !hasUnsavedLeft
+	}
+	if a.saveRightMenuItem != nil {
+		a.saveRightMenuItem.Disabled = !hasUnsavedRight
+	}
+
+	// Update save all - enabled if either side has unsaved changes
+	if a.saveAllMenuItem != nil {
+		a.saveAllMenuItem.Disabled = !hasUnsavedLeft && !hasUnsavedRight
+	}
+
+	// Update discard all - same logic as save all
+	if a.discardMenuItem != nil {
+		a.discardMenuItem.Disabled = !hasUnsavedLeft && !hasUnsavedRight
+	}
+
+	runtime.MenuUpdateApplicationMenu(a.ctx)
+}
+
+// UpdateDiffNavigationMenuItems updates the state of the diff navigation menu items
+func (a *App) UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff bool) {
+	if a.prevDiffMenuItem != nil {
+		a.prevDiffMenuItem.Disabled = !hasPrevDiff
+	}
+	if a.nextDiffMenuItem != nil {
+		a.nextDiffMenuItem.Disabled = !hasNextDiff
+	}
+	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
 
 // BeginOperationGroup starts a new operation group for transaction-like undo

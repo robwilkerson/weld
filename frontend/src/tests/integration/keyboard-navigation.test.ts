@@ -28,6 +28,8 @@ vi.mock("../../../wailsjs/go/main/App", () => ({
 	SetMinimapVisible: vi.fn(),
 	Quit: vi.fn(),
 	HasUnsavedChanges: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
+	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
 describe("App Component - Keyboard Navigation", () => {
