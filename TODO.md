@@ -3,7 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Fix app to reject binary files with error instead of displaying garbled content
 - [ ] Be more deliberate about handling errors (error-noread.txt)
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
@@ -30,6 +29,7 @@
 - [x] Test new menu items and add to manual test script if needed
 - [x] Add Go > Previous Diff and Go > Next Diff menu items
 - [x] Fix broken frontend tests by adding UpdateDiffNavigationMenuItems to mocks
+- [x] Fix app to reject binary files with error instead of displaying garbled content
 
 ## Medium Priority
 
@@ -77,6 +77,3 @@ The test improvement items focus on making our smoke tests more comprehensive by
 The refactoring items aim to improve code organization by:
 - Extracting complex logic into dedicated services/modules
 - Creating more focused, reusable components
-
-### Binary File Handling
-The binary file rejection is important for user experience - currently the app tries to display binary files as text which results in garbled output. We should detect binary files and show an appropriate error message instead.

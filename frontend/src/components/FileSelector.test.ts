@@ -155,6 +155,25 @@ describe("FileSelector", () => {
 		);
 	});
 
+	it("should dispatch error event for binary file rejection", async () => {
+		const mockError = new Error("binary files cannot be compared: test.bin");
+		vi.mocked(SelectFile).mockRejectedValue(mockError);
+
+		const { getByText, component } = render(FileSelector);
+
+		const errorHandler = vi.fn();
+		component.$on("error", errorHandler);
+
+		const rightButton = getByText("Select right file...");
+		await fireEvent.click(rightButton);
+
+		expect(errorHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { message: `Error selecting right file: ${mockError}` },
+			}),
+		);
+	});
+
 	it("should dispatch compare event when compare button clicked", async () => {
 		const { getByText, component } = render(FileSelector, {
 			props: {

@@ -202,9 +202,14 @@ This script covers functionality that our automated integration tests cannot ver
 **Gap**: Automated tests can't verify actual error dialogs or edge case behavior
 
 ### Test: Binary File Handling
-- [ ] Try to load a binary file (image, executable, etc.)
-- [ ] Verify app shows error instead of garbled content (KNOWN BUG)
-- [ ] Verify app doesn't crash
+- [ ] Try to load a binary file using the file selector:
+  - [ ] Try `resources/sample-files/binary-test.bin`
+  - [ ] Verify error message: "binary files cannot be compared: [filename]"
+  - [ ] Verify file is not loaded and no garbled content appears
+- [ ] Try to launch app with binary files from command line:
+  - [ ] Run: `./app resources/sample-files/binary-test.bin file.txt`
+  - [ ] Verify app exits with error: "Cannot compare binary file: [path]"
+- [ ] Verify app doesn't crash in either case
 
 ### Test: File System Errors
 - [ ] Load a file, then delete it from file system
@@ -240,7 +245,7 @@ This script covers functionality that our automated integration tests cannot ver
 
 Based on our automated testing gaps, pay special attention to:
 
-1. **Binary file rejection** - Should show error, not garbled content (KNOWN BUG)
+1. **Binary file rejection** - Should show error, not garbled content
 2. **Cursor advancement** - Should move to next diff after copy operations
 3. **Scroll synchronization** - Both panes should stay in sync
 4. **Theme persistence** - Settings should survive app restart

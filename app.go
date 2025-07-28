@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -128,13 +129,76 @@ func (a *App) SelectFile() (string, error) {
 		TreatPackagesAsDirectories: false,
 	})
 	fmt.Printf("File dialog result: file='%s', err=%v\n", file, err)
+
+	// If a file was selected, validate it's not binary
+	if err == nil && file != "" {
+		isBinary, checkErr := IsBinaryFile(file)
+		if checkErr != nil {
+			return "", fmt.Errorf("error checking file type: %w", checkErr)
+		}
+		if isBinary {
+			return "", fmt.Errorf("binary files cannot be compared: %s", filepath.Base(file))
+		}
+	}
+
 	return file, err
+}
+
+// IsBinaryFile checks if a file is binary by reading the first 512 bytes
+// and looking for null bytes or other non-text indicators
+func IsBinaryFile(filepath string) (bool, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	// Read first 512 bytes (or less if file is smaller)
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	// Check for null bytes, which are a strong indicator of binary content
+	for i := 0; i < n; i++ {
+		if buf[i] == 0 {
+			return true, nil
+		}
+	}
+
+	// Additional check: count non-printable characters
+	// If more than 30% of characters are non-printable, consider it binary
+	nonPrintable := 0
+	for i := 0; i < n; i++ {
+		b := buf[i]
+		// Check if character is printable ASCII or common whitespace
+		if (b < 32 || b > 126) && b != '\t' && b != '\n' && b != '\r' {
+			nonPrintable++
+		}
+	}
+
+	// If more than 30% non-printable, consider it binary
+	if float64(nonPrintable)/float64(n) > 0.3 {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // ReadFileContent reads the content of a file and returns it as lines
 func (a *App) ReadFileContent(filepath string) ([]string, error) {
 	if filepath == "" {
 		return []string{}, nil
+	}
+
+	// Check if file is binary before attempting to read as text
+	isBinary, err := IsBinaryFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("error checking file type: %w", err)
+	}
+	if isBinary {
+		return nil, fmt.Errorf("cannot read binary file: %s", filepath)
 	}
 
 	file, err := os.Open(filepath)
