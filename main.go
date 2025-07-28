@@ -156,6 +156,27 @@ func main() {
 			os.Exit(1)
 		}
 
+		// Check if files are binary
+		isBinaryLeft, err := IsBinaryFile(leftFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error checking left file: %v\n", err)
+			os.Exit(1)
+		}
+		if isBinaryLeft {
+			fmt.Fprintf(os.Stderr, "Cannot compare binary file: %s\n", leftFile)
+			os.Exit(1)
+		}
+
+		isBinaryRight, err := IsBinaryFile(rightFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error checking right file: %v\n", err)
+			os.Exit(1)
+		}
+		if isBinaryRight {
+			fmt.Fprintf(os.Stderr, "Cannot compare binary file: %s\n", rightFile)
+			os.Exit(1)
+		}
+
 		fmt.Printf("Opening with files: %s and %s\n", leftFile, rightFile)
 	}
 

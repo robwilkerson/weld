@@ -1096,6 +1096,103 @@ func TestApp_RemoveLineFromFile_ErrorHandling(t *testing.T) {
 	})
 }
 
+func TestIsBinaryFile(t *testing.T) {
+	// Create test directory
+	testDir := t.TempDir()
+
+	tests := []struct {
+		name       string
+		content    []byte
+		wantBinary bool
+	}{
+		{
+			name:       "text_file_ascii",
+			content:    []byte("Hello, world!\nThis is a text file.\n"),
+			wantBinary: false,
+		},
+		{
+			name:       "text_file_utf8",
+			content:    []byte("Hello, 世界!\nThis is a UTF-8 text file.\n"),
+			wantBinary: false,
+		},
+		{
+			name:       "binary_file_with_null",
+			content:    []byte{0x00, 0x01, 0x02, 0x03, 0x04},
+			wantBinary: true,
+		},
+		{
+			name:       "binary_file_high_non_printable",
+			content:    []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x0C, 0x0E, 0x0F},
+			wantBinary: true,
+		},
+		{
+			name:       "text_with_some_control_chars",
+			content:    []byte("Hello\tworld\nThis\ris\ta\ntest"),
+			wantBinary: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test file
+			testFile := filepath.Join(testDir, tt.name)
+			err := os.WriteFile(testFile, tt.content, 0644)
+			if err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
+			}
+
+			// Test IsBinaryFile
+			isBinary, err := IsBinaryFile(testFile)
+			if err != nil {
+				t.Fatalf("IsBinaryFile returned error: %v", err)
+			}
+
+			if isBinary != tt.wantBinary {
+				t.Errorf("IsBinaryFile() = %v, want %v", isBinary, tt.wantBinary)
+			}
+		})
+	}
+}
+
+func TestApp_ReadFileContent_BinaryRejection(t *testing.T) {
+	app := &App{}
+	testDir := t.TempDir()
+
+	// Create a binary file
+	binaryFile := filepath.Join(testDir, "binary.dat")
+	binaryContent := []byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD}
+	err := os.WriteFile(binaryFile, binaryContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create binary file: %v", err)
+	}
+
+	// Try to read the binary file
+	_, err = app.ReadFileContent(binaryFile)
+	if err == nil {
+		t.Error("ReadFileContent should return error for binary file")
+	}
+	if !strings.Contains(err.Error(), "cannot read binary file") {
+		t.Errorf("Expected error about binary file, got: %v", err)
+	}
+
+	// Create a text file to ensure normal files still work
+	textFile := filepath.Join(testDir, "text.txt")
+	textContent := []byte("This is a normal text file\nwith multiple lines")
+	err = os.WriteFile(textFile, textContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create text file: %v", err)
+	}
+
+	// Read the text file - should succeed
+	lines, err := app.ReadFileContent(textFile)
+	if err != nil {
+		t.Errorf("ReadFileContent failed for text file: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 lines, got %d", len(lines))
+	}
+}
+
 func TestApp_EndToEndDiffWorkflow(t *testing.T) {
 	app := &App{}
 	tempDir := t.TempDir()
