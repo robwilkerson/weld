@@ -17,9 +17,12 @@ export let diffLines: HighlightedDiffLine[] = [];
 const dispatch = createEventDispatcher();
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
-function getChunkTooltip(chunk: LineChunk): string {
+function getChunkTooltip(
+	chunk: { startIndex: number; endIndex: number },
+	type: string,
+): string {
 	if (!diffLines || diffLines.length === 0) {
-		return `Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
+		return `Diff: Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
 	}
 
 	// Get the actual line numbers from the diff lines
@@ -27,25 +30,25 @@ function getChunkTooltip(chunk: LineChunk): string {
 	const endLine = diffLines[chunk.endIndex];
 
 	// For added/removed chunks, show the line numbers from the side that has content
-	if (chunk.type === "added") {
+	if (type === "added") {
 		const startNum = startLine?.rightNumber || 0;
 		const endNum = endLine?.rightNumber || 0;
-		return `Right: Lines ${startNum}-${endNum}`;
-	} else if (chunk.type === "removed") {
+		return `Added: Right lines ${startNum}-${endNum}`;
+	} else if (type === "removed") {
 		const startNum = startLine?.leftNumber || 0;
 		const endNum = endLine?.leftNumber || 0;
-		return `Left: Lines ${startNum}-${endNum}`;
-	} else if (chunk.type === "modified") {
+		return `Removed: Left lines ${startNum}-${endNum}`;
+	} else if (type === "modified") {
 		// For modified, show both sides
 		const leftStart = startLine?.leftNumber || 0;
 		const leftEnd = endLine?.leftNumber || 0;
 		const rightStart = startLine?.rightNumber || 0;
 		const rightEnd = endLine?.rightNumber || 0;
-		return `Left: ${leftStart}-${leftEnd}, Right: ${rightStart}-${rightEnd}`;
+		return `Modified: Left ${leftStart}-${leftEnd}, Right ${rightStart}-${rightEnd}`;
 	}
 
 	// Fallback
-	return `Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
+	return `Diff: Lines ${chunk.startIndex + 1}-${chunk.endIndex + 1}`;
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
@@ -57,19 +60,26 @@ function handleMinimapClick(event: MouseEvent): void {
 
 	// If we clicked on a chunk element, get its data
 	if (target.classList.contains("minimap-chunk")) {
-		const chunkStart = parseInt(
-			target.getAttribute("data-chunk-start") || "0",
+		const chunkIndex = parseInt(
+			target.getAttribute("data-chunk-index") || "-1",
 			10,
 		);
-		const chunk = lineChunks.find((c) => c.startIndex === chunkStart);
 
-		if (chunk) {
-			// For diff chunks, find the matching diff chunk index
-			const diffChunkIndex = diffChunks.findIndex(
-				(dc) =>
-					dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex,
-			);
-			dispatch("minimapClick", { chunk, diffChunkIndex });
+		if (chunkIndex >= 0 && chunkIndex < diffChunks.length) {
+			const chunk = diffChunks[chunkIndex];
+			// Create a lineChunk-like object for compatibility with the event handler
+			const firstLine = diffLines[chunk.startIndex];
+			const chunkType = firstLine ? firstLine.type : "same";
+			const lineChunk = {
+				startIndex: chunk.startIndex,
+				endIndex: chunk.endIndex,
+				type: chunkType,
+				lines: chunk.endIndex - chunk.startIndex + 1,
+			};
+			dispatch("minimapClick", {
+				chunk: lineChunk,
+				diffChunkIndex: chunkIndex,
+			});
 			return;
 		}
 	}
@@ -92,20 +102,19 @@ function handleViewportMouseDown(event: MouseEvent): void {
 {#if show && totalLines > 0}
 	<div class="minimap-pane">
 		<div class="minimap" on:click={handleMinimapClick}>
-			{#each lineChunks as chunk}
-				{#if chunk.type !== "same"}
-					{@const isCurrentChunk = diffChunks.findIndex(
-						(dc) => dc.startIndex === chunk.startIndex && dc.endIndex === chunk.endIndex
-					) === currentDiffChunkIndex}
-					<div
-						class="minimap-chunk minimap-{chunk.type} {isCurrentChunk ? 'minimap-current' : ''}"
-						style="top: {(chunk.startIndex / totalLines) * 100}%; 
-						       height: {(chunk.lines / totalLines) * 100}%;"
-						data-chunk-start={chunk.startIndex}
-						data-chunk-lines={chunk.lines}
-						title={getChunkTooltip(chunk)}
-					></div>
-				{/if}
+			{#each diffChunks as chunk, index}
+				{@const firstLine = diffLines[chunk.startIndex]}
+				{@const chunkType = firstLine ? firstLine.type : 'same'}
+				{@const isCurrentChunk = index === currentDiffChunkIndex}
+				<div
+					class="minimap-chunk minimap-{chunkType} {isCurrentChunk ? 'minimap-current' : ''}"
+					style="top: {(chunk.startIndex / totalLines) * 100}%; 
+					       height: {((chunk.endIndex - chunk.startIndex + 1) / totalLines) * 100}%;"
+					data-chunk-start={chunk.startIndex}
+					data-chunk-index={index}
+					data-chunk-lines={chunk.endIndex - chunk.startIndex + 1}
+					title="{getChunkTooltip(chunk, chunkType)} (Diff {index + 1})"
+				></div>
 			{/each}
 			<!-- Viewport indicator -->
 			<div
