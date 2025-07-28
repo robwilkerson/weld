@@ -189,13 +189,24 @@ export function calculateScrollToCenterLine(
 	lineIndex: number,
 	lineHeight: number,
 	viewportHeight: number,
+	scrollHeight?: number,
 ): number {
 	// Calculate the position of the middle of the target line
 	const linePosition = lineIndex * lineHeight + lineHeight / 2;
 	const middleOfViewport = viewportHeight / 2;
-	// Calculate scroll position to center the line
-	const scrollPosition = linePosition - middleOfViewport;
-	return Math.max(0, scrollPosition);
+	// Calculate ideal scroll position to center the line
+	const idealScrollPosition = linePosition - middleOfViewport;
+
+	// Clamp to valid scroll range
+	let scrollPosition = Math.max(0, idealScrollPosition);
+
+	// If scrollHeight is provided, also clamp to maximum scroll
+	if (scrollHeight !== undefined) {
+		const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+		scrollPosition = Math.min(scrollPosition, maxScroll);
+	}
+
+	return scrollPosition;
 }
 
 /**

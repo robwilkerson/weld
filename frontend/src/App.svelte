@@ -33,6 +33,7 @@ import {
 	escapeHtml,
 	getLineNumberWidth,
 } from "./utils/diff.js";
+import { calculateDiffChunks } from "./utils/diffChunks.js";
 import * as diffOps from "./utils/diffOperations.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
@@ -51,6 +52,9 @@ const highlightCache: Map<string, string> = new Map();
 
 // Create scroll synchronizer instance (no longer used, will be removed with state management refactor)
 const scrollSync = createScrollSynchronizer();
+
+// biome-ignore lint/suspicious/noExplicitAny: Svelte component ref
+let diffViewerComponent: any;
 
 let leftFilePath: string = "";
 let rightFilePath: string = "";
@@ -133,40 +137,7 @@ $: isLineHovered = (lineIndex: number) => {
 	return isInChunk;
 };
 
-// Compute diff chunks (groups of consecutive non-"same" lines)
-$: diffChunks = (() => {
-	if (!highlightedDiffResult) return [];
-
-	const chunks: { startIndex: number; endIndex: number }[] = [];
-	let inDiff = false;
-	let startIndex = -1;
-
-	highlightedDiffResult.lines.forEach((line, index) => {
-		if (line.type !== "same") {
-			if (!inDiff) {
-				// Start of a new diff chunk
-				inDiff = true;
-				startIndex = index;
-			}
-		} else {
-			if (inDiff) {
-				// End of diff chunk
-				chunks.push({ startIndex, endIndex: index - 1 });
-				inDiff = false;
-			}
-		}
-	});
-
-	// Handle case where file ends with a diff
-	if (inDiff && startIndex !== -1) {
-		chunks.push({
-			startIndex,
-			endIndex: highlightedDiffResult.lines.length - 1,
-		});
-	}
-
-	return chunks;
-})();
+// Diff chunks will be computed reactively after highlightedDiffResult is declared
 
 // Update diff navigation menu items whenever diff state changes
 $: {
@@ -196,6 +167,11 @@ let highlightedDiffResult: HighlightedDiffResult | null = null;
 
 // Track if we're currently processing to avoid re-entrancy
 let isProcessingHighlight = false;
+
+// Compute diff chunks using shared utility
+$: diffChunks = highlightedDiffResult
+	? calculateDiffChunks(highlightedDiffResult.lines)
+	: [];
 
 // ===========================================
 // HIGHLIGHTING CONFIGURATION
@@ -521,7 +497,7 @@ function _handleMinimapClick(eventData: {
 		if (diffChunkIndex !== -1) {
 			currentDiffChunkIndex = diffChunkIndex;
 			// Scroll to the start of the chunk to match what the tooltip shows
-			scrollToLine(chunk.startIndex);
+			scrollToLine(chunk.startIndex, diffChunkIndex);
 		}
 		return;
 	}
@@ -1082,7 +1058,10 @@ function navigateAfterCopy(
 
 	// Scroll to the selected chunk
 	if (diffChunks[currentDiffChunkIndex]) {
-		scrollToLine(diffChunks[currentDiffChunkIndex].startIndex);
+		scrollToLine(
+			diffChunks[currentDiffChunkIndex].startIndex,
+			currentDiffChunkIndex,
+		);
 	}
 }
 
@@ -1149,7 +1128,7 @@ function jumpToNextDiff(): void {
 
 	currentDiffChunkIndex = nextChunkIndex;
 	const chunk = diffChunks[nextChunkIndex];
-	scrollToLine(chunk.startIndex);
+	scrollToLine(chunk.startIndex, nextChunkIndex);
 }
 
 function jumpToPrevDiff(): void {
@@ -1176,15 +1155,12 @@ function jumpToPrevDiff(): void {
 
 	currentDiffChunkIndex = prevChunkIndex;
 	const chunk = diffChunks[prevChunkIndex];
-	scrollToLine(chunk.startIndex);
+	scrollToLine(chunk.startIndex, prevChunkIndex);
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Svelte component ref
-let diffViewerComponent: any;
-
-function scrollToLine(lineIndex: number): void {
+function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 	if (diffViewerComponent?.scrollToLine) {
-		diffViewerComponent.scrollToLine(lineIndex);
+		diffViewerComponent.scrollToLine(lineIndex, chunkIndex);
 	}
 }
 
@@ -1227,6 +1203,12 @@ $: if (
 	if (firstDiffIndex !== -1) {
 		// Set to the first diff chunk
 		currentDiffChunkIndex = 0;
+		// Trigger initial scroll after a small delay to ensure DOM is ready
+		setTimeout(() => {
+			if (diffChunks[0]) {
+				scrollToLine(diffChunks[0].startIndex, 0);
+			}
+		}, 100);
 	}
 }
 
@@ -1433,6 +1415,7 @@ function checkHorizontalScrollbar() {
     {areFilesIdentical}
     {isSameFile}
     {lineNumberWidth}
+    {diffChunks}
     on:saveLeft={saveLeftFile}
     on:saveRight={saveRightFile}
     on:copyLineToLeft={(e) => copyLineToLeft(e.detail)}
