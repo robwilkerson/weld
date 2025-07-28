@@ -1,0 +1,82 @@
+# Weld Development TODO List
+
+## High Priority
+
+### Pending
+- [ ] Fix app to reject binary files with error instead of displaying garbled content
+- [ ] Be more deliberate about handling errors (error-noread.txt)
+- [ ] Fix `large-*` files issues
+  - [ ] Scrolling gets out of sync
+  - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
+- [ ] Improve keyboard navigation tests to verify actual navigation behavior
+- [ ] Improve copy operation tests to verify actual behavior (cursor advancement, state changes)
+- [ ] Improve minimap interaction tests to verify actual navigation and UI updates
+- [ ] Improve scroll synchronization tests to verify actual scroll position updates
+- [ ] Improve save/unsaved changes tests to verify actual file operations and UI state
+- [ ] Improve quit dialog tests to verify actual dialog appearance and behavior
+- [ ] Improve startup and initialization tests to verify actual behavior
+- [ ] Enable directory comparison since file diffs are fully featured and stable
+- [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
+- [ ] App icon
+- [ ] Make available in package managers
+  - [ ] Homebrew cask
+  - [ ] Chocolatey,
+  - [ ] Scoop
+  - [ ] Etc.?
+
+### Completed
+- [x] Add Edit > Discard All Changes menu item
+- [x] Add File > Save submenu with Save Left/Right/All options
+- [x] Test new menu items and add to manual test script if needed
+- [x] Add Go > Previous Diff and Go > Next Diff menu items
+- [x] Fix broken frontend tests by adding UpdateDiffNavigationMenuItems to mocks
+
+## Medium Priority
+
+### Pending
+- [ ] Implement: Jump to first diff with g key
+- [ ] Implement: Jump to last diff with G key
+- [ ] Implement: `Enter` to compare files if the `Compare` button is enabled
+- [ ] Add an unsaved indicator
+- [ ] Create Svelte stores for state management - Extract global state into stores
+- [ ] Extract unsaved changes logic into a store or service
+- [ ] Upgrade Svelte and vite to the latest version (and all that entails)
+  * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
+- [ ] Enable performant syntax highlighting
+
+## Low Priority
+
+### Pending
+- [ ] Moving global state to Svelte stores for better state management
+- [ ] Create a dedicated DiffOperations service/module
+- [ ] Extract file operation handlers into a separate module
+- [ ] Create a dedicated MenuBar component
+- [ ] Menu bar option: Edit > Copy Left
+- [ ] Menu bar option: Edit > Copy Right
+- [ ] Investigate tooltip display consistency issue
+- [ ] Extract syntax highlighting logic into a separate service
+- [ ] Redo functionality
+- [ ] Undo multiple (up to 50, perhaps)
+- [ ] Optionally display a status bar
+  - [ ] Current file's lines added, removed, modified
+  - [ ] File charset
+  - [ ] File type (go, ruby, etc.)
+  - [ ] Load/processing times (useful for large files)
+    - [ ] time to open the files
+    - [ ] time to evaluate the diffs
+    - [ ] time to display
+    - [ ] ...
+- [ ] Make the file content editable directly
+
+## Notes
+
+### Test Improvements Needed
+The test improvement items focus on making our smoke tests more comprehensive by verifying actual behavior rather than just mocking everything. Currently many tests don't verify that the actual UI updates or state changes occur as expected.
+
+### Refactoring Goals
+The refactoring items aim to improve code organization by:
+- Extracting complex logic into dedicated services/modules
+- Creating more focused, reusable components
+
+### Binary File Handling
+The binary file rejection is important for user experience - currently the app tries to display binary files as text which results in garbled output. We should detect binary files and show an appropriate error message instead.
