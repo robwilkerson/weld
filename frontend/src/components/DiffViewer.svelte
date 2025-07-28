@@ -33,6 +33,7 @@ export let hasCompletedComparison: DiffViewerProps["hasCompletedComparison"];
 export let areFilesIdentical: DiffViewerProps["areFilesIdentical"];
 export let isSameFile: DiffViewerProps["isSameFile"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
+export let diffChunks: { startIndex: number; endIndex: number }[] = [];
 
 // Component refs for scroll synchronization
 // biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
@@ -51,13 +52,9 @@ const dispatch = createEventDispatcher<DiffViewerEvents>();
 
 // Line chunks for grouping
 let lineChunks: LineChunk[] = [];
-let diffChunks: LineChunk[] = [];
 
 // Track timeout for cleanup
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
-
-// Track if we've already auto-scrolled to prevent repeated scrolling
-let hasAutoScrolled = false;
 
 // Cleanup on destroy
 onDestroy(() => {
@@ -69,9 +66,6 @@ onDestroy(() => {
 // Process chunks when diffResult changes
 $: if (diffResult) {
 	lineChunks = detectLineChunks(diffResult.lines);
-	diffChunks = lineChunks.filter((chunk) => chunk.type !== "same");
-	// Reset auto-scroll flag when new diff is loaded
-	hasAutoScrolled = false;
 }
 
 // Helper functions
@@ -113,12 +107,14 @@ function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
 	return lineIndex === chunk.startIndex;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function getChunkForLine(lineIndex: number): LineChunk | null {
-	return (
-		lineChunks.find(
-			(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
-		) || null
-	);
+	for (const chunk of lineChunks) {
+		if (lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex) {
+			return chunk;
+		}
+	}
+	return null;
 }
 
 // Make this a reactive function so it updates when dependencies change
@@ -262,7 +258,11 @@ $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 }
 
 // Scroll to a specific line (or chunk)
-export function scrollToLine(lineIndex: number): void {
+export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
+	// Use the provided chunkIndex if given, otherwise use currentDiffChunkIndex
+	const effectiveChunkIndex =
+		chunkIndex !== undefined ? chunkIndex : currentDiffChunkIndex;
+
 	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
 		const lineHeight = 19.2; // from CSS var(--line-height)
 		const leftElement = leftPaneComponent.getElement?.();
@@ -273,15 +273,27 @@ export function scrollToLine(lineIndex: number): void {
 		}
 
 		const viewportHeight = leftElement.clientHeight;
+		const scrollHeight = leftElement.scrollHeight;
 
-		// Find if this line is part of a diff chunk
-		const chunk = getChunkForLine(lineIndex);
 		let targetLine = lineIndex;
 
-		// If it's part of a chunk, calculate the middle line of the chunk
-		if (chunk && chunk.type !== "same") {
-			const chunkMiddle = Math.floor((chunk.startIndex + chunk.endIndex) / 2);
-			targetLine = chunkMiddle;
+		// When navigating to a specific diff chunk, always center it
+		if (
+			effectiveChunkIndex !== -1 &&
+			diffChunks[effectiveChunkIndex] &&
+			diffResult
+		) {
+			const actualChunk = diffChunks[effectiveChunkIndex];
+
+			// For single-line chunks, use the line itself
+			// For multi-line chunks, use the middle
+			if (actualChunk.startIndex === actualChunk.endIndex) {
+				targetLine = actualChunk.startIndex;
+			} else {
+				targetLine = Math.floor(
+					(actualChunk.startIndex + actualChunk.endIndex) / 2,
+				);
+			}
 		}
 
 		// Calculate scroll position to center the target line in the viewport
@@ -289,6 +301,7 @@ export function scrollToLine(lineIndex: number): void {
 			targetLine,
 			lineHeight,
 			viewportHeight,
+			scrollHeight,
 		);
 
 		leftPaneComponent.setScrollTop(scrollTop);
@@ -303,34 +316,27 @@ export function scrollToLine(lineIndex: number): void {
 }
 
 // Auto-scroll to first diff when content loads
-$: if (
-	!hasAutoScrolled &&
-	leftPaneComponent &&
-	rightPaneComponent &&
-	centerGutterComponent &&
-	diffResult &&
-	diffResult.lines.length > 0 &&
-	diffChunks.length > 0
-) {
-	const firstDiffLine = diffResult.lines.findIndex(
-		(line) => line.type !== "same",
-	);
-	if (firstDiffLine !== -1) {
-		// Clear any existing timeout
-		if (scrollTimeout) {
-			clearTimeout(scrollTimeout);
-		}
-
-		scrollTimeout = setTimeout(() => {
-			// Check components still exist before using them
-			if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-				scrollToLine(firstDiffLine);
-				hasAutoScrolled = true;
-			}
-			scrollTimeout = null;
-		}, 100);
-	}
-}
+// Commented out to prevent duplicate scrolling - App.svelte handles initial scroll
+// $: if (
+// 	leftPaneComponent &&
+// 	rightPaneComponent &&
+// 	centerGutterComponent &&
+// 	diffResult &&
+// 	diffResult.lines.length > 0 &&
+// 	diffChunks.length > 0 &&
+// 	currentDiffChunkIndex === 0
+// ) {
+// 	// Scroll to first diff on initial load
+// 	scrollTimeout = setTimeout(() => {
+// 		if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
+// 			const chunk = diffChunks[0];
+// 			if (chunk) {
+// 				scrollToLine(chunk.startIndex);
+// 			}
+// 		}
+// 		scrollTimeout = null;
+// 	}, 100);
+// }
 </script>
 
 <div class="diff-viewer" class:comparing={isComparing}>

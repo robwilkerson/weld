@@ -134,6 +134,8 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * **Commit messages**: 
   * Keep subject line ≤ 50 characters for readability
   * Do NOT include "Generated with" or "Co-Authored-By" lines
+* **Pull requests**:
+  * Do NOT include "Generated with" or emoji robot lines in PR descriptions
 * Use pull requests for all merges to `main`
 * Run `wails build` and ensure no errors before merging
 

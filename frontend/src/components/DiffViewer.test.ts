@@ -16,8 +16,13 @@ vi.mock("../utils/diff", () => ({
 
 vi.mock("../utils/scrollSync", () => ({
 	calculateScrollToCenterLine: vi.fn(
-		(lineIndex, lineHeight, viewportHeight) => {
-			return lineIndex * lineHeight - viewportHeight / 2;
+		(lineIndex, lineHeight, viewportHeight, scrollHeight) => {
+			const idealScroll = lineIndex * lineHeight - viewportHeight / 2;
+			if (scrollHeight !== undefined) {
+				const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+				return Math.min(Math.max(0, idealScroll), maxScroll);
+			}
+			return Math.max(0, idealScroll);
 		},
 	),
 }));
@@ -72,6 +77,10 @@ describe("DiffViewer", () => {
 		areFilesIdentical: false,
 		isSameFile: false,
 		lineNumberWidth: "50px",
+		diffChunks: [
+			{ startIndex: 1, endIndex: 1 }, // removed line
+			{ startIndex: 2, endIndex: 2 }, // added line
+		],
 	};
 
 	beforeEach(() => {

@@ -45,6 +45,15 @@ describe("Minimap", () => {
 		{ startIndex: 11, endIndex: 13 },
 	];
 
+	// Mock diff lines to match the chunks
+	const mockDiffLines = Array(14).fill(null).map((_, i) => {
+		if (i >= 0 && i <= 4) return { type: "same", leftNumber: i + 1, rightNumber: i + 1 };
+		if (i >= 5 && i <= 7) return { type: "added", leftNumber: null, rightNumber: i + 1 };
+		if (i >= 8 && i <= 10) return { type: "removed", leftNumber: i - 7 + 6, rightNumber: null };
+		if (i >= 11 && i <= 13) return { type: "modified", leftNumber: i - 11 + 9, rightNumber: i - 11 + 9 };
+		return { type: "same", leftNumber: i + 1, rightNumber: i + 1 };
+	});
+
 	it("should not render when show is false", () => {
 		const { container } = render(Minimap, {
 			show: false,
@@ -81,6 +90,8 @@ describe("Minimap", () => {
 			show: true,
 			lineChunks: mockLineChunks,
 			totalLines: 20,
+			diffChunks: mockDiffChunks,
+			diffLines: mockDiffLines,
 		});
 
 		const chunks = container.querySelectorAll(".minimap-chunk");
@@ -99,6 +110,7 @@ describe("Minimap", () => {
 			totalLines: 20,
 			currentDiffChunkIndex: 1,
 			diffChunks: mockDiffChunks,
+			diffLines: mockDiffLines,
 		});
 
 		const currentChunk = container.querySelector(".minimap-current");
@@ -175,6 +187,8 @@ describe("Minimap", () => {
 			show: true,
 			lineChunks: mockLineChunks,
 			totalLines: 20,
+			diffChunks: mockDiffChunks,
+			diffLines: mockDiffLines,
 		});
 
 		const addedChunk = container.querySelector(".minimap-added");
@@ -186,10 +200,13 @@ describe("Minimap", () => {
 			show: true,
 			lineChunks: mockLineChunks,
 			totalLines: 20,
+			diffChunks: mockDiffChunks,
+			diffLines: mockDiffLines,
 		});
 
 		const addedChunk = container.querySelector(".minimap-added");
 		expect(addedChunk).toHaveAttribute("data-chunk-start", "5");
 		expect(addedChunk).toHaveAttribute("data-chunk-lines", "3");
+		expect(addedChunk).toHaveAttribute("data-chunk-index", "0");
 	});
 });
