@@ -30,6 +30,10 @@
 - [x] Add Go > Previous Diff and Go > Next Diff menu items
 - [x] Fix broken frontend tests by adding UpdateDiffNavigationMenuItems to mocks
 - [x] Fix app to reject binary files with error instead of displaying garbled content
+- [x] Fix navigation scrolling - diffs weren't centering properly due to Svelte prop timing
+- [x] Fix multiple activity indicators showing for multi-line diff chunks
+- [x] Fix minimap not highlighting current diff on keyboard navigation
+- [x] Fix minimap not showing all diff chunks correctly
 
 ## Medium Priority
 

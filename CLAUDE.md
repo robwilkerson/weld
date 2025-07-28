@@ -139,6 +139,13 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * Use pull requests for all merges to `main`
 * Run `wails build` and ensure no errors before merging
 
+### Task Management
+
+* **TODO.md is the canonical todo list** - keep it updated as tasks are completed or added
+* When completing a task, move it to the appropriate "Completed" section
+* When finding new bugs or needed improvements, add them to the appropriate priority section
+* Use checkbox format: `- [ ]` for pending, `- [x]` for completed
+
 ### Post-Merge Cleanup
 
 After a PR is merged:
