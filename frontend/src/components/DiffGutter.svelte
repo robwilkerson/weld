@@ -58,35 +58,36 @@ export function setScrollLeft(scrollLeft: number): void {
 	<div class="gutter-content" style="height: calc({lines.length} * var(--line-height));">
 		{#each lines as line, index}
 			{@const chunk = getChunkForLine(index)}
-			{@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
+			{@const diffChunk = diffChunks.find(c => index >= c.startIndex && index <= c.endIndex)}
+			{@const isFirstInDiffChunk = diffChunk && index === diffChunk.startIndex}
 			{@const isLastInChunk = chunk ? index === chunk.endIndex : false}
 			
-			<div class="gutter-line {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
-			{#if chunk && isFirstInChunk}
-				<!-- Show chunk arrows only on the first line of the chunk -->
-				<div class="chunk-actions" style="--chunk-height: {chunk.lines};">
-					{#if isLineHighlighted(index)}
+			<div class="gutter-line {chunk && isFirstLineOfChunk(index, chunk) ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
+			{#if diffChunk && isFirstInDiffChunk && line.type !== 'same'}
+				<!-- Show chunk arrows only on the first line of the diff chunk -->
+				<div class="chunk-actions" style="--chunk-height: {diffChunk.endIndex - diffChunk.startIndex + 1};">
+					{#if currentDiffChunkIndex !== -1 && diffChunks[currentDiffChunkIndex] && diffChunk.startIndex === diffChunks[currentDiffChunkIndex].startIndex}
 						<div class="current-diff-indicator" title="Current diff"></div>
 					{/if}
-					{#if chunk.type === 'added'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromRight', chunk)} title="Delete chunk from right ({chunk.lines} lines)">
+					{#if line.type === 'added'}
+						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromRight', chunk)} title="Delete chunk from right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							→
 						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToLeft', chunk)} title="Copy chunk to left ({chunk.lines} lines)">
+						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToLeft', chunk)} title="Copy chunk to left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							←
 						</button>
-					{:else if chunk.type === 'removed'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToRight', chunk)} title="Copy chunk to right ({chunk.lines} lines)">
+					{:else if line.type === 'removed'}
+						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToRight', chunk)} title="Copy chunk to right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							→
 						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromLeft', chunk)} title="Delete chunk from left ({chunk.lines} lines)">
+						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromLeft', chunk)} title="Delete chunk from left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							←
 						</button>
-					{:else if chunk.type === 'modified'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToRight', chunk)} title="Copy left version to right ({chunk.lines} lines)">
+					{:else if line.type === 'modified'}
+						<button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToRight', chunk)} title="Copy left version to right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							→
 						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToLeft', chunk)} title="Copy right version to left ({chunk.lines} lines)">
+						<button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToLeft', chunk)} title="Copy right version to left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
 							←
 						</button>
 					{/if}
