@@ -8,3 +8,9 @@ coverage/
 
 # Vite temporary files
 *.timestamp-*.mjs
+
+# Playwright E2E test artifacts
+tests/e2e/browsers/
+frontend/tests/e2e/browsers/
+frontend/tests/e2e/test-results/
+frontend/tests/e2e/playwright-report/
