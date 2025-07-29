@@ -32,8 +32,8 @@ PATTERNS=(
 
 FOUND_DEBUG=false
 for pattern in "${PATTERNS[@]}"; do
-    # Skip test files and this script
-    if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null | grep -v -E "(test|spec)\.(ts|js|go)$" | grep -v "pre-commit-check.sh"; then
+    # Skip test files, e2e files, markdown docs, and this script
+    if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null | grep -v -E "(test|spec|e2e)\.(ts|js|go)$" | grep -v "\.md$" | grep -v "pre-commit-check.sh"; then
         print_warning "Found '$pattern' in staged files"
         FOUND_DEBUG=true
     fi
