@@ -83,7 +83,8 @@ jobs:
       run: bunx playwright install --with-deps chromium
     
     # Start Wails dev server in background for E2E tests
-    - name: Start Wails dev server
+    - name: Start Wails dev server (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: |
         echo "Starting Wails dev server..."
         echo "Go version: $(go version)"
@@ -122,6 +123,59 @@ jobs:
         fi
         echo "Wails dev server is ready"
     
+    # Start Wails dev server in background for E2E tests (Windows)
+    - name: Start Wails dev server (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "Starting Wails dev server..."
+        go version
+        wails version
+        
+        # Check if frontend build exists
+        if (!(Test-Path "frontend/dist")) {
+          echo "Frontend dist directory not found, building..."
+          cd frontend; bun run build; cd ..
+        }
+        
+        # Start Wails dev server in background
+        Start-Process -FilePath "wails" -ArgumentList "dev" -RedirectStandardOutput "wails.log" -RedirectStandardError "wails.log" -NoNewWindow
+        
+        # Wait for dev server to be ready
+        $timeout = 60
+        while ($timeout -gt 0) {
+          try {
+            $response = Invoke-WebRequest -Uri "http://localhost:34115" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
+            break
+          } catch {
+            Start-Sleep -Seconds 1
+            $timeout--
+            if ($timeout -eq 30) {
+              echo "Still waiting for Wails dev server (30s elapsed)..."
+              if (Test-Path "wails.log") {
+                echo "Current log output:"
+                Get-Content "wails.log" -Tail 10
+              } else {
+                echo "No log output yet"
+              }
+            }
+          }
+        }
+        
+        if ($timeout -eq 0) {
+          echo "Wails dev server failed to start after 60 seconds"
+          if (Test-Path "wails.log") {
+            echo "Full wails.log contents:"
+            Get-Content "wails.log"
+          }
+          echo "System info:"
+          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion
+          echo "Available ports:"
+          netstat -an | Select-String ":34115"
+          exit 1
+        }
+        echo "Wails dev server is ready"
+      shell: pwsh
+    
     # Run E2E tests
     - name: Run E2E tests
       working-directory: frontend
@@ -129,14 +183,27 @@ jobs:
       env:
         CI: true
     
-    # Stop Wails dev server
-    - name: Stop Wails dev server
-      if: always()
+    # Stop Wails dev server (Linux/macOS)
+    - name: Stop Wails dev server (Linux/macOS)
+      if: always() && matrix.os != 'windows-latest'
       run: |
         if [ -f wails.pid ]; then
           kill $(cat wails.pid) || true
           rm wails.pid
         fi
+    
+    # Stop Wails dev server (Windows)
+    - name: Stop Wails dev server (Windows)
+      if: always() && matrix.os == 'windows-latest'
+      run: |
+        # Kill any wails processes
+        Get-Process -Name "wails" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        # Also kill any processes listening on port 34115
+        $processes = Get-NetTCPConnection -LocalPort 34115 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess
+        foreach ($proc in $processes) {
+          Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue
+        }
+      shell: pwsh
     
     # Upload E2E test results on failure
     - name: Upload E2E test results
