@@ -9,15 +9,17 @@
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
 - [ ] Improve type safety - Replace `any` types and non-null assertions
   - [ ] Replace 3 instances of `any` type in DiffViewer component refs
-  - [ ] Fix 12 non-null assertion warnings in tests
   - [ ] Create proper TypeScript interfaces for Svelte component refs
-- [ ] Improve keyboard navigation tests to verify actual navigation behavior
-- [ ] Improve copy operation tests to verify actual behavior (cursor advancement, state changes)
-- [ ] Improve minimap interaction tests to verify actual navigation and UI updates
-- [ ] Improve scroll synchronization tests to verify actual scroll position updates
-- [ ] Improve save/unsaved changes tests to verify actual file operations and UI state
-- [ ] Improve quit dialog tests to verify actual dialog appearance and behavior
-- [ ] Improve startup and initialization tests to verify actual behavior
+- [ ] Create E2E tests for remaining features
+  - [ ] Copy operations E2E tests (cursor advancement, state changes)
+  - [ ] Save operations E2E tests (file operations and UI state)
+  - [ ] Minimap interaction E2E tests (click to navigate, viewport dragging)
+  - [ ] File selection E2E tests (workflow and error handling)
+  - [ ] Quit dialog E2E tests (dialog appearance and behavior)
+- [ ] Remove redundant integration tests replaced by E2E
+  - [ ] minimap-interaction.test.ts (after E2E tests are created)
+  - [ ] copy-operations.test.ts (after E2E tests are created)
+  - [ ] save-operations.test.ts (after E2E tests are created)
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
@@ -38,6 +40,9 @@
 - [x] Fix multiple activity indicators showing for multi-line diff chunks
 - [x] Fix minimap not highlighting current diff on keyboard navigation
 - [x] Fix minimap not showing all diff chunks correctly
+- [x] Set up Playwright E2E testing infrastructure
+- [x] Create keyboard navigation E2E tests with UI verification
+- [x] Remove redundant keyboard-navigation.test.ts integration tests
 
 ## Medium Priority
 
@@ -78,8 +83,13 @@
 
 ## Notes
 
-### Test Improvements Needed
-The test improvement items focus on making our smoke tests more comprehensive by verifying actual behavior rather than just mocking everything. Currently many tests don't verify that the actual UI updates or state changes occur as expected.
+### Testing Strategy
+We now use Playwright for E2E testing to verify actual user interactions and UI behavior. E2E tests replace integration tests that only verified "no errors thrown" without checking actual behavior. The testing hierarchy is:
+- E2E tests (Playwright) - User workflows, visual feedback, real browser behavior
+- Integration tests (Vitest) - Complex component interactions, error states
+- Unit tests (Vitest) - Pure functions, business logic, edge cases
+
+See CLAUDE.md for detailed testing guidelines and when to use each type.
 
 ### Refactoring Goals
 The refactoring items aim to improve code organization by:
