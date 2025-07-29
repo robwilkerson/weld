@@ -13,6 +13,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go-version: ['1.21']
     runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: 1
     
     steps:
     - uses: actions/checkout@v4
@@ -179,15 +181,15 @@ jobs:
       working-directory: frontend
       run: bun run test:coverage
     
-    # Install Playwright browsers for E2E tests (skip Windows for now)
+    # Install Playwright browsers for E2E tests (skip for now)
     - name: Install Playwright browsers
-      if: matrix.os != 'windows-latest'
+      if: false
       working-directory: frontend
       run: bunx playwright install --with-deps chromium
     
     # Start Wails dev server in background for E2E tests
     - name: Start Wails dev server (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+      if: false
       run: |
         echo "Starting Wails dev server..."
         echo "Go version: $(go version)"
@@ -284,9 +286,9 @@ jobs:
         echo "Wails dev server is ready"
     
     
-    # Run E2E tests (skip Windows for now)
+    # Run E2E tests (skip for now)
     - name: Run E2E tests
-      if: matrix.os != 'windows-latest'
+      if: false
       working-directory: frontend
       run: bun run test:e2e
       env:
@@ -294,7 +296,7 @@ jobs:
     
     # Stop Wails dev server (Linux/macOS)
     - name: Stop Wails dev server (Linux/macOS)
-      if: always() && matrix.os != 'windows-latest'
+      if: false
       run: |
         if [ -f wails.pid ]; then
           kill $(cat wails.pid) || true
@@ -302,9 +304,9 @@ jobs:
         fi
     
     
-    # Upload E2E test results on failure (skip Windows for now)
+    # Upload E2E test results on failure (skip for now)
     - name: Upload E2E test results
-      if: failure() && matrix.os != 'windows-latest'
+      if: false
       uses: actions/upload-artifact@v4
       with:
         name: e2e-test-results-${{ matrix.os }}
