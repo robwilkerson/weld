@@ -85,6 +85,7 @@
     - [ ] time to display
     - [ ] ...
 - [ ] Make the file content editable directly
+- [ ] Implement E2E tests in CI for Linux and Windows platforms (currently macOS only)
 
 ## Notes
 
