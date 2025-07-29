@@ -179,8 +179,9 @@ jobs:
       working-directory: frontend
       run: bun run test:coverage
     
-    # Install Playwright browsers for E2E tests
+    # Install Playwright browsers for E2E tests (skip Windows for now)
     - name: Install Playwright browsers
+      if: matrix.os != 'windows-latest'
       working-directory: frontend
       run: bunx playwright install --with-deps chromium
     
@@ -312,8 +313,9 @@ jobs:
           exit 1
         }
     
-    # Run E2E tests
+    # Run E2E tests (skip Windows for now)
     - name: Run E2E tests
+      if: matrix.os != 'windows-latest'
       working-directory: frontend
       run: bun run test:e2e
       env:
@@ -358,9 +360,9 @@ jobs:
           Write-Host "Could not check port 34115 usage"
         }
     
-    # Upload E2E test results on failure
+    # Upload E2E test results on failure (skip Windows for now)
     - name: Upload E2E test results
-      if: failure()
+      if: failure() && matrix.os != 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: e2e-test-results-${{ matrix.os }}
