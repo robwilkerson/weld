@@ -38,14 +38,35 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
+        
+        # Install basic dependencies
+        sudo apt-get install -y libgtk-3-dev pkg-config
+        
         # Try to install both webkit versions for compatibility
-        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev || \
-        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+        echo "Attempting to install webkit packages..."
+        if ! sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev; then
+          echo "Failed to install both webkit versions, trying 4.1 only..."
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+        fi
+        
+        # List available webkit packages
+        echo "Available webkit packages:"
+        apt list --installed | grep webkit || echo "No webkit packages found"
+        
+        # Check pkg-config files
+        echo "Available webkit pkg-config files:"
+        ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep webkit || echo "No webkit .pc files found"
         
         # Create symlink for webkit2gtk-4.0 pointing to 4.1 if 4.0 is not available
         if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc ]; then
+          echo "Creating webkit2gtk-4.0.pc symlink..."
           sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc || true
         fi
+        
+        # Verify webkit setup
+        echo "Verifying webkit setup:"
+        pkg-config --exists webkit2gtk-4.0 && echo "webkit2gtk-4.0: OK" || echo "webkit2gtk-4.0: MISSING"
+        pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1: OK" || echo "webkit2gtk-4.1: MISSING"
     
     # Install Wails
     - name: Install Wails
@@ -53,7 +74,19 @@ jobs:
     
     # Verify Wails installation
     - name: Wails Doctor
-      run: wails doctor
+      run: |
+        echo "Running wails doctor..."
+        wails doctor
+        
+        # Additional verification for Linux
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          echo "Linux-specific checks:"
+          echo "CGO_ENABLED: $CGO_ENABLED"
+          echo "pkg-config webkit2gtk-4.0 check:"
+          pkg-config --modversion webkit2gtk-4.0 || echo "webkit2gtk-4.0 not found"
+          echo "pkg-config webkit2gtk-4.1 check:"
+          pkg-config --modversion webkit2gtk-4.1 || echo "webkit2gtk-4.1 not found"
+        fi
     
     # Frontend dependencies
     - name: Install frontend dependencies
@@ -96,6 +129,19 @@ jobs:
           cd frontend && bun run build && cd ..
         fi
         
+        # Try a quick compilation test first (Linux only)
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          echo "Testing Wails compilation on Linux..."
+          if ! timeout 30 wails build -nsis=false -debug > build-test.log 2>&1; then
+            echo "Wails build test failed, checking logs:"
+            cat build-test.log
+            echo "Continuing anyway, but dev server may fail..."
+          else
+            echo "Wails build test successful"
+          fi
+        fi
+        
+        echo "Starting wails dev server..."
         wails dev > wails.log 2>&1 &
         echo $! > wails.pid
         
