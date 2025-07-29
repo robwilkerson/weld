@@ -7,6 +7,10 @@
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
+- [ ] Improve type safety - Replace `any` types and non-null assertions
+  - [ ] Replace 3 instances of `any` type in DiffViewer component refs
+  - [ ] Fix 12 non-null assertion warnings in tests
+  - [ ] Create proper TypeScript interfaces for Svelte component refs
 - [ ] Improve keyboard navigation tests to verify actual navigation behavior
 - [ ] Improve copy operation tests to verify actual behavior (cursor advancement, state changes)
 - [ ] Improve minimap interaction tests to verify actual navigation and UI updates

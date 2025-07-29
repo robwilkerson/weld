@@ -33,6 +33,7 @@ export let hasCompletedComparison: DiffViewerProps["hasCompletedComparison"];
 export let areFilesIdentical: DiffViewerProps["areFilesIdentical"];
 export let isSameFile: DiffViewerProps["isSameFile"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
+// biome-ignore lint/style/useConst: Needs to be reassignable for reactive updates
 export let diffChunks: { startIndex: number; endIndex: number }[] = [];
 
 // Component refs for scroll synchronization
@@ -54,6 +55,7 @@ const dispatch = createEventDispatcher<DiffViewerEvents>();
 let lineChunks: LineChunk[] = [];
 
 // Track timeout for cleanup
+// biome-ignore lint/style/useConst: May need to be reassigned in future updates
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Cleanup on destroy
