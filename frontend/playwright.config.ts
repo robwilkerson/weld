@@ -1,12 +1,7 @@
-import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig } from '@playwright/test';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Store browsers in project directory
-process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(__dirname, 'tests/e2e/browsers');
+// Note: Let Playwright use default browser installation location
+// Custom PLAYWRIGHT_BROWSERS_PATH can cause issues in CI
 
 export default defineConfig({
   testDir: './tests/e2e',
