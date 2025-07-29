@@ -69,37 +69,37 @@ else
     print_success "Frontend tests passed"
 fi
 
-# 5. Check if E2E tests should run
-echo -e "\n🤔 Checking if E2E tests are needed..."
-# Check if any frontend files were changed
-if git diff --name-only origin/main...HEAD | grep -q "frontend/src/"; then
-    print_info "Frontend changes detected. E2E tests recommended."
+# 5. Run E2E tests
+echo -e "\n🎭 Running E2E tests..."
+
+# Check if wails dev is running
+if ! curl -s http://localhost:34115 > /dev/null; then
+    print_error "Wails dev server is not running!"
+    print_info "Please start it with 'wails dev' in another terminal"
+    CHECKS_PASSED=false
+else
+    START_TIME=$(date +%s)
     
-    # Check if wails dev is running
-    if ! curl -s http://localhost:34115 > /dev/null; then
-        print_warning "Wails dev server is not running. Start it with 'wails dev' to run E2E tests."
-        print_info "Skipping E2E tests for now..."
+    if ! bun run test:e2e > /tmp/e2e-test.log 2>&1; then
+        print_error "E2E tests failed"
+        echo "See /tmp/e2e-test.log for details"
+        # Show last few lines of the log for quick debugging
+        echo -e "\nLast 20 lines of E2E test output:"
+        tail -20 /tmp/e2e-test.log
+        CHECKS_PASSED=false
     else
-        echo -e "\n🎭 Running E2E tests..."
-        START_TIME=$(date +%s)
+        END_TIME=$(date +%s)
+        RUNTIME=$((END_TIME - START_TIME))
         
-        if ! bun run test:e2e > /tmp/e2e-test.log 2>&1; then
-            print_error "E2E tests failed"
-            echo "See /tmp/e2e-test.log for details"
-            CHECKS_PASSED=false
+        # Count how many tests ran
+        TEST_COUNT=$(grep -E "✓|✘" /tmp/e2e-test.log | wc -l | tr -d ' ')
+        
+        if [ $RUNTIME -gt 60 ]; then
+            print_warning "E2E tests passed ($TEST_COUNT tests) but took ${RUNTIME}s (>60s threshold)"
         else
-            END_TIME=$(date +%s)
-            RUNTIME=$((END_TIME - START_TIME))
-            
-            if [ $RUNTIME -gt 60 ]; then
-                print_warning "E2E tests passed but took ${RUNTIME}s (>60s threshold)"
-            else
-                print_success "E2E tests passed in ${RUNTIME}s"
-            fi
+            print_success "E2E tests passed ($TEST_COUNT tests) in ${RUNTIME}s"
         fi
     fi
-else
-    print_info "No frontend changes detected. Skipping E2E tests."
 fi
 
 cd ..

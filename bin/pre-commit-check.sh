@@ -73,8 +73,8 @@ else
     print_info "No Go files to check"
 fi
 
-# Get list of staged frontend files
-STAGED_FRONTEND_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "frontend/src/.*\.(ts|js|svelte)$" || true)
+# Get list of staged frontend files (including E2E tests)
+STAGED_FRONTEND_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "frontend/(src|tests/e2e)/.*\.(ts|js|svelte)$" || true)
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
     cd frontend
     # Create a temporary file list for biome
@@ -146,7 +146,32 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
     fi
 fi
 
-# 4. Check commit message (this is critical - always check)
+# 4. Run E2E tests if frontend files changed
+if [ -n "$STAGED_FRONTEND_FILES" ]; then
+    echo -e "\n🎭 Checking if E2E tests should run..."
+    
+    # Check if wails dev server is running
+    if curl -s http://localhost:34115 > /dev/null 2>&1; then
+        print_info "Wails dev server detected. Running E2E tests..."
+        cd frontend
+        
+        # Run E2E tests (they have their own timeout in playwright.config.ts)
+        if ! bun run test:e2e > /tmp/e2e-test-commit.log 2>&1; then
+            print_error "E2E tests failed or timed out (2 min limit)"
+            echo "See /tmp/e2e-test-commit.log for details"
+            print_info "You can skip with --no-verify, but please ensure E2E tests pass before pushing"
+            CHECKS_PASSED=false
+        else
+            print_success "E2E tests passed"
+        fi
+        cd ..
+    else
+        print_warning "Wails dev server not running. Skipping E2E tests."
+        print_info "Start with 'wails dev' to run E2E tests during pre-commit"
+    fi
+fi
+
+# 5. Check commit message (this is critical - always check)
 echo -e "\n📝 Checking commit message..."
 
 # Get the commit message from either the file or stdin
