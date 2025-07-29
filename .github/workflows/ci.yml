@@ -257,61 +257,6 @@ jobs:
         fi
         echo "Wails dev server is ready"
     
-    # Start Wails dev server in background for E2E tests (Windows)
-    - name: Start Wails dev server (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        Write-Host "Starting Wails dev server..."
-        go version
-        wails version
-        
-        # Check if frontend build exists
-        if (!(Test-Path "frontend/dist")) {
-          Write-Host "Frontend dist directory not found, building..."
-          Set-Location frontend
-          bun run build
-          Set-Location ..
-        }
-        
-        # Start Wails dev server in background
-        Write-Host "Starting wails dev process..."
-        $process = Start-Process -FilePath "wails" -ArgumentList "dev" -RedirectStandardOutput "wails.log" -RedirectStandardError "wails.log" -PassThru -NoNewWindow
-        
-        # Wait for dev server to be ready
-        $timeout = 60
-        while ($timeout -gt 0) {
-          try {
-            $response = Invoke-WebRequest -Uri "http://localhost:34115" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
-            Write-Host "Wails dev server is ready"
-            break
-          } catch {
-            Start-Sleep -Seconds 1
-            $timeout--
-            if ($timeout -eq 30) {
-              Write-Host "Still waiting for Wails dev server (30s elapsed)..."
-              if (Test-Path "wails.log") {
-                Write-Host "Current log output:"
-                Get-Content "wails.log" -Tail 10
-              } else {
-                Write-Host "No log output yet"
-              }
-            }
-          }
-        }
-        
-        if ($timeout -eq 0) {
-          Write-Host "Wails dev server failed to start after 60 seconds"
-          if (Test-Path "wails.log") {
-            Write-Host "Full wails.log contents:"
-            Get-Content "wails.log"
-          }
-          Write-Host "System info:"
-          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion
-          Write-Host "Available ports:"
-          netstat -an | Select-String ":34115"
-          exit 1
-        }
     
     # Run E2E tests (skip Windows for now)
     - name: Run E2E tests
@@ -330,35 +275,6 @@ jobs:
           rm wails.pid
         fi
     
-    # Stop Wails dev server (Windows)
-    - name: Stop Wails dev server (Windows)
-      if: always() && matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        Write-Host "Stopping Wails dev server..."
-        # Kill any wails processes
-        try {
-          Get-Process -Name "wails" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          Write-Host "Stopped wails processes"
-        } catch {
-          Write-Host "No wails processes found"
-        }
-        
-        # Also kill any processes listening on port 34115
-        try {
-          $connections = Get-NetTCPConnection -LocalPort 34115 -ErrorAction SilentlyContinue
-          if ($connections) {
-            $processes = $connections | Select-Object -ExpandProperty OwningProcess
-            foreach ($proc in $processes) {
-              Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue
-              Write-Host "Stopped process $proc using port 34115"
-            }
-          } else {
-            Write-Host "No processes found using port 34115"
-          }
-        } catch {
-          Write-Host "Could not check port 34115 usage"
-        }
     
     # Upload E2E test results on failure (skip Windows for now)
     - name: Upload E2E test results
