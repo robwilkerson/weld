@@ -1,5 +1,10 @@
 name: CI
 
+# E2E Testing Strategy:
+# E2E tests run only on macOS due to Wails dev server compatibility issues in CI.
+# This is sufficient because our app's functionality is platform-agnostic and
+# unit tests + builds verify cross-platform compatibility on all platforms.
+
 on:
   push:
     branches: [ '**' ]
@@ -181,15 +186,27 @@ jobs:
       working-directory: frontend
       run: bun run test:coverage
     
-    # Install Playwright browsers for E2E tests (skip for now)
+    ##############################################################################
+    # E2E TESTS - MACOS ONLY
+    # 
+    # We run E2E tests only on macOS because:
+    # 1. Wails dev server has platform-specific issues in CI environments
+    # 2. Our app's functionality is platform-agnostic (text diffing, file ops)
+    # 3. Unit tests + builds verify cross-platform compatibility
+    # 4. E2E tests verify UI behavior which should be identical across platforms
+    #
+    # If platform-specific bugs arise, we can add targeted tests as needed.
+    ##############################################################################
+    
+    # Install Playwright browsers for E2E tests (macOS only)
     - name: Install Playwright browsers
-      if: false
+      if: matrix.os == 'macos-latest'
       working-directory: frontend
       run: bunx playwright install --with-deps chromium
     
-    # Start Wails dev server in background for E2E tests
-    - name: Start Wails dev server (Linux/macOS)
-      if: false
+    # Start Wails dev server in background for E2E tests (macOS only)
+    - name: Start Wails dev server
+      if: matrix.os == 'macos-latest'
       run: |
         echo "Starting Wails dev server..."
         echo "Go version: $(go version)"
@@ -201,112 +218,50 @@ jobs:
           cd frontend && bun run build && cd ..
         fi
         
-        # Try a quick compilation test first (Linux only)
-        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          echo "Testing Wails compilation on Linux..."
-          echo "Available webkit libraries:"
-          find /usr/lib -name "*webkit*" 2>/dev/null | head -10
-          echo "pkg-config test:"
-          pkg-config --cflags --libs webkit2gtk-4.0 || echo "webkit2gtk-4.0 pkg-config failed"
-          
-          echo "CGO environment:"
-          echo "CGO_ENABLED: ${CGO_ENABLED:-not set}"
-          echo "CGO_CFLAGS: ${CGO_CFLAGS:-not set}"
-          echo "CGO_LDFLAGS: ${CGO_LDFLAGS:-not set}"
-          
-          if ! timeout 45 wails build -nsis=false -debug > build-test.log 2>&1; then
-            echo "WARNING: Wails build test failed, but continuing anyway..."
-            echo "Build log (last 50 lines):"
-            tail -50 build-test.log
-            
-            echo "Checking for webkit issues:"
-            grep -i "webkit" build-test.log | head -10 || echo "No webkit errors found"
-            
-            echo "Checking for CGO issues:"
-            grep -i "cgo\|gcc\|clang" build-test.log | head -10 || echo "No CGO errors found"
-            
-            echo "NOTE: Dev server may fail due to compilation issues"
-          else
-            echo "Wails build test successful"
-          fi
-        fi
-        
         echo "Starting wails dev server..."
         wails dev > wails.log 2>&1 &
         WAILS_PID=$!
         echo $WAILS_PID > wails.pid
-        
-        # Give it a moment to start
-        sleep 5
-        
-        # Check if process is still running
-        if ! ps -p $WAILS_PID > /dev/null; then
-          echo "ERROR: Wails dev server died immediately"
-          echo "Wails log contents:"
-          cat wails.log
-          exit 1
-        fi
         
         # Wait for dev server to be ready
         timeout=60
         while ! curl -s http://localhost:34115 > /dev/null && [ $timeout -gt 0 ]; do
           sleep 1
           timeout=$((timeout - 1))
-          if [ $((60 - timeout)) -eq 15 ]; then
-            echo "Still waiting for Wails dev server (15s elapsed)..."
-            echo "Last 20 lines of wails.log:"
-            tail -20 wails.log || echo "No log output yet"
-          fi
           if [ $((60 - timeout)) -eq 30 ]; then
             echo "Still waiting for Wails dev server (30s elapsed)..."
-            echo "Checking if process is still alive:"
-            ps -p $WAILS_PID || echo "Process died"
-            echo "Last 30 lines of wails.log:"
-            tail -30 wails.log || echo "No log output yet"
           fi
         done
         
         if [ $timeout -eq 0 ]; then
           echo "Wails dev server failed to start after 60 seconds"
-          echo "Full wails.log contents:"
+          echo "Wails log contents:"
           cat wails.log
-          echo "System info:"
-          echo "OS: $(uname -a)"
-          echo "Available ports:"
-          netstat -tuln | grep :34115 || echo "Port 34115 not found"
-          
-          # On Linux, show additional library info
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            echo "Library dependencies:"
-            ldd $(which wails) 2>&1 || echo "Could not check wails dependencies"
-          fi
-          
           exit 1
         fi
         echo "Wails dev server is ready"
     
     
-    # Run E2E tests (skip for now)
+    # Run E2E tests (macOS only)
     - name: Run E2E tests
-      if: false
+      if: matrix.os == 'macos-latest'
       working-directory: frontend
       run: bun run test:e2e
       env:
         CI: true
     
-    # Stop Wails dev server (Linux/macOS)
-    - name: Stop Wails dev server (Linux/macOS)
-      if: false
+    # Stop Wails dev server (macOS only)
+    - name: Stop Wails dev server
+      if: always() && matrix.os == 'macos-latest'
       run: |
         if [ -f wails.pid ]; then
           kill $(cat wails.pid) || true
           rm wails.pid
         fi
     
-    
-    # Upload E2E test results on failure (skip for now)
+    # Upload E2E test results on failure (macOS only)
     - name: Upload E2E test results
-      if: false
+      if: failure() && matrix.os == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
         name: e2e-test-results-${{ matrix.os }}
