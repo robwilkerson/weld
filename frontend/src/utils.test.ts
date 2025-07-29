@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createMockKeyboardEvent } from "./tests/helpers/testUtils";
 import {
 	computeInlineDiff,
 	escapeHtml,
@@ -260,13 +261,10 @@ describe("Keyboard Utilities", () => {
 				writable: true,
 			});
 
-			const mockEvent = {
-				key: "s",
-				ctrlKey: true,
-				metaKey: false,
+			const mockEvent = createMockKeyboardEvent("s", {
 				preventDefault: vi.fn(),
-				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
-			} as any;
+				ctrlKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -295,13 +293,10 @@ describe("Keyboard Utilities", () => {
 				writable: true,
 			});
 
-			const mockEvent = {
-				key: "s",
-				ctrlKey: false,
-				metaKey: true,
+			const mockEvent = createMockKeyboardEvent("s", {
 				preventDefault: vi.fn(),
-				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
-			} as any;
+				metaKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -322,13 +317,10 @@ describe("Keyboard Utilities", () => {
 			const mockSaveLeftFile = vi.fn();
 			const mockSaveRightFile = vi.fn();
 
-			const mockEvent = {
-				key: "a",
-				ctrlKey: true,
-				metaKey: false,
+			const mockEvent = createMockKeyboardEvent("a", {
 				preventDefault: vi.fn(),
-				// biome-ignore lint/suspicious/noExplicitAny: Mock object for testing
-			} as any;
+				ctrlKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -349,14 +341,11 @@ describe("Keyboard Utilities", () => {
 		it("should handle Shift+L for copy right to left", () => {
 			const mockCopyRightToLeft = vi.fn();
 
-			const mockEvent = {
-				key: "L",
-				shiftKey: true,
-				ctrlKey: false,
-				metaKey: false,
-				altKey: false,
+			const mockEvent = createMockKeyboardEvent("L", {
 				preventDefault: vi.fn(),
-			} as any;
+				shiftKey: true,
+				altKey: false,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -376,14 +365,11 @@ describe("Keyboard Utilities", () => {
 		it("should handle Shift+H for copy left to right", () => {
 			const mockCopyLeftToRight = vi.fn();
 
-			const mockEvent = {
-				key: "H",
-				shiftKey: true,
-				ctrlKey: false,
-				metaKey: false,
-				altKey: false,
+			const mockEvent = createMockKeyboardEvent("H", {
 				preventDefault: vi.fn(),
-			} as any;
+				shiftKey: true,
+				altKey: false,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -404,10 +390,9 @@ describe("Keyboard Utilities", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
 
-			const mockEvent = {
-				key: "ArrowDown",
+			const mockEvent = createMockKeyboardEvent("ArrowDown", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -430,10 +415,9 @@ describe("Keyboard Utilities", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
 
-			const mockEvent = {
-				key: "j",
+			const mockEvent = createMockKeyboardEvent("j", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -455,10 +439,9 @@ describe("Keyboard Utilities", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
 
-			const mockEvent = {
-				key: "ArrowUp",
+			const mockEvent = createMockKeyboardEvent("ArrowUp", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -481,10 +464,9 @@ describe("Keyboard Utilities", () => {
 			const mockJumpToNext = vi.fn();
 			const mockJumpToPrev = vi.fn();
 
-			const mockEvent = {
-				key: "k",
+			const mockEvent = createMockKeyboardEvent("k", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -511,12 +493,10 @@ describe("Keyboard Utilities", () => {
 				writable: true,
 			});
 
-			const mockEvent = {
-				key: "z",
-				ctrlKey: true,
-				metaKey: false,
+			const mockEvent = createMockKeyboardEvent("z", {
 				preventDefault: vi.fn(),
-			} as any;
+				ctrlKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -542,12 +522,10 @@ describe("Keyboard Utilities", () => {
 				writable: true,
 			});
 
-			const mockEvent = {
-				key: "z",
-				ctrlKey: false,
-				metaKey: true,
+			const mockEvent = createMockKeyboardEvent("z", {
 				preventDefault: vi.fn(),
-			} as any;
+				metaKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -567,10 +545,9 @@ describe("Keyboard Utilities", () => {
 		it("should handle u key for undo", () => {
 			const mockUndo = vi.fn();
 
-			const mockEvent = {
-				key: "u",
+			const mockEvent = createMockKeyboardEvent("u", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -588,10 +565,9 @@ describe("Keyboard Utilities", () => {
 		});
 
 		it("should not call navigation callbacks if they are not provided", () => {
-			const mockEvent = {
-				key: "j",
+			const mockEvent = createMockKeyboardEvent("j", {
 				preventDefault: vi.fn(),
-			} as any;
+			});
 
 			handleKeydown(
 				mockEvent,
@@ -618,12 +594,10 @@ describe("Keyboard Utilities", () => {
 				writable: true,
 			});
 
-			const mockEvent = {
-				key: "s",
-				ctrlKey: true,
-				metaKey: false,
+			const mockEvent = createMockKeyboardEvent("s", {
 				preventDefault: vi.fn(),
-			} as any;
+				ctrlKey: true,
+			});
 
 			handleKeydown(
 				mockEvent,

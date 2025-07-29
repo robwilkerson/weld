@@ -222,7 +222,7 @@ describe("Edge Cases and Special File Handling", () => {
 
 	// Test: Binary file handling
 	it("should handle binary files and display content", async () => {
-		const { container, getByText } = render(App);
+		const { container } = render(App);
 
 		// Mock SelectFile for binary file selection
 		vi.mocked(SelectFile)

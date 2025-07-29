@@ -8,6 +8,7 @@ describe("calculateDiffChunks", () => {
 	});
 
 	it("should return empty array for null input", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: Testing null input
 		expect(calculateDiffChunks(null as any)).toEqual([]);
 	});
 

@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
+import { clickElement } from "../helpers/testUtils";
 
 // Mock the Wails runtime
 vi.mock("../../../wailsjs/runtime/runtime.js", () => ({
@@ -81,7 +82,7 @@ describe("Save and Unsaved Changes Tests", () => {
 
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -183,7 +184,7 @@ describe("Save and Unsaved Changes Tests", () => {
 
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {

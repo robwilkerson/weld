@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
+import { clickElement } from "../helpers/testUtils";
 
 // Mock the Wails runtime
 vi.mock("../../../wailsjs/runtime/runtime.js", () => ({
@@ -71,7 +72,7 @@ describe("App Component - File Comparison", () => {
 		await fireEvent.click(rightButton);
 
 		// Click compare
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Should immediately show "Comparing..."
 		expect(compareButton?.textContent).toBe("Comparing...");
@@ -129,7 +130,7 @@ describe("App Component - File Comparison", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff viewer to appear and comparison to complete
 		await waitFor(() => {
@@ -183,7 +184,7 @@ describe("App Component - File Comparison", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for the "Files are identical" error message to appear
 		await waitFor(() => {
@@ -232,7 +233,7 @@ describe("App Component - File Comparison", () => {
 		});
 
 		// Compare the files
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for the same file warning banner to appear
 		await waitFor(() => {
@@ -274,7 +275,7 @@ describe("App Component - File Comparison", () => {
 		// Select files and try to compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for the error message to appear
 		await waitFor(() => {

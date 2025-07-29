@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.svelte";
+import { clickElement } from "../helpers/testUtils";
 
 // Mock the Wails runtime
 vi.mock("../../../wailsjs/runtime/runtime.js", () => ({
@@ -163,7 +164,7 @@ describe("App Component - Menu and Settings", () => {
 
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for the diff to render with minimap visible (GetMinimapVisible returns true)
 		await waitFor(() => {
@@ -233,7 +234,7 @@ describe("App Component - Menu and Settings", () => {
 		// Open the menu
 		const menuButton = container.querySelector(".menu-toggle");
 		expect(menuButton).toBeTruthy();
-		await fireEvent.click(menuButton!);
+		await clickElement(menuButton, "Menu button");
 
 		// Wait for menu to open
 		await waitFor(() => {
@@ -251,7 +252,7 @@ describe("App Component - Menu and Settings", () => {
 		expect(darkModeToggle?.textContent).toContain("🌙 Dark Mode");
 
 		// Click to toggle to dark mode
-		await fireEvent.click(darkModeToggle!);
+		await clickElement(darkModeToggle, "Dark mode toggle");
 
 		// Verify theme changed to dark
 		await waitFor(() => {
@@ -264,7 +265,7 @@ describe("App Component - Menu and Settings", () => {
 		expect(mockLocalStorage.theme).toBe("dark");
 
 		// Re-open menu to verify button text changed
-		await fireEvent.click(menuButton!);
+		await clickElement(menuButton, "Menu button");
 		await waitFor(() => {
 			const dropdown = container.querySelector(".dropdown-menu");
 			expect(dropdown).toBeTruthy();
@@ -282,7 +283,7 @@ describe("App Component - Menu and Settings", () => {
 		expect(lightModeToggle?.textContent).toContain("☀️ Light Mode");
 
 		// Toggle back to light mode
-		await fireEvent.click(lightModeToggle!);
+		await clickElement(lightModeToggle, "Light mode toggle");
 
 		// Verify theme changed back to light
 		await waitFor(() => {

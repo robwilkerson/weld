@@ -8,6 +8,7 @@ import {
 	SelectFile,
 } from "../../../wailsjs/go/main/App.js";
 import App from "../../App.svelte";
+import { clickElement } from "../helpers/testUtils";
 
 // Mock wails runtime and file handler functions
 vi.mock("../../../wailsjs/runtime/runtime.js", () => ({
@@ -80,7 +81,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -149,7 +150,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -218,7 +219,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -309,7 +310,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -400,7 +401,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -489,7 +490,7 @@ describe("App Component - Copy Operations", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {

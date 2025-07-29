@@ -9,6 +9,7 @@ import {
 	SelectFile,
 } from "../../../wailsjs/go/main/App";
 import App from "../../App.svelte";
+import { clickElement } from "../helpers/testUtils";
 
 // Mock Wails runtime
 vi.mock("../../../wailsjs/runtime", () => ({
@@ -221,7 +222,7 @@ describe("App Component - Keyboard Navigation", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load and verify it has loaded with highlights
 		await waitFor(() => {
@@ -281,7 +282,7 @@ describe("App Component - Keyboard Navigation", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -337,7 +338,7 @@ describe("App Component - Keyboard Navigation", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
@@ -383,7 +384,7 @@ describe("App Component - Keyboard Navigation", () => {
 		// Select files and compare
 		await fireEvent.click(leftButton);
 		await fireEvent.click(rightButton);
-		await fireEvent.click(compareButton!);
+		await clickElement(compareButton, "Compare button");
 
 		// Wait for diff to load
 		await waitFor(() => {
