@@ -21,6 +21,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
+        cache: false  # Disable Go module cache to avoid tar issues
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -84,17 +85,39 @@ jobs:
     # Start Wails dev server in background for E2E tests
     - name: Start Wails dev server
       run: |
+        echo "Starting Wails dev server..."
+        echo "Go version: $(go version)"
+        echo "Wails version: $(wails version)"
+        
+        # Check if frontend build exists
+        if [ ! -d "frontend/dist" ]; then
+          echo "Frontend dist directory not found, building..."
+          cd frontend && bun run build && cd ..
+        fi
+        
         wails dev > wails.log 2>&1 &
         echo $! > wails.pid
+        
         # Wait for dev server to be ready
         timeout=60
         while ! curl -s http://localhost:34115 > /dev/null && [ $timeout -gt 0 ]; do
           sleep 1
           timeout=$((timeout - 1))
+          if [ $((60 - timeout)) -eq 30 ]; then
+            echo "Still waiting for Wails dev server (30s elapsed)..."
+            echo "Current log output:"
+            tail -10 wails.log || echo "No log output yet"
+          fi
         done
+        
         if [ $timeout -eq 0 ]; then
-          echo "Wails dev server failed to start"
+          echo "Wails dev server failed to start after 60 seconds"
+          echo "Full wails.log contents:"
           cat wails.log
+          echo "System info:"
+          echo "OS: $(uname -a)"
+          echo "Available ports:"
+          netstat -tuln | grep :34115 || echo "Port 34115 not found"
           exit 1
         fi
         echo "Wails dev server is ready"

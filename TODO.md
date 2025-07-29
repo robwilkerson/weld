@@ -12,12 +12,11 @@
   - [ ] Create proper TypeScript interfaces for Svelte component refs
 - [ ] Create E2E tests for remaining features
   - [ ] Save operations E2E tests (file operations and UI state)
-  - [ ] Minimap interaction E2E tests (click to navigate, viewport dragging)
   - [ ] File selection E2E tests (workflow and error handling)
   - [ ] Quit dialog E2E tests (dialog appearance and behavior)
 - [ ] Remove redundant integration tests replaced by E2E
-  - [ ] minimap-interaction.test.ts (after E2E tests are created)
-  - [ ] save-operations.test.ts (after E2E tests are created)
+  - [ ] minimap-interaction.test.ts (after E2E tests complete)
+  - [ ] save-operations.test.ts (after E2E tests complete)
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
@@ -45,6 +44,10 @@
 - [x] Create copy operations E2E tests with full UI verification
 - [x] Fix copy operations E2E test failures
 - [x] Remove redundant copy-operations.test.ts integration tests
+- [x] Create minimap interaction E2E tests (click to navigate, viewport dragging, visibility toggle)
+- [x] Integrate E2E tests into pre-commit and pre-PR workflows
+- [x] Fix CI compatibility issues with Playwright browser paths
+- [x] Fix Linux CI webkit dependencies for Wails dev server
 
 ## Medium Priority
 
