@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Store browsers in project directory
-process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(__dirname, '../tests/e2e/browsers');
+process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(__dirname, 'tests/e2e/browsers');
 
 export default defineConfig({
   testDir: './tests/e2e',

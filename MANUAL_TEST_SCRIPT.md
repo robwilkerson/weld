@@ -1,6 +1,18 @@
 # Manual Test Script - Critical Gaps in Automated Testing
 
-This script covers functionality that our automated integration tests cannot verify due to test environment limitations. These are the critical behaviors that need manual verification, especially after refactoring.
+This script covers functionality that our automated tests cannot fully verify. With our new E2E test coverage using Playwright, we have significantly reduced the manual testing burden. This script now focuses on the remaining gaps that still require manual verification.
+
+## What's Now Covered by E2E Tests
+
+Our Playwright E2E tests now verify:
+- ✅ Keyboard navigation (j/k keys, boundary detection)
+- ✅ Copy operations (Shift+L, Shift+H shortcuts)
+- ✅ Arrow button copy operations
+- ✅ Save button state management
+- ✅ Undo functionality (Ctrl/Cmd+Z)
+- ✅ Discard all changes functionality
+- ✅ Current diff highlighting
+- ✅ Navigation after copy operations
 
 ## Test Environment Setup
 
@@ -13,55 +25,36 @@ This script covers functionality that our automated integration tests cannot ver
 
 ## 1. Keyboard Navigation & Copy Operations
 
-**Gap**: Automated tests can't verify actual cursor movement, visual feedback, or state changes
+**Coverage**: ✅ E2E tests cover navigation (`j`/`k`), copy shortcuts (`Shift+L`/`Shift+H`), arrow button clicks, and save button state changes
 
-### Test: Diff Navigation
-- [ ] Load `addfirst-1.js` vs `addfirst-2.js` and compare
-- [ ] Press `j` - verify cursor moves to next diff with visual highlight
-- [ ] Press `k` - verify cursor moves to previous diff
-- [ ] At first diff, press `k` - verify sound/feedback for boundary
-- [ ] At last diff, press `j` - verify sound/feedback for boundary
+**Remaining Gap**: Audio feedback and visual animations
+
+### Test: Audio/Visual Feedback
+- [ ] At first diff, press `k` - verify sound/beep for boundary
+- [ ] At last diff, press `j` - verify sound/beep for boundary
+- [ ] Verify smooth scroll animations when navigating
 - [ ] Press `g` - verify jumps to first diff (when implemented)
 - [ ] Press `G` - verify jumps to last diff (when implemented)
-
-### Test: Copy Operations with State Changes
-- [ ] Load `addmiddle-1.go` vs `addmiddle-2.go` and compare
-- [ ] Navigate to first diff with `j`
-- [ ] Press `Shift+L` - verify:
-  - [ ] Content copies from left to right
-  - [ ] Cursor advances to next diff automatically
-  - [ ] Save button enables for right file
-  - [ ] File path shows (no unsaved indicator exists in app)
-- [ ] Press `Shift+H` - verify:
-  - [ ] Content copies from right to left
-  - [ ] Cursor advances to next diff
-  - [ ] Save button enables for left file
-
-### Test: Arrow Button Copy Operations
-- [ ] Click arrow buttons in gutter between panes
-- [ ] Verify same behavior as keyboard shortcuts
-- [ ] Test both single-line and chunk copy operations
 
 ---
 
 ## 2. Save Operations & File State Management
 
-**Gap**: Automated tests can't verify actual file I/O or save button state changes
+**Coverage**: ✅ E2E tests verify save button enables/disables with copy operations, undo functionality
 
-### Test: Save Button State Management
-- [ ] Load any two different files and compare
-- [ ] Verify save buttons are disabled initially
-- [ ] Make a copy operation (`Shift+L`)
-- [ ] Verify right save button enables
+**Remaining Gap**: Actual file I/O and keyboard save shortcuts
+
+### Test: File I/O Operations
+- [ ] Make changes with copy operations
 - [ ] Click save button - verify:
-  - [ ] File actually saves to disk
-  - [ ] Save button disables again after save
-  - [ ] No crash or error
+  - [ ] File actually saves to disk (check file contents)
+  - [ ] No data corruption
+  - [ ] Timestamps update
 
 ### Test: Keyboard Save Operations
 - [ ] Make changes with copy operations
 - [ ] Press `Cmd/Ctrl+S` - verify:
-  - [ ] Files with unsaved changes are saved
+  - [ ] Files with unsaved changes are saved to disk
   - [ ] Files without changes are ignored
   - [ ] No crash occurs
 
@@ -243,13 +236,15 @@ This script covers functionality that our automated integration tests cannot ver
 
 ## Critical Issues to Watch For
 
-Based on our automated testing gaps, pay special attention to:
+With our improved E2E test coverage, the remaining critical areas for manual testing are:
 
 1. **Binary file rejection** - Should show error, not garbled content
-2. **Cursor advancement** - Should move to next diff after copy operations
+2. **File I/O operations** - Actual disk writes and data integrity
 3. **Scroll synchronization** - Both panes should stay in sync
 4. **Theme persistence** - Settings should survive app restart
 5. **Performance** - Large files should remain responsive
+6. **Audio feedback** - Boundary beeps and error sounds
+7. **Native dialogs** - File selection, quit confirmation
 
 ---
 

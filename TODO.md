@@ -11,14 +11,12 @@
   - [ ] Replace 3 instances of `any` type in DiffViewer component refs
   - [ ] Create proper TypeScript interfaces for Svelte component refs
 - [ ] Create E2E tests for remaining features
-  - [ ] Copy operations E2E tests (cursor advancement, state changes)
   - [ ] Save operations E2E tests (file operations and UI state)
   - [ ] Minimap interaction E2E tests (click to navigate, viewport dragging)
   - [ ] File selection E2E tests (workflow and error handling)
   - [ ] Quit dialog E2E tests (dialog appearance and behavior)
 - [ ] Remove redundant integration tests replaced by E2E
   - [ ] minimap-interaction.test.ts (after E2E tests are created)
-  - [ ] copy-operations.test.ts (after E2E tests are created)
   - [ ] save-operations.test.ts (after E2E tests are created)
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
@@ -43,6 +41,10 @@
 - [x] Set up Playwright E2E testing infrastructure
 - [x] Create keyboard navigation E2E tests with UI verification
 - [x] Remove redundant keyboard-navigation.test.ts integration tests
+- [x] Standardize E2E test patterns between test files
+- [x] Create copy operations E2E tests with full UI verification
+- [x] Fix copy operations E2E test failures
+- [x] Remove redundant copy-operations.test.ts integration tests
 
 ## Medium Priority
 
