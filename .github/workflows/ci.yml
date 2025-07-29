@@ -67,6 +67,12 @@ jobs:
         echo "Verifying webkit setup:"
         pkg-config --exists webkit2gtk-4.0 && echo "webkit2gtk-4.0: OK" || echo "webkit2gtk-4.0: MISSING"
         pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1: OK" || echo "webkit2gtk-4.1: MISSING"
+        
+        # Set CGO environment for better webkit compatibility
+        export CGO_ENABLED=1
+        export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
+        
+        echo "Set CGO_ENABLED=1 and PKG_CONFIG_PATH for webkit"
     
     # Install Wails (Linux/macOS)
     - name: Install Wails (Linux/macOS)
@@ -195,10 +201,28 @@ jobs:
         # Try a quick compilation test first (Linux only)
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
           echo "Testing Wails compilation on Linux..."
-          if ! timeout 30 wails build -nsis=false -debug > build-test.log 2>&1; then
-            echo "Wails build test failed, checking logs:"
+          echo "Available webkit libraries:"
+          find /usr/lib -name "*webkit*" 2>/dev/null | head -10
+          echo "pkg-config test:"
+          pkg-config --cflags --libs webkit2gtk-4.0 || echo "webkit2gtk-4.0 pkg-config failed"
+          
+          echo "CGO environment:"
+          echo "CGO_ENABLED: ${CGO_ENABLED:-not set}"
+          echo "CGO_CFLAGS: ${CGO_CFLAGS:-not set}"
+          echo "CGO_LDFLAGS: ${CGO_LDFLAGS:-not set}"
+          
+          if ! timeout 45 wails build -nsis=false -debug > build-test.log 2>&1; then
+            echo "Wails build test failed, full log:"
             cat build-test.log
-            echo "Continuing anyway, but dev server may fail..."
+            
+            echo "Checking specific compilation errors:"
+            grep -i "error\|fail\|webkit\|cgo" build-test.log || echo "No specific errors found"
+            
+            echo "Trying manual go build test:"
+            cd app && go build -v . 2>&1 | tail -20 || echo "Go build also failed"
+            cd ..
+            
+            exit 1
           else
             echo "Wails build test successful"
           fi
