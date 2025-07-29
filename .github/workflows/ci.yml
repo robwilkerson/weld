@@ -68,12 +68,37 @@ jobs:
         pkg-config --exists webkit2gtk-4.0 && echo "webkit2gtk-4.0: OK" || echo "webkit2gtk-4.0: MISSING"
         pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1: OK" || echo "webkit2gtk-4.1: MISSING"
     
-    # Install Wails
-    - name: Install Wails
+    # Install Wails (Linux/macOS)
+    - name: Install Wails (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
-    # Verify Wails installation
-    - name: Wails Doctor
+    # Install Wails (Windows)
+    - name: Install Wails (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Write-Host "Installing Wails on Windows..."
+        try {
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+          Write-Host "Wails installation completed"
+          
+          # Verify installation
+          $wailsPath = Get-Command wails -ErrorAction Stop
+          Write-Host "Wails installed at: $($wailsPath.Source)"
+          
+          # Show version
+          wails version
+        } catch {
+          Write-Host "Wails installation failed: $_"
+          Write-Host "Go environment:"
+          go env
+          throw "Failed to install Wails"
+        }
+    
+    # Verify Wails installation (Linux/macOS)
+    - name: Wails Doctor (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: |
         echo "Running wails doctor..."
         wails doctor
@@ -87,6 +112,44 @@ jobs:
           echo "pkg-config webkit2gtk-4.1 check:"
           pkg-config --modversion webkit2gtk-4.1 || echo "webkit2gtk-4.1 not found"
         fi
+    
+    # Verify Wails installation (Windows)
+    - name: Wails Doctor (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Write-Host "Running wails doctor on Windows..."
+        try {
+          wails doctor
+          Write-Host "Wails doctor completed successfully"
+        } catch {
+          Write-Host "Wails doctor failed with error: $_"
+          Write-Host "Checking Wails installation..."
+          
+          # Check if wails is in PATH
+          try {
+            $wailsPath = Get-Command wails -ErrorAction Stop
+            Write-Host "Wails found at: $($wailsPath.Source)"
+          } catch {
+            Write-Host "Wails not found in PATH"
+          }
+          
+          # Check Go installation
+          try {
+            go version
+            Write-Host "Go is working"
+          } catch {
+            Write-Host "Go is not working: $_"
+          }
+          
+          # Show environment info
+          Write-Host "Environment variables:"
+          Write-Host "GOPATH: $env:GOPATH"
+          Write-Host "GOROOT: $env:GOROOT"
+          Write-Host "PATH: $env:PATH"
+          
+          throw "Wails doctor failed"
+        }
     
     # Frontend dependencies
     - name: Install frontend dependencies
