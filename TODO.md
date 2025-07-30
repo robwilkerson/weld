@@ -10,12 +10,6 @@
 - [ ] Improve type safety - Replace `any` types and non-null assertions
   - [ ] Replace 3 instances of `any` type in DiffViewer component refs
   - [ ] Create proper TypeScript interfaces for Svelte component refs
-- [ ] Create E2E tests for remaining features
-  - [ ] File selection E2E tests (workflow and error handling)
-  - [ ] Quit dialog E2E tests (dialog appearance and behavior)
-- [ ] Remove redundant integration tests replaced by E2E
-  - [ ] minimap-interaction.test.ts (after E2E tests complete)
-  - [ ] save-operations.test.ts (after E2E tests complete)
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
@@ -48,6 +42,11 @@
 - [x] Fix CI compatibility issues with Playwright browser paths
 - [x] Fix Linux CI webkit dependencies for Wails dev server
 - [x] Create save operations E2E tests (7 passing tests, 3 skipped for menu event features)
+- [x] Create file selection E2E tests (workflow and error handling)
+- [x] Remove redundant integration tests replaced by E2E
+  - [x] minimap-interaction.test.ts
+  - [x] save-operations.test.ts
+  - [x] copy-operations.test.ts
 
 ## Medium Priority
 
