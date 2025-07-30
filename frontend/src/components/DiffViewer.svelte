@@ -1,4 +1,5 @@
 <script lang="ts">
+// Component for displaying file differences
 import { createEventDispatcher, onDestroy } from "svelte";
 import type {
 	DiffViewerEvents,
