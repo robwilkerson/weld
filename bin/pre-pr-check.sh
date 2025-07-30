@@ -69,7 +69,36 @@ else
     print_success "Frontend tests passed"
 fi
 
-# 5. Run E2E tests
+cd ..
+
+# 5. Build verification
+echo -e "\n🔨 Verifying build..."
+if ! wails build > /tmp/wails-build.log 2>&1; then
+    print_error "Build failed"
+    echo "See /tmp/wails-build.log for details"
+    CHECKS_PASSED=false
+else
+    print_success "Build succeeded"
+fi
+
+# 6. Check commit messages
+echo -e "\n📜 Checking commit messages..."
+LONG_SUBJECTS=$(git log origin/main..HEAD --format="%s" | while read -r subject; do
+    LENGTH=$(echo -n "$subject" | wc -c | tr -d ' ')
+    if [ "$LENGTH" -gt 50 ]; then
+        echo "  - \"$subject\" ($LENGTH chars)"
+    fi
+done)
+
+if [ -n "$LONG_SUBJECTS" ]; then
+    print_error "Some commit subjects exceed 50 characters:"
+    echo "$LONG_SUBJECTS"
+    CHECKS_PASSED=false
+else
+    print_success "All commit messages follow guidelines"
+fi
+
+# 7. Run E2E tests (run last to avoid multiple runs if other checks fail)
 echo -e "\n🎭 Running E2E tests..."
 
 # Check if wails dev is running
@@ -78,6 +107,7 @@ if ! curl -s http://localhost:34115 > /dev/null; then
     print_info "Please start it with 'wails dev' in another terminal"
     CHECKS_PASSED=false
 else
+    cd frontend
     START_TIME=$(date +%s)
     
     if ! bun run test:e2e > /tmp/e2e-test.log 2>&1; then
@@ -100,35 +130,7 @@ else
             print_success "E2E tests passed ($TEST_COUNT tests) in ${RUNTIME}s"
         fi
     fi
-fi
-
-cd ..
-
-# 6. Build verification
-echo -e "\n🔨 Verifying build..."
-if ! wails build > /tmp/wails-build.log 2>&1; then
-    print_error "Build failed"
-    echo "See /tmp/wails-build.log for details"
-    CHECKS_PASSED=false
-else
-    print_success "Build succeeded"
-fi
-
-# 7. Check commit messages
-echo -e "\n📜 Checking commit messages..."
-LONG_SUBJECTS=$(git log origin/main..HEAD --format="%s" | while read -r subject; do
-    LENGTH=$(echo -n "$subject" | wc -c | tr -d ' ')
-    if [ "$LENGTH" -gt 50 ]; then
-        echo "  - \"$subject\" ($LENGTH chars)"
-    fi
-done)
-
-if [ -n "$LONG_SUBJECTS" ]; then
-    print_error "Some commit subjects exceed 50 characters:"
-    echo "$LONG_SUBJECTS"
-    CHECKS_PASSED=false
-else
-    print_success "All commit messages follow guidelines"
+    cd ..
 fi
 
 # Final summary
