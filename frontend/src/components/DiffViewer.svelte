@@ -9,6 +9,7 @@ import type {
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getDisplayPath } from "../utils/diff";
 import { calculateScrollToCenterLine } from "../utils/scrollSync";
+import { throttle } from "../utils/throttle";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import DiffGutter from "./DiffGutter.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
@@ -187,60 +188,106 @@ function handleSaveRight(): void {
 	dispatch("saveRight");
 }
 
+// Flag to prevent recursive scroll sync
+let isSyncing = false;
+
 // Scroll sync handlers
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
-function syncLeftScroll(): void {
-	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const leftElement = leftPaneComponent.getElement?.();
-		if (!leftElement) return;
-
-		const scrollTop = leftElement.scrollTop;
-		const scrollLeft = leftElement.scrollLeft;
-
-		rightPaneComponent.setScrollTop(scrollTop);
-		rightPaneComponent.setScrollLeft(scrollLeft);
-		centerGutterComponent.setScrollTop(scrollTop);
-		centerGutterComponent.setScrollLeft(scrollLeft);
-		updateMinimapViewport();
+// Raw sync functions
+function syncLeftScrollImpl(): void {
+	if (
+		isSyncing ||
+		!leftPaneComponent ||
+		!rightPaneComponent ||
+		!centerGutterComponent
+	) {
+		return;
 	}
+
+	const leftElement = leftPaneComponent.getElement?.();
+	if (!leftElement) return;
+
+	isSyncing = true;
+	const scrollTop = leftElement.scrollTop;
+	const scrollLeft = leftElement.scrollLeft;
+
+	rightPaneComponent.setScrollTop(scrollTop);
+	rightPaneComponent.setScrollLeft(scrollLeft);
+	centerGutterComponent.setScrollTop(scrollTop);
+	centerGutterComponent.setScrollLeft(scrollLeft);
+
+	// Use requestAnimationFrame to ensure smooth updates
+	requestAnimationFrame(() => {
+		isSyncing = false;
+		updateMinimapViewport();
+	});
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
-function syncRightScroll(): void {
-	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const rightElement = rightPaneComponent.getElement?.();
-		if (!rightElement) return;
-
-		const scrollTop = rightElement.scrollTop;
-		const scrollLeft = rightElement.scrollLeft;
-
-		leftPaneComponent.setScrollTop(scrollTop);
-		leftPaneComponent.setScrollLeft(scrollLeft);
-		centerGutterComponent.setScrollTop(scrollTop);
-		centerGutterComponent.setScrollLeft(scrollLeft);
-		updateMinimapViewport();
+function syncRightScrollImpl(): void {
+	if (
+		isSyncing ||
+		!leftPaneComponent ||
+		!rightPaneComponent ||
+		!centerGutterComponent
+	) {
+		return;
 	}
+
+	const rightElement = rightPaneComponent.getElement?.();
+	if (!rightElement) return;
+
+	isSyncing = true;
+	const scrollTop = rightElement.scrollTop;
+	const scrollLeft = rightElement.scrollLeft;
+
+	leftPaneComponent.setScrollTop(scrollTop);
+	leftPaneComponent.setScrollLeft(scrollLeft);
+	centerGutterComponent.setScrollTop(scrollTop);
+	centerGutterComponent.setScrollLeft(scrollLeft);
+
+	requestAnimationFrame(() => {
+		isSyncing = false;
+		updateMinimapViewport();
+	});
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
-function syncCenterScroll(): void {
-	if (leftPaneComponent && rightPaneComponent && centerGutterComponent) {
-		const centerElement = centerGutterComponent.getElement?.();
-		if (!centerElement) return;
-
-		const scrollTop = centerElement.scrollTop;
-		const scrollLeft = centerElement.scrollLeft;
-
-		leftPaneComponent.setScrollTop(scrollTop);
-		leftPaneComponent.setScrollLeft(scrollLeft);
-		rightPaneComponent.setScrollTop(scrollTop);
-		rightPaneComponent.setScrollLeft(scrollLeft);
-		updateMinimapViewport();
+function syncCenterScrollImpl(): void {
+	if (
+		isSyncing ||
+		!leftPaneComponent ||
+		!rightPaneComponent ||
+		!centerGutterComponent
+	) {
+		return;
 	}
+
+	const centerElement = centerGutterComponent.getElement?.();
+	if (!centerElement) return;
+
+	isSyncing = true;
+	const scrollTop = centerElement.scrollTop;
+	const scrollLeft = centerElement.scrollLeft;
+
+	leftPaneComponent.setScrollTop(scrollTop);
+	leftPaneComponent.setScrollLeft(scrollLeft);
+	rightPaneComponent.setScrollTop(scrollTop);
+	rightPaneComponent.setScrollLeft(scrollLeft);
+
+	requestAnimationFrame(() => {
+		isSyncing = false;
+		updateMinimapViewport();
+	});
 }
 
-// Update minimap viewport
-function updateMinimapViewport(): void {
+// Throttled versions for scroll events (16ms = ~60fps)
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+const syncLeftScroll = throttle(syncLeftScrollImpl, 16);
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+const syncRightScroll = throttle(syncRightScrollImpl, 16);
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+const syncCenterScroll = throttle(syncCenterScrollImpl, 16);
+
+// Update minimap viewport implementation
+function updateMinimapViewportImpl(): void {
 	if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {
 		const leftElement = leftPaneComponent.getElement?.();
 		if (!leftElement) return;
@@ -253,6 +300,9 @@ function updateMinimapViewport(): void {
 		viewportHeight = (clientHeight / scrollHeight) * 100;
 	}
 }
+
+// Throttled version of minimap viewport update
+const updateMinimapViewport = throttle(updateMinimapViewportImpl, 32);
 
 // Update viewport when content changes
 $: if (leftPaneComponent && diffResult && diffResult.lines.length > 0) {

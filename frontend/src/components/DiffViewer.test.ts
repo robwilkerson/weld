@@ -5,6 +5,11 @@ import type { DiffViewerProps, HighlightedDiffLine } from "../types/diff";
 import DiffViewer from "./DiffViewer.svelte";
 
 // Mock the utilities
+vi.mock("../utils/throttle", () => ({
+	throttle: (fn: any) => fn,
+	debounce: (fn: any) => fn,
+}));
+
 vi.mock("../utils/diff", () => ({
 	getDisplayPath: vi.fn((leftPath, rightPath, isLeft) => {
 		const path = isLeft ? leftPath : rightPath;
