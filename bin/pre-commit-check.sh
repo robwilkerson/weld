@@ -126,14 +126,16 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
         # Convert source file to test file path
         TEST_FILE=$(echo "$file" | sed 's/\.svelte$/\.test\.ts/' | sed 's/\.ts$/\.test\.ts/' | sed 's/\.test\.test/\.test/')
         if [ -f "$TEST_FILE" ]; then
-            TEST_FILES="$TEST_FILES $(basename "$TEST_FILE")"
+            # Keep the path relative to frontend directory
+            RELATIVE_TEST_FILE=$(echo "$TEST_FILE" | sed 's|^frontend/||')
+            TEST_FILES="$TEST_FILES $RELATIVE_TEST_FILE"
         fi
     done
     
     if [ -n "$TEST_FILES" ]; then
         print_info "Running tests for changed frontend files..."
         cd frontend
-        if ! bun test $TEST_FILES > /tmp/frontend-test-commit.log 2>&1; then
+        if ! bun run test $TEST_FILES --run > /tmp/frontend-test-commit.log 2>&1; then
             print_error "Frontend tests failed"
             echo "See /tmp/frontend-test-commit.log for details"
             CHECKS_PASSED=false
