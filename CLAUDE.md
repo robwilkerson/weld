@@ -66,15 +66,85 @@ after frontend changes
 
 ## Testing
 
-Backend: Use `go test ./... -v --cover` for Go unit tests with coverage
-Frontend: Use `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
+### Testing Strategy
 
-### Frontend Test Commands
+We follow a clear testing hierarchy:
 
+**E2E Tests (Playwright)**
+- User workflows & interactions
+- Visual feedback & UI state changes  
+- Cross-component integration
+- Real browser behavior
+
+**Integration Tests (Vitest + Testing Library)**
+- Complex component interactions
+- State management flows
+- Error handling scenarios
+
+**Unit Tests (Vitest)**
+- Pure functions & utilities
+- Component props/events
+- Isolated business logic
+- Edge cases
+
+### When to Write Each Type
+
+**Write E2E tests for:**
+- User-facing features (navigation, copy operations, save)
+- Visual feedback (highlighting, indicators, animations)
+- Multi-step workflows
+- Cross-component coordination
+
+**Write Integration tests for:**
+- Complex component interactions that don't need visual verification
+- Error states that are hard to trigger in E2E
+- Performance-critical paths
+
+**Write Unit tests for:**
+- Pure functions (diff algorithms, utilities)
+- Component API contracts
+- Edge cases and error handling
+- Business logic
+
+### Test Commands
+
+Backend: `go test ./... -v --cover` for Go unit tests with coverage
+
+Frontend Unit/Integration: `cd frontend && bun run test:coverage` for tests with coverage
 * `bun run test` - Run tests once
 * `bun run test:coverage` - Run tests with coverage report
-* `bun run test:watch` - Run tests in watch mode (automatically re-runs on file changes)
+* `bun run test:watch` - Run tests in watch mode
 * `bun run test:ui` - Run tests with interactive UI
+
+Frontend E2E: `cd frontend && bun run test:e2e` (requires `wails dev` running)
+* `bun run test:e2e` - Run all E2E tests
+* `bun run test:e2e:ui` - Run E2E tests with UI mode for debugging
+* `bun run test:e2e -- --grep "test name"` - Run specific E2E test
+
+**Note**: E2E tests run automatically in CI on all pull requests and main branch pushes. The CI:
+- Starts `wails dev` in the background
+- Runs tests in headless mode
+- Records videos of all test runs
+- Uploads test results as artifacts on failure
+
+### E2E Test Organization
+
+E2E tests are organized by feature in `frontend/tests/e2e/`:
+```
+tests/e2e/
+├── keyboard-navigation.e2e.ts    # Navigation with j/k, arrows
+├── copy-operations.e2e.ts        # Copy left/right operations
+├── save-operations.e2e.ts        # Save and unsaved changes
+├── minimap-interaction.e2e.ts    # Minimap clicks and dragging
+└── file-selection.e2e.ts         # File selection workflow
+```
+
+### Testing Best Practices
+
+1. **No redundancy** - If E2E tests cover the user experience, remove integration tests that only verify "no errors"
+2. **Focus on user value** - E2E tests should verify what users actually see and do
+3. **Keep tests focused** - Each test file should cover one feature area
+4. **Mock appropriately** - E2E tests mock the Wails backend but test real UI behavior
 
 In the resources/ directory, there's a sample_files/ subdirectory that contains physical files that can be used to manually test very specific scenarios.
 
@@ -156,12 +226,77 @@ After a PR is merged:
 
 ### Pre-Commit Checklist
 
-**CRITICAL: Complete these checks before EVERY commit:**
+**Complete these checks before commits that touch code:**
 
 - [ ] Verify all changes are necessary - remove any failed attempts or debugging code
 - [ ] Run formatters: `go fmt` and `npx @biomejs/biome check --write frontend/src/`
-- [ ] Run tests if code was changed
+- [ ] Run relevant unit tests for changed files
 - [ ] Check commit subject line length: `echo -n "subject line" | wc -c` (MUST be ≤50 characters)
+
+**Automated Check**: Run `./bin/pre-commit-check.sh` or enable the Git hook:
+```bash
+# Enable automatic pre-commit checks
+git config core.hooksPath .githooks
+
+# Or run manually before each commit
+./bin/pre-commit-check.sh
+```
+
+The pre-commit script will:
+- Check for debugging code (console.log, fmt.Printf, TODO, etc.)
+- Run formatters on staged files only
+- Run tests for changed packages/files
+- Validate commit message length
+
+### Pre-PR Checklist
+
+**CRITICAL: Complete ALL checks before opening a Pull Request:**
+
+1. **Code Quality**
+   - [ ] All commits follow commit message guidelines (≤50 char subject)
+   - [ ] No debugging code, console.logs, or failed attempts
+   - [ ] Code follows existing patterns and conventions
+
+2. **Formatting & Linting**
+   - [ ] Backend: `go fmt ./...`
+   - [ ] Frontend: `npx @biomejs/biome check --write frontend/src/`
+   - [ ] No biome warnings or errors
+
+3. **Testing**
+   - [ ] Backend tests pass: `go test ./... -v`
+   - [ ] Frontend tests pass: `cd frontend && bun run test`
+   - [ ] Coverage is maintained or improved: `cd frontend && bun run test:coverage`
+
+4. **E2E Tests** (if UI/interaction changes)
+   - [ ] Start dev server: `wails dev` (in separate terminal)
+   - [ ] Run E2E tests: `cd frontend && bun run test:e2e`
+   - [ ] All E2E tests pass
+   - [ ] Note runtime: _______ seconds (flag if >60s)
+
+5. **Build Verification**
+   - [ ] Application builds: `wails build`
+   - [ ] No build warnings or errors
+
+6. **Manual Testing** (if applicable)
+   - [ ] Test the specific feature/fix manually
+   - [ ] Verify no regressions in related features
+   - [ ] Test on both light and dark themes
+
+7. **Documentation**
+   - [ ] Update TODO.md if completing/adding tasks
+   - [ ] Update CLAUDE.md if changing workflows
+   - [ ] Add code comments for complex logic
+
+**Note**: Skip E2E tests only if changes are purely backend, documentation, or non-UI refactoring. When in doubt, run them.
+
+**Automated Check**: Run `./bin/pre-pr-check.sh` to automatically execute most of these checks. The script will:
+- Check for uncommitted changes
+- Run all formatters
+- Execute backend and frontend tests
+- Run E2E tests if frontend files changed (and wails dev is running)
+- Verify the build works
+- Check commit message lengths
+- Report total E2E runtime if >60 seconds
 
 ### End-of-Day Checklist
 

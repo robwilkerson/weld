@@ -9,15 +9,7 @@
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
 - [ ] Improve type safety - Replace `any` types and non-null assertions
   - [ ] Replace 3 instances of `any` type in DiffViewer component refs
-  - [ ] Fix 12 non-null assertion warnings in tests
   - [ ] Create proper TypeScript interfaces for Svelte component refs
-- [ ] Improve keyboard navigation tests to verify actual navigation behavior
-- [ ] Improve copy operation tests to verify actual behavior (cursor advancement, state changes)
-- [ ] Improve minimap interaction tests to verify actual navigation and UI updates
-- [ ] Improve scroll synchronization tests to verify actual scroll position updates
-- [ ] Improve save/unsaved changes tests to verify actual file operations and UI state
-- [ ] Improve quit dialog tests to verify actual dialog appearance and behavior
-- [ ] Improve startup and initialization tests to verify actual behavior
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
@@ -38,6 +30,23 @@
 - [x] Fix multiple activity indicators showing for multi-line diff chunks
 - [x] Fix minimap not highlighting current diff on keyboard navigation
 - [x] Fix minimap not showing all diff chunks correctly
+- [x] Set up Playwright E2E testing infrastructure
+- [x] Create keyboard navigation E2E tests with UI verification
+- [x] Remove redundant keyboard-navigation.test.ts integration tests
+- [x] Standardize E2E test patterns between test files
+- [x] Create copy operations E2E tests with full UI verification
+- [x] Fix copy operations E2E test failures
+- [x] Remove redundant copy-operations.test.ts integration tests
+- [x] Create minimap interaction E2E tests (click to navigate, viewport dragging, visibility toggle)
+- [x] Integrate E2E tests into pre-commit and pre-PR workflows
+- [x] Fix CI compatibility issues with Playwright browser paths
+- [x] Fix Linux CI webkit dependencies for Wails dev server
+- [x] Create save operations E2E tests (7 passing tests, 3 skipped for menu event features)
+- [x] Create file selection E2E tests (workflow and error handling)
+- [x] Remove redundant integration tests replaced by E2E
+  - [x] minimap-interaction.test.ts
+  - [x] save-operations.test.ts
+  - [x] copy-operations.test.ts
 
 ## Medium Priority
 
@@ -75,11 +84,17 @@
     - [ ] time to display
     - [ ] ...
 - [ ] Make the file content editable directly
+- [ ] Implement E2E tests in CI for Linux and Windows platforms (currently macOS only)
 
 ## Notes
 
-### Test Improvements Needed
-The test improvement items focus on making our smoke tests more comprehensive by verifying actual behavior rather than just mocking everything. Currently many tests don't verify that the actual UI updates or state changes occur as expected.
+### Testing Strategy
+We now use Playwright for E2E testing to verify actual user interactions and UI behavior. E2E tests replace integration tests that only verified "no errors thrown" without checking actual behavior. The testing hierarchy is:
+- E2E tests (Playwright) - User workflows, visual feedback, real browser behavior
+- Integration tests (Vitest) - Complex component interactions, error states
+- Unit tests (Vitest) - Pure functions, business logic, edge cases
+
+See CLAUDE.md for detailed testing guidelines and when to use each type.
 
 ### Refactoring Goals
 The refactoring items aim to improve code organization by:

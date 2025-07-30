@@ -1,8 +1,13 @@
 name: CI
 
+# E2E Testing Strategy:
+# E2E tests run only on macOS due to Wails dev server compatibility issues in CI.
+# This is sufficient because our app's functionality is platform-agnostic and
+# unit tests + builds verify cross-platform compatibility on all platforms.
+
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]
   pull_request:
     branches: [ main ]
 
@@ -13,6 +18,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go-version: ['1.21']
     runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: 1
     
     steps:
     - uses: actions/checkout@v4
@@ -21,6 +28,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
+        cache: false  # Disable Go module cache to avoid tar issues
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -37,17 +45,124 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-        # Create symlink for webkit2gtk-4.0 pointing to 4.1
-        sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc || true
+        
+        # Install basic dependencies
+        sudo apt-get install -y libgtk-3-dev pkg-config
+        
+        # Try to install both webkit versions for compatibility
+        echo "Attempting to install webkit packages..."
+        if ! sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev; then
+          echo "Failed to install both webkit versions, trying 4.1 only..."
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+        fi
+        
+        # List available webkit packages
+        echo "Available webkit packages:"
+        apt list --installed | grep webkit || echo "No webkit packages found"
+        
+        # Check pkg-config files
+        echo "Available webkit pkg-config files:"
+        ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep webkit || echo "No webkit .pc files found"
+        
+        # Create symlink for webkit2gtk-4.0 pointing to 4.1 if 4.0 is not available
+        if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc ]; then
+          echo "Creating webkit2gtk-4.0.pc symlink..."
+          sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc || true
+        fi
+        
+        # Verify webkit setup
+        echo "Verifying webkit setup:"
+        pkg-config --exists webkit2gtk-4.0 && echo "webkit2gtk-4.0: OK" || echo "webkit2gtk-4.0: MISSING"
+        pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1: OK" || echo "webkit2gtk-4.1: MISSING"
+        
+        # Set CGO environment for better webkit compatibility
+        export CGO_ENABLED=1
+        export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
+        
+        echo "Set CGO_ENABLED=1 and PKG_CONFIG_PATH for webkit"
     
-    # Install Wails
-    - name: Install Wails
+    # Install Wails (Linux/macOS)
+    - name: Install Wails (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
-    # Verify Wails installation
-    - name: Wails Doctor
-      run: wails doctor
+    # Install Wails (Windows)
+    - name: Install Wails (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Write-Host "Installing Wails on Windows..."
+        try {
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+          Write-Host "Wails installation completed"
+          
+          # Verify installation
+          $wailsPath = Get-Command wails -ErrorAction Stop
+          Write-Host "Wails installed at: $($wailsPath.Source)"
+          
+          # Show version
+          wails version
+        } catch {
+          Write-Host "Wails installation failed: $_"
+          Write-Host "Go environment:"
+          go env
+          throw "Failed to install Wails"
+        }
+    
+    # Verify Wails installation (Linux/macOS)
+    - name: Wails Doctor (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        echo "Running wails doctor..."
+        wails doctor
+        
+        # Additional verification for Linux
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          echo "Linux-specific checks:"
+          echo "CGO_ENABLED: $CGO_ENABLED"
+          echo "pkg-config webkit2gtk-4.0 check:"
+          pkg-config --modversion webkit2gtk-4.0 || echo "webkit2gtk-4.0 not found"
+          echo "pkg-config webkit2gtk-4.1 check:"
+          pkg-config --modversion webkit2gtk-4.1 || echo "webkit2gtk-4.1 not found"
+        fi
+    
+    # Verify Wails installation (Windows)
+    - name: Wails Doctor (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Write-Host "Running wails doctor on Windows..."
+        try {
+          wails doctor
+          Write-Host "Wails doctor completed successfully"
+        } catch {
+          Write-Host "Wails doctor failed with error: $_"
+          Write-Host "Checking Wails installation..."
+          
+          # Check if wails is in PATH
+          try {
+            $wailsPath = Get-Command wails -ErrorAction Stop
+            Write-Host "Wails found at: $($wailsPath.Source)"
+          } catch {
+            Write-Host "Wails not found in PATH"
+          }
+          
+          # Check Go installation
+          try {
+            go version
+            Write-Host "Go is working"
+          } catch {
+            Write-Host "Go is not working: $_"
+          }
+          
+          # Show environment info
+          Write-Host "Environment variables:"
+          Write-Host "GOPATH: $env:GOPATH"
+          Write-Host "GOROOT: $env:GOROOT"
+          Write-Host "PATH: $env:PATH"
+          
+          throw "Wails doctor failed"
+        }
     
     # Frontend dependencies
     - name: Install frontend dependencies
@@ -70,6 +185,90 @@ jobs:
     - name: Run frontend tests
       working-directory: frontend
       run: bun run test:coverage
+    
+    ##############################################################################
+    # E2E TESTS - MACOS ONLY
+    # 
+    # We run E2E tests only on macOS because:
+    # 1. Wails dev server has platform-specific issues in CI environments
+    # 2. Our app's functionality is platform-agnostic (text diffing, file ops)
+    # 3. Unit tests + builds verify cross-platform compatibility
+    # 4. E2E tests verify UI behavior which should be identical across platforms
+    #
+    # If platform-specific bugs arise, we can add targeted tests as needed.
+    ##############################################################################
+    
+    # Install Playwright browsers for E2E tests (macOS only)
+    - name: Install Playwright browsers
+      if: matrix.os == 'macos-latest'
+      working-directory: frontend
+      run: bunx playwright install --with-deps chromium
+    
+    # Start Wails dev server in background for E2E tests (macOS only)
+    - name: Start Wails dev server
+      if: matrix.os == 'macos-latest'
+      run: |
+        echo "Starting Wails dev server..."
+        echo "Go version: $(go version)"
+        echo "Wails version: $(wails version)"
+        
+        # Check if frontend build exists
+        if [ ! -d "frontend/dist" ]; then
+          echo "Frontend dist directory not found, building..."
+          cd frontend && bun run build && cd ..
+        fi
+        
+        echo "Starting wails dev server..."
+        wails dev > wails.log 2>&1 &
+        WAILS_PID=$!
+        echo $WAILS_PID > wails.pid
+        
+        # Wait for dev server to be ready
+        timeout=60
+        while ! curl -s http://localhost:34115 > /dev/null && [ $timeout -gt 0 ]; do
+          sleep 1
+          timeout=$((timeout - 1))
+          if [ $((60 - timeout)) -eq 30 ]; then
+            echo "Still waiting for Wails dev server (30s elapsed)..."
+          fi
+        done
+        
+        if [ $timeout -eq 0 ]; then
+          echo "Wails dev server failed to start after 60 seconds"
+          echo "Wails log contents:"
+          cat wails.log
+          exit 1
+        fi
+        echo "Wails dev server is ready"
+    
+    
+    # Run E2E tests (macOS only)
+    - name: Run E2E tests
+      if: matrix.os == 'macos-latest'
+      working-directory: frontend
+      run: bun run test:e2e
+      env:
+        CI: true
+    
+    # Stop Wails dev server (macOS only)
+    - name: Stop Wails dev server
+      if: always() && matrix.os == 'macos-latest'
+      run: |
+        if [ -f wails.pid ]; then
+          kill $(cat wails.pid) || true
+          rm wails.pid
+        fi
+    
+    # Upload E2E test results on failure (macOS only)
+    - name: Upload E2E test results
+      if: failure() && matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results-${{ matrix.os }}
+        path: |
+          frontend/tests/e2e/test-results/
+          frontend/tests/e2e/playwright-report/
+        retention-days: 7
     
     # Build the application
     - name: Build application

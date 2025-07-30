@@ -1,6 +1,25 @@
 # Manual Test Script - Critical Gaps in Automated Testing
 
-This script covers functionality that our automated integration tests cannot verify due to test environment limitations. These are the critical behaviors that need manual verification, especially after refactoring.
+This script covers functionality that our automated tests cannot fully verify. With our new E2E test coverage using Playwright, we have significantly reduced the manual testing burden. This script now focuses on the remaining gaps that still require manual verification.
+
+## What's Now Covered by E2E Tests
+
+Our Playwright E2E tests now verify:
+- ✅ Keyboard navigation (j/k keys, boundary detection)
+- ✅ Copy operations (Shift+L, Shift+H shortcuts)
+- ✅ Arrow button copy operations
+- ✅ Save button state management (enable/disable based on unsaved changes)
+- ✅ Save button click functionality
+- ✅ Keyboard save shortcut (Cmd/Ctrl+S)
+- ✅ Unsaved changes indicator display
+- ✅ Multiple copy operations tracking unsaved state
+- ✅ Save error handling
+- ✅ Undo functionality (Ctrl/Cmd+Z)
+- ✅ Discard all changes functionality
+- ✅ Current diff highlighting
+- ✅ Navigation after copy operations
+- ✅ Minimap navigation (click to jump, viewport dragging)
+- ✅ Minimap visibility toggle
 
 ## Test Environment Setup
 
@@ -13,57 +32,32 @@ This script covers functionality that our automated integration tests cannot ver
 
 ## 1. Keyboard Navigation & Copy Operations
 
-**Gap**: Automated tests can't verify actual cursor movement, visual feedback, or state changes
+**Coverage**: ✅ E2E tests cover navigation (`j`/`k`), copy shortcuts (`Shift+L`/`Shift+H`), arrow button clicks, and save button state changes
 
-### Test: Diff Navigation
-- [ ] Load `addfirst-1.js` vs `addfirst-2.js` and compare
-- [ ] Press `j` - verify cursor moves to next diff with visual highlight
-- [ ] Press `k` - verify cursor moves to previous diff
-- [ ] At first diff, press `k` - verify sound/feedback for boundary
-- [ ] At last diff, press `j` - verify sound/feedback for boundary
+**Remaining Gap**: Audio feedback and visual animations
+
+### Test: Audio/Visual Feedback
+- [ ] At first diff, press `k` - verify sound/beep for boundary
+- [ ] At last diff, press `j` - verify sound/beep for boundary
+- [ ] Verify smooth scroll animations when navigating
 - [ ] Press `g` - verify jumps to first diff (when implemented)
 - [ ] Press `G` - verify jumps to last diff (when implemented)
-
-### Test: Copy Operations with State Changes
-- [ ] Load `addmiddle-1.go` vs `addmiddle-2.go` and compare
-- [ ] Navigate to first diff with `j`
-- [ ] Press `Shift+L` - verify:
-  - [ ] Content copies from left to right
-  - [ ] Cursor advances to next diff automatically
-  - [ ] Save button enables for right file
-  - [ ] File path shows (no unsaved indicator exists in app)
-- [ ] Press `Shift+H` - verify:
-  - [ ] Content copies from right to left
-  - [ ] Cursor advances to next diff
-  - [ ] Save button enables for left file
-
-### Test: Arrow Button Copy Operations
-- [ ] Click arrow buttons in gutter between panes
-- [ ] Verify same behavior as keyboard shortcuts
-- [ ] Test both single-line and chunk copy operations
 
 ---
 
 ## 2. Save Operations & File State Management
 
-**Gap**: Automated tests can't verify actual file I/O or save button state changes
+**Coverage**: ✅ E2E tests verify save button states, keyboard shortcuts (Cmd/Ctrl+S), error handling, and multiple file tracking
 
-### Test: Save Button State Management
-- [ ] Load any two different files and compare
-- [ ] Verify save buttons are disabled initially
-- [ ] Make a copy operation (`Shift+L`)
-- [ ] Verify right save button enables
-- [ ] Click save button - verify:
-  - [ ] File actually saves to disk
-  - [ ] Save button disables again after save
-  - [ ] No crash or error
+**Remaining Gap**: Actual file I/O verification
 
-### Test: Keyboard Save Operations
+### Test: File I/O Operations
 - [ ] Make changes with copy operations
-- [ ] Press `Cmd/Ctrl+S` - verify:
-  - [ ] Files with unsaved changes are saved
-  - [ ] Files without changes are ignored
-  - [ ] No crash occurs
+- [ ] Click save button or press Cmd/Ctrl+S - verify:
+  - [ ] File actually saves to disk (check file contents)
+  - [ ] No data corruption
+  - [ ] Timestamps update
+  - [ ] File permissions are preserved
 
 ### Test: Unsaved Changes Warning
 - [ ] Make changes with copy operations
@@ -76,25 +70,16 @@ This script covers functionality that our automated integration tests cannot ver
 
 ## 3. Minimap Interactions
 
-**Gap**: Automated tests can't verify actual navigation or visual updates
+**Coverage**: ✅ E2E tests verify minimap click navigation, viewport dragging, and visibility toggle
 
-### Test: Minimap Navigation
-- [ ] Load files with many diffs (use long sample files or create custom ones)
-- [ ] Verify minimap appears on right side
-- [ ] Click different positions in minimap - verify:
-  - [ ] Main view scrolls to clicked position
-  - [ ] Viewport indicator updates position
-  - [ ] Smooth scrolling animation (if present)
-
-### Test: Minimap Viewport Dragging
-- [ ] Drag the viewport indicator in minimap
-- [ ] Verify main view scrolls accordingly
-- [ ] Verify smooth dragging experience
+**Remaining Gap**: Visual appearance and tooltips
 
 ### Test: Minimap Visual Feedback
 - [ ] Navigate through diffs with `j`/`k`
-- [ ] Verify current diff is highlighted in minimap
+- [ ] Verify current diff is highlighted in minimap with correct color
 - [ ] Hover over minimap - verify tooltip shows line numbers
+- [ ] Verify minimap scales properly for very long files
+- [ ] Verify smooth scrolling animations
 
 ---
 
@@ -141,13 +126,10 @@ This script covers functionality that our automated integration tests cannot ver
 ### Test: File > Save Menu Items
 - [ ] Load two different files and compare
 - [ ] Verify File > Save submenu shows with all items disabled
-- [ ] Make changes via copy operation (Shift+L)
-- [ ] Verify File > Save > Save Right Pane enables
-- [ ] Click Save Right Pane - verify file saves and menu item disables
-- [ ] Make changes to both files
-- [ ] Verify Save Left Pane, Save Right Pane, and Save All enable
-- [ ] Test keyboard shortcuts:
-  - [ ] Cmd/Ctrl+S for Save All (saves both files if they have changes)
+- [ ] Make changes via copy operation
+- [ ] Verify appropriate Save menu items enable based on which files have changes
+- [ ] Click Save menu items - verify they trigger saves and update button states
+- [ ] Verify menu items reflect current save state (enabled/disabled)
 
 ### Test: Edit > Discard All Changes Menu Item
 - [ ] Make changes to both files
@@ -243,13 +225,16 @@ This script covers functionality that our automated integration tests cannot ver
 
 ## Critical Issues to Watch For
 
-Based on our automated testing gaps, pay special attention to:
+With our comprehensive E2E test coverage, the remaining critical areas for manual testing are:
 
 1. **Binary file rejection** - Should show error, not garbled content
-2. **Cursor advancement** - Should move to next diff after copy operations
+2. **File I/O operations** - Actual disk writes and data integrity (not mocked)
 3. **Scroll synchronization** - Both panes should stay in sync
 4. **Theme persistence** - Settings should survive app restart
 5. **Performance** - Large files should remain responsive
+6. **Audio feedback** - Boundary beeps and error sounds
+7. **Native dialogs** - File selection, quit confirmation
+8. **Menu bar interactions** - Native menu behavior and keyboard accelerators
 
 ---
 
