@@ -70,7 +70,7 @@ Use the structure expected by the app:
 }
 ```
 
-Note: The keyboard-navigation test uses `content` but this should be updated to match the app's expectations.
+Note: All tests should use `leftLine` and `rightLine` fields to match the app's actual data structure.
 
 ### 2. State Management
 - Keep state variables at the top of the mock setup
@@ -153,7 +153,7 @@ expect(hasUnsaved.hasUnsavedRight).toBe(true);
 
 ## Common Pitfalls to Avoid
 
-1. **Inconsistent mock data structures** - Use `content` field consistently
+1. **Inconsistent mock data structures** - Use `leftLine` and `rightLine` fields consistently
 2. **Over-mocking** - Only mock functions actually used in tests
 3. **Complex selectors** - Keep selectors simple and semantic
 4. **Missing waits** - Always wait after actions that trigger updates

@@ -11,7 +11,6 @@
   - [ ] Replace 3 instances of `any` type in DiffViewer component refs
   - [ ] Create proper TypeScript interfaces for Svelte component refs
 - [ ] Create E2E tests for remaining features
-  - [ ] Save operations E2E tests (file operations and UI state)
   - [ ] File selection E2E tests (workflow and error handling)
   - [ ] Quit dialog E2E tests (dialog appearance and behavior)
 - [ ] Remove redundant integration tests replaced by E2E
@@ -48,6 +47,7 @@
 - [x] Integrate E2E tests into pre-commit and pre-PR workflows
 - [x] Fix CI compatibility issues with Playwright browser paths
 - [x] Fix Linux CI webkit dependencies for Wails dev server
+- [x] Create save operations E2E tests (7 passing tests, 3 skipped for menu event features)
 
 ## Medium Priority
 

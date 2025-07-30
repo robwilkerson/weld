@@ -8,11 +8,18 @@ Our Playwright E2E tests now verify:
 - ✅ Keyboard navigation (j/k keys, boundary detection)
 - ✅ Copy operations (Shift+L, Shift+H shortcuts)
 - ✅ Arrow button copy operations
-- ✅ Save button state management
+- ✅ Save button state management (enable/disable based on unsaved changes)
+- ✅ Save button click functionality
+- ✅ Keyboard save shortcut (Cmd/Ctrl+S)
+- ✅ Unsaved changes indicator display
+- ✅ Multiple copy operations tracking unsaved state
+- ✅ Save error handling
 - ✅ Undo functionality (Ctrl/Cmd+Z)
 - ✅ Discard all changes functionality
 - ✅ Current diff highlighting
 - ✅ Navigation after copy operations
+- ✅ Minimap navigation (click to jump, viewport dragging)
+- ✅ Minimap visibility toggle
 
 ## Test Environment Setup
 
@@ -40,23 +47,17 @@ Our Playwright E2E tests now verify:
 
 ## 2. Save Operations & File State Management
 
-**Coverage**: ✅ E2E tests verify save button enables/disables with copy operations, undo functionality
+**Coverage**: ✅ E2E tests verify save button states, keyboard shortcuts (Cmd/Ctrl+S), error handling, and multiple file tracking
 
-**Remaining Gap**: Actual file I/O and keyboard save shortcuts
+**Remaining Gap**: Actual file I/O verification
 
 ### Test: File I/O Operations
 - [ ] Make changes with copy operations
-- [ ] Click save button - verify:
+- [ ] Click save button or press Cmd/Ctrl+S - verify:
   - [ ] File actually saves to disk (check file contents)
   - [ ] No data corruption
   - [ ] Timestamps update
-
-### Test: Keyboard Save Operations
-- [ ] Make changes with copy operations
-- [ ] Press `Cmd/Ctrl+S` - verify:
-  - [ ] Files with unsaved changes are saved to disk
-  - [ ] Files without changes are ignored
-  - [ ] No crash occurs
+  - [ ] File permissions are preserved
 
 ### Test: Unsaved Changes Warning
 - [ ] Make changes with copy operations
@@ -69,25 +70,16 @@ Our Playwright E2E tests now verify:
 
 ## 3. Minimap Interactions
 
-**Gap**: Automated tests can't verify actual navigation or visual updates
+**Coverage**: ✅ E2E tests verify minimap click navigation, viewport dragging, and visibility toggle
 
-### Test: Minimap Navigation
-- [ ] Load files with many diffs (use long sample files or create custom ones)
-- [ ] Verify minimap appears on right side
-- [ ] Click different positions in minimap - verify:
-  - [ ] Main view scrolls to clicked position
-  - [ ] Viewport indicator updates position
-  - [ ] Smooth scrolling animation (if present)
-
-### Test: Minimap Viewport Dragging
-- [ ] Drag the viewport indicator in minimap
-- [ ] Verify main view scrolls accordingly
-- [ ] Verify smooth dragging experience
+**Remaining Gap**: Visual appearance and tooltips
 
 ### Test: Minimap Visual Feedback
 - [ ] Navigate through diffs with `j`/`k`
-- [ ] Verify current diff is highlighted in minimap
+- [ ] Verify current diff is highlighted in minimap with correct color
 - [ ] Hover over minimap - verify tooltip shows line numbers
+- [ ] Verify minimap scales properly for very long files
+- [ ] Verify smooth scrolling animations
 
 ---
 
@@ -134,13 +126,10 @@ Our Playwright E2E tests now verify:
 ### Test: File > Save Menu Items
 - [ ] Load two different files and compare
 - [ ] Verify File > Save submenu shows with all items disabled
-- [ ] Make changes via copy operation (Shift+L)
-- [ ] Verify File > Save > Save Right Pane enables
-- [ ] Click Save Right Pane - verify file saves and menu item disables
-- [ ] Make changes to both files
-- [ ] Verify Save Left Pane, Save Right Pane, and Save All enable
-- [ ] Test keyboard shortcuts:
-  - [ ] Cmd/Ctrl+S for Save All (saves both files if they have changes)
+- [ ] Make changes via copy operation
+- [ ] Verify appropriate Save menu items enable based on which files have changes
+- [ ] Click Save menu items - verify they trigger saves and update button states
+- [ ] Verify menu items reflect current save state (enabled/disabled)
 
 ### Test: Edit > Discard All Changes Menu Item
 - [ ] Make changes to both files
@@ -236,15 +225,16 @@ Our Playwright E2E tests now verify:
 
 ## Critical Issues to Watch For
 
-With our improved E2E test coverage, the remaining critical areas for manual testing are:
+With our comprehensive E2E test coverage, the remaining critical areas for manual testing are:
 
 1. **Binary file rejection** - Should show error, not garbled content
-2. **File I/O operations** - Actual disk writes and data integrity
+2. **File I/O operations** - Actual disk writes and data integrity (not mocked)
 3. **Scroll synchronization** - Both panes should stay in sync
 4. **Theme persistence** - Settings should survive app restart
 5. **Performance** - Large files should remain responsive
 6. **Audio feedback** - Boundary beeps and error sounds
 7. **Native dialogs** - File selection, quit confirmation
+8. **Menu bar interactions** - Native menu behavior and keyboard accelerators
 
 ---
 

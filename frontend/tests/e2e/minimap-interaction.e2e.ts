@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 // Helper to set up mocked Wails backend
 async function setupMockedBackend(page) {
 	await page.evaluate(() => {
+		// Track file selections
+		let selectFileCallCount = 0;
+
 		// Track minimap visibility state
 		let minimapVisible = true;
 
@@ -12,9 +15,8 @@ async function setupMockedBackend(page) {
 				App: {
 					SelectFile: async () => {
 						// Return different files for left/right
-						const callCount = window.go.main.App._selectFileCallCount || 0;
-						window.go.main.App._selectFileCallCount = callCount + 1;
-						return callCount === 0
+						selectFileCallCount++;
+						return selectFileCallCount === 1
 							? "/test/minimap-test-1.js"
 							: "/test/minimap-test-2.js";
 					},
@@ -144,25 +146,6 @@ async function setupMockedBackend(page) {
 			}
 		};
 	});
-}
-
-// Helper to get scroll position
-async function _getScrollTop(page, selector) {
-	// If looking for .diff-pane.left, just use .diff-pane
-	const actualSelector =
-		selector === ".diff-pane.left" ? ".diff-pane" : selector;
-	return await page.evaluate((sel) => {
-		const element = document.querySelector(sel);
-		return element ? element.scrollTop : 0;
-	}, actualSelector);
-}
-
-// Helper to calculate expected scroll position for a line
-async function _getLineScrollPosition(page, lineNumber) {
-	return await page.evaluate((line) => {
-		// Assuming ~20px per line (this would be more accurate with actual line height)
-		return (line - 1) * 20;
-	}, lineNumber);
 }
 
 test.describe("Minimap Interaction", () => {
