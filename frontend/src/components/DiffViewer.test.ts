@@ -6,8 +6,10 @@ import DiffViewer from "./DiffViewer.svelte";
 
 // Mock the utilities
 vi.mock("../utils/throttle", () => ({
-	throttle: (fn: any) => fn,
-	debounce: (fn: any) => fn,
+	// biome-ignore lint/suspicious/noExplicitAny: Mock function needs to accept any function type
+	throttle: <T extends (...args: any[]) => any>(fn: T) => fn,
+	// biome-ignore lint/suspicious/noExplicitAny: Mock function needs to accept any function type
+	debounce: <T extends (...args: any[]) => any>(fn: T) => fn,
 }));
 
 vi.mock("../utils/diff", () => ({

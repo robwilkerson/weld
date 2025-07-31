@@ -29,7 +29,6 @@ export let hasUnsavedRightChanges: DiffViewerProps["hasUnsavedRightChanges"];
 export let currentDiffChunkIndex: DiffViewerProps["currentDiffChunkIndex"];
 export let hoveredChunkIndex: DiffViewerProps["hoveredChunkIndex"];
 export let showMinimap: DiffViewerProps["showMinimap"];
-export let isDarkMode: DiffViewerProps["isDarkMode"];
 export let isComparing: DiffViewerProps["isComparing"];
 export let hasCompletedComparison: DiffViewerProps["hasCompletedComparison"];
 export let areFilesIdentical: DiffViewerProps["areFilesIdentical"];
@@ -427,7 +426,6 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 				bind:this={leftPaneComponent}
 				lines={diffResult?.lines || []}
 				side="left"
-				{lineNumberWidth}
 				{getChunkForLine}
 				{isFirstLineOfChunk}
 				{isLineHighlighted}
@@ -464,7 +462,6 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 				bind:this={rightPaneComponent}
 				lines={diffResult?.lines || []}
 				side="right"
-				{lineNumberWidth}
 				{getChunkForLine}
 				{isFirstLineOfChunk}
 				{isLineHighlighted}
@@ -478,13 +475,11 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 			<!-- Minimap -->
 			<Minimap
 				show={showMinimap && diffResult && diffResult.lines.length > 0}
-				{lineChunks}
 				totalLines={diffResult?.lines.length || 0}
 				{currentDiffChunkIndex}
 				{diffChunks}
 				{viewportTop}
 				{viewportHeight}
-				{isDarkMode}
 				diffLines={diffResult?.lines || []}
 				on:minimapClick={(e) => dispatch('minimapClick', e.detail)}
 				on:viewportMouseDown={(e) => dispatch('viewportMouseDown', e.detail.event)}

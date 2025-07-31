@@ -1,5 +1,5 @@
 <script lang="ts">
-import { createEventDispatcher } from "svelte";
+import { createEventDispatcher, onMount } from "svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getDisplayFileName } from "../utils/path.js";
 
@@ -12,6 +12,19 @@ export let fileSelections: Record<string, boolean> = {};
 // biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
 const dispatch = createEventDispatcher();
+
+let dialogRef: HTMLDivElement;
+
+// Focus management for the modal
+onMount(() => {
+	if (show && dialogRef) {
+		// Focus the first button when dialog opens
+		const firstButton = dialogRef.querySelector("button");
+		if (firstButton) {
+			firstButton.focus();
+		}
+	}
+});
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleSaveAndQuit() {
@@ -32,12 +45,56 @@ function handleCancel() {
 function handleOverlayClick() {
 	dispatch("cancel");
 }
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+function handleKeyDown(event: KeyboardEvent) {
+	if (event.key === "Escape") {
+		dispatch("cancel");
+	}
+}
+
+// Trap focus within the dialog
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+function handleDialogKeyDown(event: KeyboardEvent) {
+	if (event.key === "Tab") {
+		const focusableElements = dialogRef.querySelectorAll(
+			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+		);
+		const firstElement = focusableElements[0] as HTMLElement;
+		const lastElement = focusableElements[
+			focusableElements.length - 1
+		] as HTMLElement;
+
+		if (event.shiftKey && document.activeElement === firstElement) {
+			event.preventDefault();
+			lastElement.focus();
+		} else if (!event.shiftKey && document.activeElement === lastElement) {
+			event.preventDefault();
+			firstElement.focus();
+		}
+	}
+}
 </script>
 
 {#if show}
-  <div class="modal-overlay" on:click={handleOverlayClick}>
-    <div class="quit-dialog" on:click|stopPropagation>
-      <h3>Unsaved Changes</h3>
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div 
+    class="modal-overlay" 
+    on:click={handleOverlayClick}
+    on:keydown={handleKeyDown}
+  >
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div 
+      bind:this={dialogRef}
+      class="quit-dialog" 
+      on:click|stopPropagation
+      on:keydown={handleDialogKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quit-dialog-title"
+    >
+      <h3 id="quit-dialog-title">Unsaved Changes</h3>
       <p>Select which files to save before quitting:</p>
       
       <div class="file-list">

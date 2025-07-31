@@ -1,16 +1,14 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import type { HighlightedDiffLine, LineChunk } from "../types/diff";
+import type { HighlightedDiffLine } from "../types/diff";
 
 // biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
-export let lineChunks: LineChunk[] = [];
 export let totalLines: number = 0;
 export let currentDiffChunkIndex: number = -1;
 export let diffChunks: Array<{ startIndex: number; endIndex: number }> = [];
 export let viewportTop: number = 0;
 export let viewportHeight: number = 0;
-export let isDarkMode: boolean = false;
 export let diffLines: HighlightedDiffLine[] = [];
 // biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 
@@ -97,11 +95,36 @@ function handleMinimapClick(event: MouseEvent): void {
 function handleViewportMouseDown(event: MouseEvent): void {
 	dispatch("viewportMouseDown", { event });
 }
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+function handleMinimapKeyDown(event: KeyboardEvent): void {
+	if (event.key === "Enter" || event.key === " ") {
+		event.preventDefault();
+		// Simulate a click at the center of the minimap
+		const target = event.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		const clickEvent = new MouseEvent("click", {
+			clientX: rect.left + rect.width / 2,
+			clientY: rect.top + rect.height / 2,
+		});
+		target.dispatchEvent(clickEvent);
+	}
+}
 </script>
 
 {#if show && totalLines > 0}
 	<div class="minimap-pane">
-		<div class="minimap" on:click={handleMinimapClick}>
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+		<div 
+			class="minimap" 
+			on:click={handleMinimapClick}
+			on:keydown={handleMinimapKeyDown}
+			role="navigation"
+			aria-label="Minimap navigation"
+			tabindex="0"
+		>
 			{#each diffChunks as chunk, index}
 				{@const firstLine = diffLines[chunk.startIndex]}
 				{@const chunkType = firstLine ? firstLine.type : 'same'}
@@ -117,10 +140,17 @@ function handleViewportMouseDown(event: MouseEvent): void {
 				></div>
 			{/each}
 			<!-- Viewport indicator -->
+			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div
 				class="minimap-viewport"
 				style="top: {viewportTop}%; height: {viewportHeight}%;"
 				on:mousedown={handleViewportMouseDown}
+				role="slider"
+				aria-label="Viewport position"
+				aria-valuenow={Math.round((viewportTop / 100) * 100)}
+				aria-valuemin="0"
+				aria-valuemax="100"
+				tabindex="0"
 			></div>
 		</div>
 	</div>
