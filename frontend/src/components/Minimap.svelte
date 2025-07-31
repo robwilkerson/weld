@@ -1,16 +1,14 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import type { HighlightedDiffLine, LineChunk } from "../types/diff";
+import type { HighlightedDiffLine } from "../types/diff";
 
 // biome-ignore-start lint/style/useConst: Svelte component props must use 'let' for reactivity
 export let show: boolean = true;
-export let lineChunks: LineChunk[] = [];
 export let totalLines: number = 0;
 export let currentDiffChunkIndex: number = -1;
 export let diffChunks: Array<{ startIndex: number; endIndex: number }> = [];
 export let viewportTop: number = 0;
 export let viewportHeight: number = 0;
-export let isDarkMode: boolean = false;
 export let diffLines: HighlightedDiffLine[] = [];
 // biome-ignore-end lint/style/useConst: Svelte component props must use 'let' for reactivity
 

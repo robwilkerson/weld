@@ -7,7 +7,6 @@ import { escapeHtml, getLineClass } from "../utils/diff";
 // Props
 export let lines: HighlightedDiffLine[];
 export let side: PaneSide;
-export let lineNumberWidth: string;
 
 // Functions passed from parent for chunk detection
 export let getChunkForLine: (lineIndex: number) => LineChunk | null;
