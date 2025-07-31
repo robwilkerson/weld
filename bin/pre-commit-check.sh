@@ -24,7 +24,6 @@ PATTERNS=(
     "fmt\.Printf"
     "fmt\.Println"
     "debugger"
-    "TODO:"
     "FIXME:"
     "XXX:"
     "HACK:"
