@@ -943,7 +943,6 @@ async function copyCurrentDiffLeftToRight(): Promise<void> {
 		!diffChunks ||
 		!diffChunks[currentDiffChunkIndex]
 	) {
-		console.log("No current diff chunk to copy");
 		return;
 	}
 
@@ -954,11 +953,8 @@ async function copyCurrentDiffLeftToRight(): Promise<void> {
 	);
 
 	if (!lineChunk) {
-		console.log("No matching lineChunk found");
 		return;
 	}
-
-	console.log("Copying left to right, chunk type:", lineChunk.type);
 
 	// Store the current position before copying
 	const oldChunkIndex = currentDiffChunkIndex;
@@ -984,7 +980,6 @@ async function copyCurrentDiffRightToLeft(): Promise<void> {
 		!diffChunks ||
 		!diffChunks[currentDiffChunkIndex]
 	) {
-		console.log("No current diff chunk to copy");
 		return;
 	}
 
@@ -995,11 +990,8 @@ async function copyCurrentDiffRightToLeft(): Promise<void> {
 	);
 
 	if (!lineChunk) {
-		console.log("No matching lineChunk found");
 		return;
 	}
-
-	console.log("Copying right to left, chunk type:", lineChunk.type);
 
 	// Store the current position before copying
 	const oldChunkIndex = currentDiffChunkIndex;
@@ -1436,7 +1428,7 @@ function checkHorizontalScrollbar() {
   <!-- UndoManager (headless component) -->
   <UndoManager
     bind:this={undoManager}
-    on:statusUpdate={(e) => console.log("Undo status:", e.detail.message)}
+    on:statusUpdate={(e) => e.detail.message}
     on:undoStateChanged={async () => {
       // Re-fetch diff after undo
       if (leftFilePath && rightFilePath) {
@@ -1671,13 +1663,6 @@ function checkHorizontalScrollbar() {
     background: rgba(54, 58, 79, 0.15);
   }
 
-  h1 {
-    margin: 0 0 1rem 0;
-    font-size: 1.5rem;
-    color: #333;
-  }
-
-
 
   .error {
     color: #d20f39;
@@ -1686,19 +1671,6 @@ function checkHorizontalScrollbar() {
     background: #eff1f5;
     border-radius: 4px;
     margin-top: 0.5rem;
-  }
-
-  .loading {
-    color: #0366d6;
-    font-size: 0.9rem;
-    padding: 0.5rem;
-  }
-
-  .diff-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
 
 
