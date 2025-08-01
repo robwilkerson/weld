@@ -132,35 +132,7 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
     cd ..
 fi
 
-# 4. Check commit message (this is critical - always check)
-echo -e "\n📝 Checking commit message..."
-
-# Get the commit message from either the file or stdin
-if [ -f .git/COMMIT_EDITMSG ]; then
-    # Normal commit flow
-    FIRST_LINE=$(head -n1 .git/COMMIT_EDITMSG | grep -v "^#" | head -n1)
-elif [ -p /dev/stdin ]; then
-    # Git hook flow (message comes via stdin)
-    FIRST_LINE=$(cat | head -n1)
-else
-    # Try to get from git log if we're amending
-    FIRST_LINE=$(git log -1 --pretty=%s 2>/dev/null || echo "")
-fi
-
-if [ -n "$FIRST_LINE" ]; then
-    LENGTH=$(echo -n "$FIRST_LINE" | wc -c | tr -d ' ')
-    
-    if [ "$LENGTH" -gt 50 ]; then
-        print_error "Commit subject line is $LENGTH characters (max 50)"
-        print_info "Subject: \"$FIRST_LINE\""
-        echo -e "\nPlease shorten your commit message subject line."
-        CHECKS_PASSED=false
-    else
-        print_success "Commit message length OK ($LENGTH/50 chars)"
-    fi
-else
-    print_warning "Could not check commit message length"
-fi
+# Note: Commit message checking moved to .githooks/commit-msg hook
 
 # 5. Run E2E tests if frontend files changed (run last to avoid multiple runs)
 if [ -n "$STAGED_FRONTEND_FILES" ]; then

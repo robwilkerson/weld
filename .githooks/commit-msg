@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Git commit-msg hook
+# Validates the commit message format
+
+# The commit message is passed as the first argument
+COMMIT_MSG_FILE=$1
+
+# Function to print colored output
+print_success() { echo -e "\033[32m✓ $1\033[0m"; }
+print_error() { echo -e "\033[31m✗ $1\033[0m"; }
+print_info() { echo -e "\033[34mℹ $1\033[0m"; }
+
+# Read the first line of the commit message
+FIRST_LINE=$(head -n1 "$COMMIT_MSG_FILE" | grep -v "^#" | head -n1)
+
+if [ -n "$FIRST_LINE" ]; then
+    LENGTH=$(echo -n "$FIRST_LINE" | wc -c | tr -d ' ')
+    
+    if [ "$LENGTH" -gt 50 ]; then
+        print_error "Commit subject line is $LENGTH characters (max 50)"
+        print_info "Subject: \"$FIRST_LINE\""
+        echo -e "\nPlease shorten your commit message subject line."
+        exit 1
+    else
+        print_success "Commit message length OK ($LENGTH/50 chars)"
+    fi
+else
+    print_error "Empty commit message"
+    exit 1
+fi
+
+exit 0
