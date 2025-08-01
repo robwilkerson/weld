@@ -35,6 +35,8 @@ vi.mock("../wailsjs/go/main/App.js", () => ({
 	CompareFiles: vi.fn(),
 	CopyToFile: vi.fn(),
 	SaveChanges: vi.fn(),
+	HasUnsavedChanges: vi.fn(),
+	UpdateSaveMenuItems: vi.fn(),
 }));
 
 // Mock PrismJS

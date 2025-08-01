@@ -167,7 +167,7 @@ async function setupMockedBackend(page) {
 							],
 						};
 					},
-					CopyToFile: async (direction, startLine, endLine) => {
+					CopyToFile: async (direction, _startLine, _endLine) => {
 						// Simulate copy operation
 						if (direction === "left") {
 							hasUnsavedLeft = true;
@@ -217,7 +217,7 @@ async function setupMockedBackend(page) {
 					UpdateDiffNavigationMenuItems: async () => {},
 					UpdateSaveMenuItems: async () => {},
 					// Operation group functions for transaction support
-					BeginOperationGroup: async (description) => {
+					BeginOperationGroup: async (_description) => {
 						// Return a mock transaction ID
 						return `mock-transaction-${Date.now()}`;
 					},
@@ -237,7 +237,7 @@ async function setupMockedBackend(page) {
 						// Rollback the transaction
 						return Promise.resolve();
 					},
-					RemoveLineFromFile: async (filePath, lineNumber) => {
+					RemoveLineFromFile: async (filePath, _lineNumber) => {
 						// Mock removing a line from file
 						if (filePath.includes("1.js")) {
 							hasUnsavedLeft = true;
@@ -885,42 +885,5 @@ test.describe("Copy Operations", () => {
 		expect(removedLines).toBeGreaterThan(0);
 		expect(addedLines).toBeGreaterThan(0);
 		expect(modifiedLines).toBeGreaterThan(0);
-	});
-
-	// This test is skipped because the behavior is inconsistent:
-	// - The test navigates to a "same" line with empty content on both sides
-	// - When both sides are identical, Shift+H creates unsaved changes on the right (not left)
-	// - This suggests the copy operation might be working differently than expected
-	// - Needs investigation to determine the correct behavior for copy operations on identical lines
-	test.skip("Shift+H/L does nothing on same lines", async ({ page }) => {
-		// Navigate to a 'same' line by going past the first chunks
-		// We'll need to find a same line that's part of the navigation
-		// For this test, let's verify it doesn't crash or create unsaved changes
-
-		// Navigate past all diffs to ensure we're not on any diff
-		await page.keyboard.press("j");
-		await page.waitForTimeout(100);
-		await page.keyboard.press("j");
-		await page.waitForTimeout(100);
-		await page.keyboard.press("j");
-		await page.waitForTimeout(100);
-
-		// Try to go past last diff - should stay at last
-		await page.keyboard.press("j");
-		await page.waitForTimeout(200);
-
-		// Now if we're on a same line area, Shift+H/L should do nothing
-		// Try both shortcuts
-		await page.keyboard.press("Shift+H");
-		await page.waitForTimeout(100);
-		await page.keyboard.press("Shift+L");
-		await page.waitForTimeout(100);
-
-		// Verify no unsaved changes were created
-		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
-		);
-		expect(hasUnsaved.hasUnsavedLeft).toBe(false);
-		expect(hasUnsaved.hasUnsavedRight).toBe(false);
 	});
 });

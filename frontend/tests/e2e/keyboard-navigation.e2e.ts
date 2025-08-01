@@ -29,7 +29,13 @@ async function setupMockedBackend(page) {
 									leftLine: "package main",
 									rightLine: "package main",
 								},
-								{ type: "same", leftNumber: 2, rightNumber: 2, leftLine: "", rightLine: "" },
+								{
+									type: "same",
+									leftNumber: 2,
+									rightNumber: 2,
+									leftLine: "",
+									rightLine: "",
+								},
 								{
 									type: "added",
 									leftNumber: null,
@@ -37,7 +43,13 @@ async function setupMockedBackend(page) {
 									leftLine: "",
 									rightLine: "// New comment added",
 								},
-								{ type: "same", leftNumber: 3, rightNumber: 4, leftLine: "", rightLine: "" },
+								{
+									type: "same",
+									leftNumber: 3,
+									rightNumber: 4,
+									leftLine: "",
+									rightLine: "",
+								},
 
 								// Second chunk: removed/added function
 								{
@@ -47,7 +59,13 @@ async function setupMockedBackend(page) {
 									leftLine: 'import "fmt"',
 									rightLine: 'import "fmt"',
 								},
-								{ type: "same", leftNumber: 5, rightNumber: 6, leftLine: "", rightLine: "" },
+								{
+									type: "same",
+									leftNumber: 5,
+									rightNumber: 6,
+									leftLine: "",
+									rightLine: "",
+								},
 								{
 									type: "removed",
 									leftNumber: 6,
@@ -62,7 +80,13 @@ async function setupMockedBackend(page) {
 									leftLine: "",
 									rightLine: "func newFunction() {}",
 								},
-								{ type: "same", leftNumber: 7, rightNumber: 8, leftLine: "", rightLine: "" },
+								{
+									type: "same",
+									leftNumber: 7,
+									rightNumber: 8,
+									leftLine: "",
+									rightLine: "",
+								},
 
 								// Third chunk: modified lines
 								{
@@ -280,7 +304,7 @@ test.describe("Keyboard Navigation", () => {
 		expect(initialHighlightCount).toBeGreaterThan(0);
 
 		// Store the initial count to compare later
-		const firstDiffHighlightCount = initialHighlightCount;
+		const _firstDiffHighlightCount = initialHighlightCount;
 
 		// Navigate to next diff and verify indicator moves
 		await page.keyboard.press("j");
@@ -322,7 +346,7 @@ test.describe("Keyboard Navigation", () => {
 		const newMinimapCurrentDiff = await page.locator(".minimap-current");
 		const newPosition = await newMinimapCurrentDiff.boundingBox();
 		expect(newPosition).not.toBeNull();
-		expect(newPosition!.y).not.toBe(initialPosition!.y);
+		expect(newPosition?.y).not.toBe(initialPosition?.y);
 
 		// Navigate to last diff
 		await page.keyboard.press("j");
@@ -332,7 +356,7 @@ test.describe("Keyboard Navigation", () => {
 		const lastMinimapCurrentDiff = await page.locator(".minimap-current");
 		const lastPosition = await lastMinimapCurrentDiff.boundingBox();
 		expect(lastPosition).not.toBeNull();
-		expect(lastPosition!.y).toBeGreaterThan(newPosition!.y);
+		expect(lastPosition?.y).toBeGreaterThan(newPosition?.y);
 	});
 
 	test("active diff is visually distinct from inactive diffs", async ({

@@ -8,14 +8,11 @@ import {
 	DiscardAllChanges,
 	GetInitialFiles,
 	GetMinimapVisible,
-	HasUnsavedChanges,
 	QuitWithoutSaving,
 	RemoveLineFromFile,
 	RollbackOperationGroup,
-	SaveChanges,
 	SaveSelectedFilesAndQuit,
 	UpdateDiffNavigationMenuItems,
-	UpdateSaveMenuItems,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
@@ -40,6 +37,14 @@ import {
 	fileStore,
 	isSameFile,
 } from "./stores/fileStore.js";
+// biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+// biome-ignore-start lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+import {
+	hasAnyUnsavedChanges,
+	hasUnsavedLeftChanges,
+	hasUnsavedRightChanges,
+	unsavedChangesStore,
+} from "./stores/unsavedChangesStore.js";
 // biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
 import type {
 	DiffLine,
@@ -94,8 +99,7 @@ if (typeof document !== "undefined") {
 		isDarkMode ? "dark" : "light",
 	);
 }
-let _hasUnsavedLeftChanges: boolean = false;
-let _hasUnsavedRightChanges: boolean = false;
+// Unsaved changes state is now managed by unsavedChangesStore
 let _hasHorizontalScrollbar: boolean = false;
 let _hasCompletedComparison: boolean = false;
 
@@ -347,18 +351,9 @@ function processLineHighlighting(line: DiffLine): HighlightedDiffLine {
 	};
 }
 
-// Update unsaved changes status
+// Update unsaved changes status (delegated to store)
 async function updateUnsavedChangesStatus(): Promise<void> {
-	const { leftFilePath, rightFilePath } = fileStore.getState();
-	if (leftFilePath) {
-		_hasUnsavedLeftChanges = await HasUnsavedChanges(leftFilePath);
-	}
-	if (rightFilePath) {
-		_hasUnsavedRightChanges = await HasUnsavedChanges(rightFilePath);
-	}
-
-	// Update menu items in the backend
-	await UpdateSaveMenuItems(_hasUnsavedLeftChanges, _hasUnsavedRightChanges);
+	await unsavedChangesStore.updateStatus();
 }
 
 // Quit dialog functions
@@ -960,9 +955,7 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 
 async function saveLeftFile(): Promise<void> {
 	try {
-		const { leftFilePath } = fileStore.getState();
-		await SaveChanges(leftFilePath);
-		await updateUnsavedChangesStatus();
+		await unsavedChangesStore.saveLeft();
 		_errorMessage = "Left file saved successfully";
 	} catch (error) {
 		console.error("Error saving left file:", error);
@@ -972,9 +965,7 @@ async function saveLeftFile(): Promise<void> {
 
 async function saveRightFile(): Promise<void> {
 	try {
-		const { rightFilePath } = fileStore.getState();
-		await SaveChanges(rightFilePath);
-		await updateUnsavedChangesStatus();
+		await unsavedChangesStore.saveRight();
 		_errorMessage = "Right file saved successfully";
 	} catch (error) {
 		console.error("Error saving right file:", error);
@@ -1622,12 +1613,7 @@ onMount(async () => {
 	EventsOn("menu-save-right", saveRightFile);
 	EventsOn("menu-save-all", async () => {
 		// Save both files if they have unsaved changes
-		if (_hasUnsavedLeftChanges) {
-			await saveLeftFile();
-		}
-		if (_hasUnsavedRightChanges) {
-			await saveRightFile();
-		}
+		await unsavedChangesStore.saveAll();
 	});
 	EventsOn("menu-discard-all", _handleDiscardChanges);
 	EventsOn("menu-prev-diff", jumpToPrevDiff);
@@ -1723,7 +1709,7 @@ function checkHorizontalScrollbar() {
           <button 
             class="menu-item" 
             on:click={_handleDiscardChanges}
-            disabled={!_hasUnsavedLeftChanges && !_hasUnsavedRightChanges}
+            disabled={!$hasAnyUnsavedChanges}
           >
             🗑️ Discard Changes
           </button>
@@ -1754,8 +1740,8 @@ function checkHorizontalScrollbar() {
     leftFilePath={$fileStore.leftFilePath}
     rightFilePath={$fileStore.rightFilePath}
     diffResult={$diffStore.highlightedDiff}
-    hasUnsavedLeftChanges={_hasUnsavedLeftChanges}
-    hasUnsavedRightChanges={_hasUnsavedRightChanges}
+    hasUnsavedLeftChanges={$hasUnsavedLeftChanges}
+    hasUnsavedRightChanges={$hasUnsavedRightChanges}
     currentDiffChunkIndex={$diffStore.currentChunkIndex}
     {hoveredChunkIndex}
     showMinimap={_showMinimap}
