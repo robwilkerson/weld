@@ -7,7 +7,7 @@ async function setupMockedBackend(page) {
 		let hasUnsavedLeft = false;
 		let hasUnsavedRight = false;
 		let selectFileCallCount = 0;
-		
+
 		// Make state accessible for tests
 		window.go.main.App._mockHasUnsavedLeft = false;
 		window.go.main.App._mockHasUnsavedRight = false;
@@ -187,8 +187,10 @@ async function setupMockedBackend(page) {
 						};
 					},
 					HasUnsavedChanges: async () => ({
-						hasUnsavedLeft: window.go.main.App._mockHasUnsavedLeft || hasUnsavedLeft,
-						hasUnsavedRight: window.go.main.App._mockHasUnsavedRight || hasUnsavedRight,
+						hasUnsavedLeft:
+							window.go.main.App._mockHasUnsavedLeft || hasUnsavedLeft,
+						hasUnsavedRight:
+							window.go.main.App._mockHasUnsavedRight || hasUnsavedRight,
 					}),
 					SaveChanges: async (side) => {
 						if (side === "left") {
@@ -322,7 +324,7 @@ test.describe("Copy Operations", () => {
 		await page.waitForTimeout(200);
 
 		// Verify save button is enabled (indicating unsaved changes)
-		const saveButton = await page.locator('.save-btn').nth(1); // Right side save button
+		const saveButton = await page.locator(".save-btn").nth(1); // Right side save button
 		await expect(saveButton).toBeEnabled();
 
 		// Verify the copy operation was called
@@ -335,9 +337,7 @@ test.describe("Copy Operations", () => {
 	test("copies added chunk from right to left", async ({ page }) => {
 		// The mock data has removed lines first, then added lines
 		// Let's find the added lines directly
-		const firstAddedLine = await page
-			.locator(".line-added")
-			.first();
+		const firstAddedLine = await page.locator(".line-added").first();
 
 		// Hover to show copy arrow
 		await firstAddedLine.hover();
@@ -354,7 +354,7 @@ test.describe("Copy Operations", () => {
 		await page.waitForTimeout(200);
 
 		// Verify save button is enabled
-		const saveButton = await page.locator('.save-btn').first(); // Left side save button
+		const saveButton = await page.locator(".save-btn").first(); // Left side save button
 		await expect(saveButton).toBeEnabled();
 
 		// Verify the copy operation was called
@@ -380,7 +380,7 @@ test.describe("Copy Operations", () => {
 			// Track if operation was called
 			window.go.main.App._copyOperationCalled = false;
 			window.go.main.App._removeLineCalled = false;
-			
+
 			// Override BeginOperationGroup to mark that operation started
 			const originalBegin = window.go.main.App.BeginOperationGroup;
 			window.go.main.App.BeginOperationGroup = async (desc) => {
@@ -391,7 +391,7 @@ test.describe("Copy Operations", () => {
 				}
 				return originalBegin(desc);
 			};
-			
+
 			// Also override RemoveLineFromFile to track it
 			const originalRemove = window.go.main.App.RemoveLineFromFile;
 			window.go.main.App.RemoveLineFromFile = async (filePath, lineNum) => {
@@ -410,7 +410,7 @@ test.describe("Copy Operations", () => {
 		// Try to find arrow button directly by looking for the → button
 		// The page snapshot shows button "→" elements
 		const arrows = await page.locator('button:has-text("→")').all();
-		
+
 		// The modified line should have an arrow near line 26/line 50
 		// Let's click the appropriate arrow (should be around the middle)
 		if (arrows.length >= 2) {
@@ -426,12 +426,11 @@ test.describe("Copy Operations", () => {
 		await page.waitForTimeout(500);
 
 		// Check if any operation was called
-		const {operationCalled, removeLineCalled} = await page.evaluate(() => ({
+		const { operationCalled, removeLineCalled } = await page.evaluate(() => ({
 			operationCalled: window.go.main.App._copyOperationCalled,
-			removeLineCalled: window.go.main.App._removeLineCalled
+			removeLineCalled: window.go.main.App._removeLineCalled,
 		}));
-		
-		
+
 		// Either operation being called indicates the copy worked
 		expect(operationCalled || removeLineCalled).toBe(true);
 
@@ -440,9 +439,9 @@ test.describe("Copy Operations", () => {
 			window.go.main.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
-		
+
 		// Verify save button is enabled
-		const saveButton = await page.locator('.save-btn').nth(1); // Right side
+		const saveButton = await page.locator(".save-btn").nth(1); // Right side
 		await expect(saveButton).toBeEnabled();
 	});
 
@@ -479,7 +478,7 @@ test.describe("Copy Operations", () => {
 		// After copying the last diff, check where the cursor is
 		// The behavior may depend on whether any diffs remain
 		const afterCopyDiff = await page.locator(".current-diff").first();
-		
+
 		// If there are still diffs remaining, we should be on one
 		// Otherwise, we stay on the last position
 		await expect(afterCopyDiff).toBeVisible();
@@ -530,9 +529,9 @@ test.describe("Copy Operations", () => {
 			window.go.main.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
-		
+
 		// Verify save button is enabled
-		const saveButton = await page.locator('.save-btn').nth(1);
+		const saveButton = await page.locator(".save-btn").nth(1);
 		await expect(saveButton).toBeEnabled();
 
 		// Set up mock to ensure undo clears unsaved state
@@ -577,12 +576,15 @@ test.describe("Copy Operations", () => {
 			// Track if copy function was called
 			window.go.main.App._copyLeftToRightCalled = false;
 			window.go.main.App._beginOperationGroupCalled = false;
-			
+
 			// Override BeginOperationGroup to track operation
 			const originalBegin = window.go.main.App.BeginOperationGroup;
 			window.go.main.App.BeginOperationGroup = async (desc) => {
 				window.go.main.App._beginOperationGroupCalled = true;
-				if (desc.includes("Copy chunk to right") || desc.includes("Delete chunk from right")) {
+				if (
+					desc.includes("Copy chunk to right") ||
+					desc.includes("Delete chunk from right")
+				) {
 					window.go.main.App._copyLeftToRightCalled = true;
 					// Mark right side as having changes
 					window.go.main.App._mockHasUnsavedRight = true;
@@ -592,7 +594,12 @@ test.describe("Copy Operations", () => {
 
 			// Override CopyToFile to track operation
 			const originalCopyToFile = window.go.main.App.CopyToFile;
-			window.go.main.App.CopyToFile = async (from, to, lineNum, lineContent) => {
+			window.go.main.App.CopyToFile = async (
+				from,
+				to,
+				lineNum,
+				lineContent,
+			) => {
 				// If copying to right file, mark as having unsaved changes
 				if (to.includes("2.js")) {
 					window.go.main.App._mockHasUnsavedRight = true;
@@ -606,18 +613,18 @@ test.describe("Copy Operations", () => {
 		// Since keyboard shortcuts are handled by the app's event handler, we'll simulate the action
 		await currentDiff.hover();
 		await page.waitForTimeout(200);
-		
+
 		const copyArrow = await page
 			.locator(".chunk-actions")
 			.first()
 			.locator(".left-side-arrow.chunk-arrow");
 		await copyArrow.click();
-		
+
 		await page.waitForTimeout(500);
 
 		// Verify the operation was triggered
-		const beginCalled = await page.evaluate(() =>
-			window.go.main.App._beginOperationGroupCalled
+		const beginCalled = await page.evaluate(
+			() => window.go.main.App._beginOperationGroupCalled,
 		);
 		expect(beginCalled).toBe(true);
 
@@ -636,7 +643,7 @@ test.describe("Copy Operations", () => {
 		// First, let's navigate past the removed lines
 		await page.keyboard.press("j"); // Navigate to first chunk
 		await page.waitForTimeout(100);
-		
+
 		// Now click specifically on an added line to ensure focus
 		const addedLines = await page.locator(".line-added").all();
 		if (addedLines.length > 0) {
@@ -656,12 +663,15 @@ test.describe("Copy Operations", () => {
 			// Track if copy function was called
 			window.go.main.App._copyRightToLeftCalled = false;
 			window.go.main.App._beginOperationGroupCalled = false;
-			
+
 			// Override BeginOperationGroup to track operation
 			const originalBegin = window.go.main.App.BeginOperationGroup;
 			window.go.main.App.BeginOperationGroup = async (desc) => {
 				window.go.main.App._beginOperationGroupCalled = true;
-				if (desc.includes("Copy chunk to left") || desc.includes("Delete chunk from left")) {
+				if (
+					desc.includes("Copy chunk to left") ||
+					desc.includes("Delete chunk from left")
+				) {
 					window.go.main.App._copyRightToLeftCalled = true;
 					// Mark left side as having changes
 					window.go.main.App._mockHasUnsavedLeft = true;
@@ -671,7 +681,12 @@ test.describe("Copy Operations", () => {
 
 			// Override CopyToFile to track operation
 			const originalCopyToFile = window.go.main.App.CopyToFile;
-			window.go.main.App.CopyToFile = async (from, to, lineNum, lineContent) => {
+			window.go.main.App.CopyToFile = async (
+				from,
+				to,
+				lineNum,
+				lineContent,
+			) => {
 				// If copying to left file, mark as having unsaved changes
 				if (to.includes("1.js")) {
 					window.go.main.App._mockHasUnsavedLeft = true;
@@ -684,18 +699,18 @@ test.describe("Copy Operations", () => {
 		// Simulate the keyboard shortcut by triggering click on the copy arrow
 		await currentDiff.hover();
 		await page.waitForTimeout(200);
-		
+
 		const copyArrow = await page
 			.locator(".chunk-actions")
 			.locator(".right-side-arrow.chunk-arrow")
 			.first();
 		await copyArrow.click();
-		
+
 		await page.waitForTimeout(500);
 
 		// Verify the operation was triggered
-		const beginCalled = await page.evaluate(() =>
-			window.go.main.App._beginOperationGroupCalled
+		const beginCalled = await page.evaluate(
+			() => window.go.main.App._beginOperationGroupCalled,
 		);
 		expect(beginCalled).toBe(true);
 
@@ -728,7 +743,7 @@ test.describe("Copy Operations", () => {
 			// Track operations
 			window.go.main.App._leftToRightCalled = false;
 			window.go.main.App._rightToLeftCalled = false;
-			
+
 			// Override BeginOperationGroup
 			const originalBegin = window.go.main.App.BeginOperationGroup;
 			window.go.main.App.BeginOperationGroup = async (desc) => {
@@ -748,8 +763,8 @@ test.describe("Copy Operations", () => {
 		await page.waitForTimeout(500);
 
 		// Verify operation was called
-		let operationCalled = await page.evaluate(() =>
-			window.go.main.App._leftToRightCalled
+		let operationCalled = await page.evaluate(
+			() => window.go.main.App._leftToRightCalled,
 		);
 		expect(operationCalled).toBe(true);
 
@@ -775,8 +790,8 @@ test.describe("Copy Operations", () => {
 		await page.waitForTimeout(500);
 
 		// Verify operation was called
-		operationCalled = await page.evaluate(() =>
-			window.go.main.App._rightToLeftCalled
+		operationCalled = await page.evaluate(
+			() => window.go.main.App._rightToLeftCalled,
 		);
 		expect(operationCalled).toBe(true);
 
@@ -817,14 +832,16 @@ test.describe("Copy Operations", () => {
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 
 		// Verify save buttons are enabled
-		const leftSaveButton = await page.locator('.save-btn').first();
-		const rightSaveButton = await page.locator('.save-btn').nth(1);
+		const leftSaveButton = await page.locator(".save-btn").first();
+		const rightSaveButton = await page.locator(".save-btn").nth(1);
 		await expect(leftSaveButton).toBeEnabled();
 		await expect(rightSaveButton).toBeEnabled();
 
 		// Count original diffs before discard
-		const diffsBeforeDiscard = await page.locator('.line-removed, .line-added, .line-modified').count();
-		
+		const diffsBeforeDiscard = await page
+			.locator(".line-removed, .line-added, .line-modified")
+			.count();
+
 		// Discard all changes by calling the function directly
 		await page.evaluate(() => {
 			window.go.main.App.DiscardAllChanges();
@@ -839,19 +856,26 @@ test.describe("Copy Operations", () => {
 		expect(hasUnsaved.hasUnsavedRight).toBe(false);
 
 		// Verify all original diffs are restored
-		const diffsAfterDiscard = await page.locator('.line-removed, .line-added, .line-modified').count();
+		const diffsAfterDiscard = await page
+			.locator(".line-removed, .line-added, .line-modified")
+			.count();
 		expect(diffsAfterDiscard).toBe(diffsBeforeDiscard);
 
 		// Verify the specific diff types are back
-		const removedLines = await page.locator('.line-removed').count();
-		const addedLines = await page.locator('.line-added').count();
-		const modifiedLines = await page.locator('.line-modified').count();
-		
+		const removedLines = await page.locator(".line-removed").count();
+		const addedLines = await page.locator(".line-added").count();
+		const modifiedLines = await page.locator(".line-modified").count();
+
 		expect(removedLines).toBeGreaterThan(0);
 		expect(addedLines).toBeGreaterThan(0);
 		expect(modifiedLines).toBeGreaterThan(0);
 	});
 
+	// This test is skipped because the behavior is inconsistent:
+	// - The test navigates to a "same" line with empty content on both sides
+	// - When both sides are identical, Shift+H creates unsaved changes on the right (not left)
+	// - This suggests the copy operation might be working differently than expected
+	// - Needs investigation to determine the correct behavior for copy operations on identical lines
 	test.skip("Shift+H/L does nothing on same lines", async ({ page }) => {
 		// Navigate to a 'same' line by going past the first chunks
 		// We'll need to find a same line that's part of the navigation
@@ -868,7 +892,6 @@ test.describe("Copy Operations", () => {
 		// Try to go past last diff - should stay at last
 		await page.keyboard.press("j");
 		await page.waitForTimeout(200);
-
 
 		// Now if we're on a same line area, Shift+H/L should do nothing
 		// Try both shortcuts

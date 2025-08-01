@@ -110,7 +110,7 @@ else
     cd frontend
     START_TIME=$(date +%s)
     
-    if ! bun run test:e2e > /tmp/e2e-test.log 2>&1; then
+    if ! bun run test:e2e:headless > /tmp/e2e-test.log 2>&1; then
         print_error "E2E tests failed"
         echo "See /tmp/e2e-test.log for details"
         # Show last few lines of the log for quick debugging

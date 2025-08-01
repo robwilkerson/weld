@@ -186,8 +186,8 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
         print_info "Wails dev server detected. Running E2E tests..."
         cd frontend
         
-        # Run E2E tests (they have their own timeout in playwright.config.ts)
-        if ! bun run test:e2e > /tmp/e2e-test-commit.log 2>&1; then
+        # Run E2E tests in headless mode (they have their own timeout in playwright.config.ts)
+        if ! bun run test:e2e:headless > /tmp/e2e-test-commit.log 2>&1; then
             print_error "E2E tests failed or timed out (2 min limit)"
             echo "See /tmp/e2e-test-commit.log for details"
             print_info "You can skip with --no-verify, but please ensure E2E tests pass before pushing"

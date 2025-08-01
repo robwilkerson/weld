@@ -21,6 +21,13 @@ import FileSelector from "./components/FileSelector.svelte";
 import QuitDialog from "./components/QuitDialog.svelte";
 // biome-ignore lint/style/useImportType: UndoManager is used as a component, not just a type
 import UndoManager from "./components/UndoManager.svelte";
+// biome-ignore-start lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+import {
+	bothFilesSelected,
+	fileStore,
+	isSameFile,
+} from "./stores/fileStore.js";
+// biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
 import type {
 	DiffLine,
 	DiffResult,
@@ -56,10 +63,7 @@ const scrollSync = createScrollSynchronizer();
 // biome-ignore lint/suspicious/noExplicitAny: Svelte component ref
 let diffViewerComponent: any;
 
-let leftFilePath: string = "";
-let rightFilePath: string = "";
-let leftFileName: string = "Select left file...";
-let rightFileName: string = "Select right file...";
+// File state is now managed by fileStore
 let diffResult: DiffResult | null = null;
 let _isComparing: boolean = false;
 let _errorMessage: string = "";
@@ -147,14 +151,14 @@ $: {
 	UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff);
 }
 
-$: isSameFile = leftFilePath && rightFilePath && leftFilePath === rightFilePath;
+// isSameFile is now a derived store from fileStore
 
 // Only show "files are identical" banner if they're identical on disk
 $: areFilesIdentical =
 	diffResult?.lines &&
 	diffResult.lines.length > 0 &&
 	diffResult.lines.every((line) => line.type === "same") &&
-	leftFilePath !== rightFilePath;
+	!$isSameFile;
 
 $: lineNumberWidth = getLineNumberWidth(diffResult);
 
@@ -325,6 +329,7 @@ function processLineHighlighting(line: DiffLine): HighlightedDiffLine {
 
 // Update unsaved changes status
 async function updateUnsavedChangesStatus(): Promise<void> {
+	const { leftFilePath, rightFilePath } = fileStore.getState();
 	if (leftFilePath) {
 		_hasUnsavedLeftChanges = await HasUnsavedChanges(leftFilePath);
 	}
@@ -343,6 +348,7 @@ function handleQuitDialog(unsavedFiles: string[]): void {
 
 	// Initialize file selections - dirty files checked by default, clean files unchecked and disabled
 	fileSelections = {};
+	const { leftFilePath, rightFilePath } = fileStore.getState();
 	for (const file of [leftFilePath, rightFilePath]) {
 		if (file) {
 			fileSelections[file] = unsavedFiles.includes(file);
@@ -411,10 +417,9 @@ function _extractHighlightedLines(html: string): string[] {
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
-	leftFilePath = path;
-	leftFileName = path.split("/").pop() || path;
+	fileStore.setLeftFile(path);
 	await updateUnsavedChangesStatus();
-	_errorMessage = `Left file selected: ${leftFileName}`;
+	_errorMessage = `Left file selected: ${fileStore.getState().leftFileName}`;
 	diffResult = null; // Clear previous results
 	_hasCompletedComparison = false; // Reset comparison state
 }
@@ -427,10 +432,9 @@ function handleError(event: CustomEvent<{ message: string }>) {
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
-	rightFilePath = path;
-	rightFileName = path.split("/").pop() || path;
+	fileStore.setRightFile(path);
 	await updateUnsavedChangesStatus();
-	_errorMessage = `Right file selected: ${rightFileName}`;
+	_errorMessage = `Right file selected: ${fileStore.getState().rightFileName}`;
 	diffResult = null; // Clear previous results
 	_hasCompletedComparison = false; // Reset comparison state
 }
@@ -438,6 +442,7 @@ async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 async function compareBothFiles(
 	preserveCurrentDiff: boolean = false,
 ): Promise<void> {
+	const { leftFilePath, rightFilePath } = fileStore.getState();
 	if (!leftFilePath || !rightFilePath) {
 		_errorMessage = "Please select both files before comparing";
 		return;
@@ -603,6 +608,7 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 
 // Helper to get diff operation context
 function getDiffOperationContext(): diffOps.DiffOperationContext {
+	const { leftFilePath, rightFilePath } = fileStore.getState();
 	return {
 		leftFilePath,
 		rightFilePath,
@@ -745,6 +751,7 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 
 async function saveLeftFile(): Promise<void> {
 	try {
+		const { leftFilePath } = fileStore.getState();
 		await SaveChanges(leftFilePath);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Left file saved successfully";
@@ -756,6 +763,7 @@ async function saveLeftFile(): Promise<void> {
 
 async function saveRightFile(): Promise<void> {
 	try {
+		const { rightFilePath } = fileStore.getState();
 		await SaveChanges(rightFilePath);
 		await updateUnsavedChangesStatus();
 		_errorMessage = "Right file saved successfully";
@@ -784,8 +792,8 @@ function handleKeydown(event: KeyboardEvent): void {
 			copyCurrentDiffRightToLeft,
 			undoLastChange,
 		},
-		leftFilePath,
-		rightFilePath,
+		fileStore.getState().leftFilePath,
+		fileStore.getState().rightFilePath,
 	);
 }
 
@@ -1276,10 +1284,7 @@ onMount(async () => {
 	try {
 		const [initialLeft, initialRight] = await GetInitialFiles();
 		if (initialLeft && initialRight) {
-			leftFilePath = initialLeft;
-			rightFilePath = initialRight;
-			leftFileName = initialLeft.split("/").pop() || "Select left file...";
-			rightFileName = initialRight.split("/").pop() || "Select right file...";
+			fileStore.setBothFiles(initialLeft, initialRight);
 
 			// Automatically compare the files
 			await compareBothFiles();
@@ -1373,10 +1378,10 @@ function checkHorizontalScrollbar() {
       {/if}
     </div>
     <FileSelector
-      {leftFilePath}
-      {rightFilePath}
-      {leftFileName}
-      {rightFileName}
+      leftFilePath={$fileStore.leftFilePath}
+      rightFilePath={$fileStore.rightFilePath}
+      leftFileName={$fileStore.leftFileName}
+      rightFileName={$fileStore.rightFileName}
       {isDarkMode}
       isComparing={_isComparing}
       hasCompletedComparison={_hasCompletedComparison}
@@ -1393,19 +1398,18 @@ function checkHorizontalScrollbar() {
 
   <DiffViewer
     bind:this={diffViewerComponent}
-    {leftFilePath}
-    {rightFilePath}
+    leftFilePath={$fileStore.leftFilePath}
+    rightFilePath={$fileStore.rightFilePath}
     diffResult={highlightedDiffResult}
     hasUnsavedLeftChanges={_hasUnsavedLeftChanges}
     hasUnsavedRightChanges={_hasUnsavedRightChanges}
     {currentDiffChunkIndex}
     {hoveredChunkIndex}
     showMinimap={_showMinimap}
-    {isDarkMode}
     isComparing={_isComparing}
     hasCompletedComparison={_hasCompletedComparison}
     {areFilesIdentical}
-    {isSameFile}
+    isSameFile={$isSameFile}
     {lineNumberWidth}
     {diffChunks}
     on:saveLeft={saveLeftFile}
@@ -1431,7 +1435,7 @@ function checkHorizontalScrollbar() {
     on:statusUpdate={(e) => e.detail.message}
     on:undoStateChanged={async () => {
       // Re-fetch diff after undo
-      if (leftFilePath && rightFilePath) {
+      if ($bothFilesSelected) {
         await compareBothFiles(true);
         await updateUnsavedChangesStatus();
       }
@@ -1442,8 +1446,8 @@ function checkHorizontalScrollbar() {
   <QuitDialog
     show={_showQuitDialog}
     quitDialogFiles={_quitDialogFiles}
-    {leftFilePath}
-    {rightFilePath}
+    leftFilePath={$fileStore.leftFilePath}
+    rightFilePath={$fileStore.rightFilePath}
     bind:fileSelections
     on:saveAndQuit={_handleSaveAndQuit}
     on:quitWithoutSaving={_handleQuitWithoutSaving}
