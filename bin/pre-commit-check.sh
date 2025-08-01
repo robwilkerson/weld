@@ -119,32 +119,17 @@ fi
 
 # Check if we have frontend changes that need testing
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
-    # Check if any of the changed files have corresponding test files
-    TEST_FILES=""
-    for file in $STAGED_FRONTEND_FILES; do
-        # Convert source file to test file path
-        TEST_FILE=$(echo "$file" | sed 's/\.svelte$/\.test\.ts/' | sed 's/\.ts$/\.test\.ts/' | sed 's/\.test\.test/\.test/')
-        if [ -f "$TEST_FILE" ]; then
-            # Keep the path relative to frontend directory
-            RELATIVE_TEST_FILE=$(echo "$TEST_FILE" | sed 's|^frontend/||')
-            TEST_FILES="$TEST_FILES $RELATIVE_TEST_FILE"
-        fi
-    done
-    
-    if [ -n "$TEST_FILES" ]; then
-        print_info "Running tests for changed frontend files..."
-        cd frontend
-        if ! bun run test $TEST_FILES --run > /tmp/frontend-test-commit.log 2>&1; then
-            print_error "Frontend tests failed"
-            echo "See /tmp/frontend-test-commit.log for details"
-            CHECKS_PASSED=false
-        else
-            print_success "Frontend tests passed"
-        fi
-        cd ..
+    print_info "Running all frontend tests to catch regressions..."
+    cd frontend
+    # Run all tests except integration tests (which are outdated)
+    if ! bun run test src/stores/ src/components/ src/utils/ --run > /tmp/frontend-test-commit.log 2>&1; then
+        print_error "Frontend tests failed"
+        echo "See /tmp/frontend-test-commit.log for details"
+        CHECKS_PASSED=false
     else
-        print_info "No frontend tests to run for changed files"
+        print_success "Frontend tests passed"
     fi
+    cd ..
 fi
 
 # 4. Check commit message (this is critical - always check)
