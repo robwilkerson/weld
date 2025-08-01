@@ -60,6 +60,7 @@
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
   * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
 - [ ] Enable performant syntax highlighting
+- [ ] Review backend test coverage and add quality tests to improve coverage from 60.6%
 
 ## Low Priority
 

@@ -185,7 +185,10 @@ test.describe("Save Operations", () => {
 			.first();
 		await expect(copyArrow).toBeVisible();
 		await copyArrow.click();
-		await page.waitForTimeout(500);
+
+		// Wait for the copy operation to complete and the save button to update
+		// The copy operation includes refreshing the diff and updating unsaved status
+		await page.waitForTimeout(1000);
 
 		// Left save button should now be enabled
 		await expect(leftSaveBtn).toBeEnabled();

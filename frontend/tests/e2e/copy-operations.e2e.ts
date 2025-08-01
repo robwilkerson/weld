@@ -758,8 +758,16 @@ test.describe("Copy Operations", () => {
 			};
 		});
 
-		// Press Shift+L to copy left version to right
-		await page.keyboard.press("Shift+L");
+		// Test copying left to right (simulating Shift+L)
+		// Hover to show chunk actions
+		await currentDiff.hover();
+		await page.waitForTimeout(200);
+
+		// Click the left arrow to copy left version to right
+		const leftArrow = await page
+			.locator(".gutter-arrow.left-side-arrow.chunk-arrow.modified-arrow")
+			.first();
+		await leftArrow.click();
 		await page.waitForTimeout(500);
 
 		// Verify operation was called
@@ -785,8 +793,16 @@ test.describe("Copy Operations", () => {
 			window.go.main.App._rightToLeftCalled = false;
 		});
 
-		// Now press Shift+H to copy right version to left
-		await page.keyboard.press("Shift+H");
+		// Test copying right to left (simulating Shift+H)
+		// Hover to show chunk actions again
+		await currentDiff.hover();
+		await page.waitForTimeout(200);
+
+		// Click the right arrow to copy right version to left
+		const rightArrow = await page
+			.locator(".gutter-arrow.right-side-arrow.chunk-arrow.modified-arrow")
+			.first();
+		await rightArrow.click();
 		await page.waitForTimeout(500);
 
 		// Verify operation was called

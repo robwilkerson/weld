@@ -1,12 +1,17 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import {
+	BeginOperationGroup,
+	CommitOperationGroup,
 	CompareFiles,
+	CopyToFile,
 	DiscardAllChanges,
 	GetInitialFiles,
 	GetMinimapVisible,
 	HasUnsavedChanges,
 	QuitWithoutSaving,
+	RemoveLineFromFile,
+	RollbackOperationGroup,
 	SaveChanges,
 	SaveSelectedFilesAndQuit,
 	UpdateDiffNavigationMenuItems,
@@ -21,6 +26,14 @@ import FileSelector from "./components/FileSelector.svelte";
 import QuitDialog from "./components/QuitDialog.svelte";
 // biome-ignore lint/style/useImportType: UndoManager is used as a component, not just a type
 import UndoManager from "./components/UndoManager.svelte";
+// biome-ignore-start lint/correctness/noUnusedImports: diffNavigation and lineNumberWidth are used via $diffNavigation and $lineNumberWidth
+import {
+	diffChunks,
+	diffNavigation,
+	diffStore,
+	lineNumberWidth,
+} from "./stores/diffStore.js";
+// biome-ignore-end lint/correctness/noUnusedImports: diffNavigation and lineNumberWidth are used via $diffNavigation and $lineNumberWidth
 // biome-ignore-start lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
 import {
 	bothFilesSelected,
@@ -35,17 +48,13 @@ import type {
 	HighlightedDiffResult,
 	LineChunk,
 } from "./types/diff.js";
-import {
-	computeInlineDiff,
-	escapeHtml,
-	getLineNumberWidth,
-} from "./utils/diff.js";
-import { calculateDiffChunks } from "./utils/diffChunks.js";
+import { computeInlineDiff, escapeHtml } from "./utils/diff.js";
 import * as diffOps from "./utils/diffOperations.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
+import { detectLineChunks } from "./utils/lineChunks.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getDisplayPath } from "./utils/path.js";
 import { createScrollSynchronizer } from "./utils/scrollSync.js";
@@ -64,7 +73,7 @@ const scrollSync = createScrollSynchronizer();
 let diffViewerComponent: any;
 
 // File state is now managed by fileStore
-let diffResult: DiffResult | null = null;
+// Diff state is now managed by diffStore
 let _isComparing: boolean = false;
 let _errorMessage: string = "";
 // biome-ignore lint/correctness/noUnusedVariables: Keep for backward compatibility during migration
@@ -98,8 +107,7 @@ let fileSelections: Record<string, boolean> = {};
 // Menu state
 let _showMenu: boolean = false;
 
-// Current diff tracking
-let currentDiffChunkIndex: number = -1;
+// Current diff tracking is now managed by diffStore
 
 // Hover tracking for chunks
 let hoveredChunkIndex: number = -1;
@@ -110,14 +118,14 @@ let undoManager: UndoManager;
 // Create a reactive function for checking if a line is in the current chunk
 $: isLineHighlighted = (lineIndex: number) => {
 	if (
-		currentDiffChunkIndex === -1 ||
-		!diffChunks ||
-		!diffChunks[currentDiffChunkIndex]
+		$diffStore.currentChunkIndex === -1 ||
+		!$diffChunks ||
+		!$diffChunks[$diffStore.currentChunkIndex]
 	) {
 		return false;
 	}
 
-	const chunk = diffChunks[currentDiffChunkIndex];
+	const chunk = $diffChunks[$diffStore.currentChunkIndex];
 	const isInChunk =
 		lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
 
@@ -145,37 +153,33 @@ $: isLineHovered = (lineIndex: number) => {
 
 // Update diff navigation menu items whenever diff state changes
 $: {
-	const hasPrevDiff = diffChunks.length > 0 && currentDiffChunkIndex > 0;
-	const hasNextDiff =
-		diffChunks.length > 0 && currentDiffChunkIndex < diffChunks.length - 1;
-	UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff);
+	UpdateDiffNavigationMenuItems(
+		$diffNavigation.hasPrevDiff,
+		$diffNavigation.hasNextDiff,
+	);
 }
 
 // isSameFile is now a derived store from fileStore
 
 // Only show "files are identical" banner if they're identical on disk
 $: areFilesIdentical =
-	diffResult?.lines &&
-	diffResult.lines.length > 0 &&
-	diffResult.lines.every((line) => line.type === "same") &&
+	$diffStore.rawDiff?.lines &&
+	$diffStore.rawDiff.lines.length > 0 &&
+	$diffStore.rawDiff.lines.every((line) => line.type === "same") &&
 	!$isSameFile;
 
-$: lineNumberWidth = getLineNumberWidth(diffResult);
+// Line number width is now computed by diffStore as a derived store
 
 // ===========================================
 // HIGHLIGHTING TYPES AND STATE
 // ===========================================
 
-// Highlighted diff result for template rendering
-let highlightedDiffResult: HighlightedDiffResult | null = null;
+// Highlighted diff result is now managed by diffStore
 
 // Track if we're currently processing to avoid re-entrancy
 let isProcessingHighlight = false;
 
-// Compute diff chunks using shared utility
-$: diffChunks = highlightedDiffResult
-	? calculateDiffChunks(highlightedDiffResult.lines)
-	: [];
+// Diff chunks are now computed by diffStore as a derived store
 
 // ===========================================
 // HIGHLIGHTING CONFIGURATION
@@ -188,20 +192,36 @@ const HIGHLIGHTING_CONFIG = {
 	syntaxHighlighting: false, // Code syntax highlighting
 };
 
-// Process highlighting when diffResult changes
-$: if (diffResult && highlighter && !isProcessingHighlight) {
-	processHighlighting(diffResult);
-} else if (diffResult && !highlighter) {
+// Process highlighting when rawDiff changes
+$: if ($diffStore.rawDiff && highlighter && !isProcessingHighlight) {
+	processHighlighting($diffStore.rawDiff);
+} else if ($diffStore.rawDiff && !highlighter) {
 	// Set result without highlighting for now
-	highlightedDiffResult = {
-		lines: diffResult.lines.map((line) => processLineHighlighting(line)),
-	};
+	setHighlightedDiffWithChunks({
+		lines: $diffStore.rawDiff.lines.map((line) =>
+			processLineHighlighting(line),
+		),
+	});
 	// Auto-scroll is now handled by DiffViewer component
-} else if (!diffResult) {
-	highlightedDiffResult = null;
+} else if (!$diffStore.rawDiff) {
+	setHighlightedDiffWithChunks(null);
 }
 
-let lineChunks: LineChunk[] = [];
+// Line chunks are now managed in diffStore
+$: lineChunks = $diffStore.lineChunks;
+
+// Helper function to set highlighted diff and update lineChunks
+function setHighlightedDiffWithChunks(
+	highlightedDiff: HighlightedDiffResult | null,
+): void {
+	diffStore.setHighlightedDiff(highlightedDiff);
+	if (highlightedDiff?.lines) {
+		const chunks = detectLineChunks(highlightedDiff.lines);
+		diffStore.setLineChunks(chunks);
+	} else {
+		diffStore.setLineChunks([]);
+	}
+}
 
 // Viewport tracking for minimap
 // biome-ignore lint/correctness/noUnusedVariables: Used in Minimap component
@@ -215,9 +235,9 @@ const _dragStartScrollTop = 0;
 // Minimap visibility state
 let _showMinimap = true;
 
-// Process chunks when highlightedDiffResult changes
-$: if (highlightedDiffResult) {
-	lineChunks = detectLineChunks(highlightedDiffResult.lines);
+// Process chunks when highlightedDiff changes
+$: if ($diffStore.highlightedDiff) {
+	diffStore.setLineChunks(detectLineChunks($diffStore.highlightedDiff.lines));
 }
 
 // Note: Minimap viewport updates are now handled in DiffViewer component
@@ -243,15 +263,15 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 	isProcessingHighlight = true;
 
 	if (!result) {
-		highlightedDiffResult = result;
+		setHighlightedDiffWithChunks(null);
 		isProcessingHighlight = false;
 		return;
 	}
 
 	if (!highlighter) {
-		highlightedDiffResult = {
+		setHighlightedDiffWithChunks({
 			lines: result.lines.map((line) => processLineHighlighting(line)),
-		};
+		});
 		isProcessingHighlight = false;
 		return;
 	}
@@ -259,18 +279,18 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 	try {
 		// For now, disable syntax highlighting to avoid lockups
 		// TODO: Implement with web workers or lazy loading
-		highlightedDiffResult = {
+		setHighlightedDiffWithChunks({
 			lines: result.lines.map((line) => processLineHighlighting(line)),
-		};
+		});
 
 		// After highlighting is done, set initial diff chunk
 		// Auto-scroll is now handled by DiffViewer component
 	} catch (error) {
 		console.error("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
-		highlightedDiffResult = {
+		setHighlightedDiffWithChunks({
 			lines: result.lines.map((line) => processLineHighlighting(line)),
-		};
+		});
 
 		// Check for horizontal scrollbar after content is rendered
 		setTimeout(() => {
@@ -420,7 +440,7 @@ async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	fileStore.setLeftFile(path);
 	await updateUnsavedChangesStatus();
 	_errorMessage = `Left file selected: ${fileStore.getState().leftFileName}`;
-	diffResult = null; // Clear previous results
+	diffStore.clear(); // Clear previous results
 	_hasCompletedComparison = false; // Reset comparison state
 }
 
@@ -435,7 +455,7 @@ async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 	fileStore.setRightFile(path);
 	await updateUnsavedChangesStatus();
 	_errorMessage = `Right file selected: ${fileStore.getState().rightFileName}`;
-	diffResult = null; // Clear previous results
+	diffStore.clear(); // Clear previous results
 	_hasCompletedComparison = false; // Reset comparison state
 }
 
@@ -452,15 +472,16 @@ async function compareBothFiles(
 		_isComparing = true;
 		_errorMessage = "";
 		if (!preserveCurrentDiff) {
-			currentDiffChunkIndex = -1; // Reset current diff tracking only when not preserving
+			diffStore.setCurrentChunkIndex(-1); // Reset current diff tracking only when not preserving
 		}
 
-		diffResult = await CompareFiles(leftFilePath, rightFilePath);
+		const result = await CompareFiles(leftFilePath, rightFilePath);
+		diffStore.setRawDiff(result);
 
-		if (!diffResult || !diffResult.lines) {
+		if (!result || !result.lines) {
 			_errorMessage = "No comparison result received";
-			diffResult = null;
-		} else if (diffResult.lines.length === 0) {
+			diffStore.setRawDiff(null);
+		} else if (result.lines.length === 0) {
 			_errorMessage = "Files are identical";
 		}
 
@@ -474,7 +495,7 @@ async function compareBothFiles(
 	} catch (error) {
 		console.error("Comparison error:", error);
 		_errorMessage = `Error comparing files: ${error}`;
-		diffResult = null;
+		diffStore.clear();
 	} finally {
 		_isComparing = false;
 	}
@@ -493,14 +514,14 @@ function _handleMinimapClick(eventData: {
 }): void {
 	// TODO: This functionality needs to be moved to DiffViewer component
 	// For now, just update the chunk index based on click position
-	if (!highlightedDiffResult) return;
+	if (!$diffStore.highlightedDiff) return;
 
 	// If we have a specific chunk, use it directly
 	if (eventData.chunk && eventData.diffChunkIndex !== undefined) {
 		const { chunk, diffChunkIndex } = eventData;
 
 		if (diffChunkIndex !== -1) {
-			currentDiffChunkIndex = diffChunkIndex;
+			diffStore.setCurrentChunkIndex(diffChunkIndex);
 			// Scroll to the start of the chunk to match what the tooltip shows
 			scrollToLine(chunk.startIndex, diffChunkIndex);
 		}
@@ -512,7 +533,7 @@ function _handleMinimapClick(eventData: {
 		const { clickPercentage } = eventData;
 
 		// Calculate the corresponding line index in the actual content
-		const totalLines = highlightedDiffResult.lines.length;
+		const totalLines = $diffStore.highlightedDiff.lines.length;
 		const targetLineIndex = Math.floor(clickPercentage * totalLines);
 
 		// Ensure line index is within bounds
@@ -522,14 +543,14 @@ function _handleMinimapClick(eventData: {
 		);
 
 		// Find which diff chunk this line belongs to and set it as current
-		const clickedChunkIndex = diffChunks.findIndex(
+		const clickedChunkIndex = $diffChunks.findIndex(
 			(chunk) =>
 				boundedLineIndex >= chunk.startIndex &&
 				boundedLineIndex <= chunk.endIndex,
 		);
 
 		if (clickedChunkIndex !== -1) {
-			currentDiffChunkIndex = clickedChunkIndex;
+			diffStore.setCurrentChunkIndex(clickedChunkIndex);
 		}
 
 		// Scroll to the clicked location
@@ -545,8 +566,8 @@ function _toggleDarkMode(): void {
 	// Clear highlight cache when theme changes since highlighting depends on theme
 	highlightCache.clear();
 	// Re-process highlighting with new theme if we have content
-	if (diffResult) {
-		processHighlighting(diffResult);
+	if ($diffStore.rawDiff) {
+		processHighlighting($diffStore.rawDiff);
 	}
 
 	// Close menu after toggling
@@ -573,9 +594,9 @@ async function _handleDiscardChanges(): Promise<void> {
 }
 
 async function copyLineToRight(lineIndex: number): Promise<void> {
-	if (!diffResult || !diffResult.lines[lineIndex]) return;
+	if (!$diffStore.rawDiff || !$diffStore.rawDiff.lines[lineIndex]) return;
 
-	const line = diffResult.lines[lineIndex];
+	const line = $diffStore.rawDiff.lines[lineIndex];
 	if (line.type !== "removed") return;
 
 	try {
@@ -590,9 +611,9 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 }
 
 async function copyLineToLeft(lineIndex: number): Promise<void> {
-	if (!diffResult || !diffResult.lines[lineIndex]) return;
+	if (!$diffStore.rawDiff || !$diffStore.rawDiff.lines[lineIndex]) return;
 
-	const line = diffResult.lines[lineIndex];
+	const line = $diffStore.rawDiff.lines[lineIndex];
 	if (line.type !== "added") return;
 
 	try {
@@ -612,7 +633,7 @@ function getDiffOperationContext(): diffOps.DiffOperationContext {
 	return {
 		leftFilePath,
 		rightFilePath,
-		diffResult,
+		diffResult: $diffStore.rawDiff,
 		compareBothFiles,
 		updateUnsavedChangesStatus,
 		refreshUndoState: async () => {
@@ -632,7 +653,7 @@ async function _copyLineFromLeft(lineIndex: number): Promise<void> {
 }
 
 async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Copying chunk to right file...";
@@ -646,7 +667,7 @@ async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 }
 
 async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Copying chunk to left file...";
@@ -660,7 +681,7 @@ async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 }
 
 async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Copying modified chunk to right file...";
@@ -674,7 +695,7 @@ async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 }
 
 async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Copying modified chunk to left file...";
@@ -688,7 +709,7 @@ async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 }
 
 async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Deleting chunk from right file...";
@@ -702,7 +723,7 @@ async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 }
 
 async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
-	if (!diffResult || !highlightedDiffResult) return;
+	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
 		_errorMessage = "Deleting chunk from left file...";
@@ -715,10 +736,198 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 	}
 }
 
-async function _deleteLineFromRight(lineIndex: number): Promise<void> {
-	if (!diffResult || !diffResult.lines[lineIndex]) return;
+async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
+	if (
+		!$diffStore.rawDiff ||
+		!$diffStore.highlightedDiff ||
+		!$fileStore.leftFilePath ||
+		!$fileStore.rightFilePath
+	)
+		return;
 
-	const line = diffResult.lines[lineIndex];
+	try {
+		_errorMessage = "Copying mixed chunk from left to right...";
+
+		// Start a single transaction for all operations
+		await BeginOperationGroup("Copy mixed chunk left to right");
+
+		try {
+			// First, collect all operations we need to perform
+			const deletions: Array<{ file: string; lineNumber: number }> = [];
+			const copies: Array<{
+				from: string;
+				to: string;
+				lineNumber: number;
+				content: string;
+			}> = [];
+
+			// Process each line in the chunk based on its type
+			for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+				const line = $diffStore.highlightedDiff.lines[i];
+
+				if (line.type === "removed" && line.leftNumber !== null) {
+					// Copy removed line from left to right
+					copies.push({
+						from: $fileStore.leftFilePath,
+						to: $fileStore.rightFilePath,
+						lineNumber: line.leftNumber,
+						content: line.leftLine,
+					});
+				} else if (
+					line.type === "modified" &&
+					line.leftNumber !== null &&
+					line.rightNumber !== null
+				) {
+					// For modified lines, delete the right version and copy the left version
+					deletions.push({
+						file: $fileStore.rightFilePath,
+						lineNumber: line.rightNumber,
+					});
+					copies.push({
+						from: $fileStore.leftFilePath,
+						to: $fileStore.rightFilePath,
+						lineNumber: line.leftNumber,
+						content: line.leftLine,
+					});
+				} else if (line.type === "added" && line.rightNumber !== null) {
+					// Delete added lines from right (copying "nothing" from left)
+					deletions.push({
+						file: $fileStore.rightFilePath,
+						lineNumber: line.rightNumber,
+					});
+				}
+			}
+
+			// Sort deletions in descending order to avoid index shifting
+			deletions.sort((a, b) => b.lineNumber - a.lineNumber);
+
+			// Execute deletions first (from bottom to top)
+			for (const deletion of deletions) {
+				await RemoveLineFromFile(deletion.file, deletion.lineNumber);
+			}
+
+			// Then execute copies
+			for (const copy of copies) {
+				await CopyToFile(copy.from, copy.to, copy.lineNumber, copy.content);
+			}
+
+			// Commit the transaction
+			await CommitOperationGroup();
+
+			// Refresh the diff
+			await compareBothFiles(true);
+			await updateUnsavedChangesStatus();
+
+			_errorMessage = "Mixed chunk copied successfully";
+		} catch (error) {
+			// Rollback on error
+			await RollbackOperationGroup();
+			throw error;
+		}
+	} catch (error) {
+		console.error("Error copying mixed chunk:", error);
+		_errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
+async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
+	if (
+		!$diffStore.rawDiff ||
+		!$diffStore.highlightedDiff ||
+		!$fileStore.leftFilePath ||
+		!$fileStore.rightFilePath
+	)
+		return;
+
+	try {
+		_errorMessage = "Copying mixed chunk from right to left...";
+
+		// Start a single transaction for all operations
+		await BeginOperationGroup("Copy mixed chunk right to left");
+
+		try {
+			// First, collect all operations we need to perform
+			const deletions: Array<{ file: string; lineNumber: number }> = [];
+			const copies: Array<{
+				from: string;
+				to: string;
+				lineNumber: number;
+				content: string;
+			}> = [];
+
+			// Process each line in the chunk based on its type
+			for (let i = chunk.startIndex; i <= chunk.endIndex; i++) {
+				const line = $diffStore.highlightedDiff.lines[i];
+
+				if (line.type === "added" && line.rightNumber !== null) {
+					// Copy added line from right to left
+					copies.push({
+						from: $fileStore.rightFilePath,
+						to: $fileStore.leftFilePath,
+						lineNumber: line.rightNumber,
+						content: line.rightLine,
+					});
+				} else if (
+					line.type === "modified" &&
+					line.leftNumber !== null &&
+					line.rightNumber !== null
+				) {
+					// For modified lines, delete the left version and copy the right version
+					deletions.push({
+						file: $fileStore.leftFilePath,
+						lineNumber: line.leftNumber,
+					});
+					copies.push({
+						from: $fileStore.rightFilePath,
+						to: $fileStore.leftFilePath,
+						lineNumber: line.rightNumber,
+						content: line.rightLine,
+					});
+				} else if (line.type === "removed" && line.leftNumber !== null) {
+					// Delete removed lines from left (copying "nothing" from right)
+					deletions.push({
+						file: $fileStore.leftFilePath,
+						lineNumber: line.leftNumber,
+					});
+				}
+			}
+
+			// Sort deletions in descending order to avoid index shifting
+			deletions.sort((a, b) => b.lineNumber - a.lineNumber);
+
+			// Execute deletions first (from bottom to top)
+			for (const deletion of deletions) {
+				await RemoveLineFromFile(deletion.file, deletion.lineNumber);
+			}
+
+			// Then execute copies
+			for (const copy of copies) {
+				await CopyToFile(copy.from, copy.to, copy.lineNumber, copy.content);
+			}
+
+			// Commit the transaction
+			await CommitOperationGroup();
+
+			// Refresh the diff
+			await compareBothFiles(true);
+			await updateUnsavedChangesStatus();
+
+			_errorMessage = "Mixed chunk copied successfully";
+		} catch (error) {
+			// Rollback on error
+			await RollbackOperationGroup();
+			throw error;
+		}
+	} catch (error) {
+		console.error("Error copying mixed chunk:", error);
+		_errorMessage = `Error copying chunk: ${error}`;
+	}
+}
+
+async function _deleteLineFromRight(lineIndex: number): Promise<void> {
+	if (!$diffStore.rawDiff || !$diffStore.rawDiff.lines[lineIndex]) return;
+
+	const line = $diffStore.rawDiff.lines[lineIndex];
 	if (line.type !== "added") return;
 
 	try {
@@ -733,9 +942,9 @@ async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 }
 
 async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
-	if (!diffResult || !diffResult.lines[lineIndex]) return;
+	if (!$diffStore.rawDiff || !$diffStore.rawDiff.lines[lineIndex]) return;
 
-	const line = diffResult.lines[lineIndex];
+	const line = $diffStore.rawDiff.lines[lineIndex];
 	if (line.type !== "removed") return;
 
 	try {
@@ -876,50 +1085,6 @@ async function _getHighlightedLine(
 	}
 }
 
-function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
-	const chunks: LineChunk[] = [];
-	let currentChunk: LineChunk | null = null;
-
-	lines.forEach((line, index) => {
-		// Create chunks for added/removed/modified lines
-		if (
-			line.type === "added" ||
-			line.type === "removed" ||
-			line.type === "modified"
-		) {
-			if (currentChunk && currentChunk.type === line.type) {
-				// Extend current chunk
-				currentChunk.endIndex = index;
-				currentChunk.lines++;
-			} else {
-				// Start new chunk
-				if (currentChunk) {
-					chunks.push(currentChunk);
-				}
-				currentChunk = {
-					startIndex: index,
-					endIndex: index,
-					type: line.type,
-					lines: 1,
-				};
-			}
-		} else {
-			// End current chunk if any
-			if (currentChunk) {
-				chunks.push(currentChunk);
-				currentChunk = null;
-			}
-		}
-	});
-
-	// Don't forget the last chunk
-	if (currentChunk) {
-		chunks.push(currentChunk);
-	}
-
-	return chunks;
-}
-
 function isLineInChunk(lineIndex: number, chunk: LineChunk): boolean {
 	return lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex;
 }
@@ -933,90 +1098,107 @@ function _getChunkForLine(lineIndex: number): LineChunk | null {
 }
 
 function _isFirstOfConsecutiveModified(lineIndex: number): boolean {
-	if (!highlightedDiffResult || lineIndex >= highlightedDiffResult.lines.length)
+	if (
+		!$diffStore.highlightedDiff ||
+		lineIndex >= $diffStore.highlightedDiff.lines.length
+	)
 		return false;
 
-	const currentLine = highlightedDiffResult.lines[lineIndex];
+	const currentLine = $diffStore.highlightedDiff.lines[lineIndex];
 	if (currentLine.type !== "modified") return false;
 
 	// Check if previous line is not modified
 	if (lineIndex === 0) return true;
-	const prevLine = highlightedDiffResult.lines[lineIndex - 1];
+	const prevLine = $diffStore.highlightedDiff.lines[lineIndex - 1];
 	return prevLine.type !== "modified";
 }
 
 async function copyCurrentDiffLeftToRight(): Promise<void> {
 	if (
-		currentDiffChunkIndex === -1 ||
-		!diffChunks ||
-		!diffChunks[currentDiffChunkIndex]
+		$diffStore.currentChunkIndex === -1 ||
+		!$diffChunks ||
+		!$diffChunks[$diffStore.currentChunkIndex]
 	) {
 		return;
 	}
 
-	const chunk = diffChunks[currentDiffChunkIndex];
-	const lineChunk = lineChunks.find(
+	const chunk = $diffChunks[$diffStore.currentChunkIndex];
+
+	// Find ALL non-same lineChunks that overlap with the diffChunk
+	const overlappingLineChunks = lineChunks.filter(
 		(lc) =>
-			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
+			lc.type !== "same" &&
+			lc.startIndex <= chunk.endIndex &&
+			lc.endIndex >= chunk.startIndex,
 	);
 
-	if (!lineChunk) {
+	if (overlappingLineChunks.length === 0) {
 		return;
 	}
 
 	// Store the current position before copying
-	const oldChunkIndex = currentDiffChunkIndex;
-	const totalChunks = diffChunks.length;
+	const oldChunkIndex = $diffStore.currentChunkIndex;
+	const totalChunks = $diffChunks.length;
 
-	// Determine the action based on chunk type
-	if (lineChunk.type === "removed") {
-		await _copyChunkToRight(lineChunk);
-	} else if (lineChunk.type === "modified") {
-		await _copyModifiedChunkToRight(lineChunk);
-	} else if (lineChunk.type === "added") {
-		// When copying "nothing" from left to right, delete the added lines from right
-		await _deleteChunkFromRight(lineChunk);
-	}
+	// For mixed chunks, we need to handle them as a single operation
+	// Create a synthetic chunk that covers the entire diff chunk
+	const syntheticChunk: LineChunk = {
+		type: "mixed", // This is a special type for our handling
+		startIndex: chunk.startIndex,
+		endIndex: chunk.endIndex,
+	};
 
-	// After refresh, navigate to the next appropriate chunk
-	navigateAfterCopy(oldChunkIndex, totalChunks);
+	// Process the entire chunk as one operation
+	await _copyMixedChunkLeftToRight(syntheticChunk);
+
+	// Wait a bit for the diff to be recalculated before navigating
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
 }
 
 async function copyCurrentDiffRightToLeft(): Promise<void> {
 	if (
-		currentDiffChunkIndex === -1 ||
-		!diffChunks ||
-		!diffChunks[currentDiffChunkIndex]
+		$diffStore.currentChunkIndex === -1 ||
+		!$diffChunks ||
+		!$diffChunks[$diffStore.currentChunkIndex]
 	) {
 		return;
 	}
 
-	const chunk = diffChunks[currentDiffChunkIndex];
-	const lineChunk = lineChunks.find(
+	const chunk = $diffChunks[$diffStore.currentChunkIndex];
+
+	// Find ALL non-same lineChunks that overlap with the diffChunk
+	const overlappingLineChunks = lineChunks.filter(
 		(lc) =>
-			lc.startIndex === chunk.startIndex && lc.endIndex === chunk.endIndex,
+			lc.type !== "same" &&
+			lc.startIndex <= chunk.endIndex &&
+			lc.endIndex >= chunk.startIndex,
 	);
 
-	if (!lineChunk) {
+	if (overlappingLineChunks.length === 0) {
 		return;
 	}
 
 	// Store the current position before copying
-	const oldChunkIndex = currentDiffChunkIndex;
-	const totalChunks = diffChunks.length;
+	const oldChunkIndex = $diffStore.currentChunkIndex;
+	const totalChunks = $diffChunks.length;
 
-	// Determine the action based on chunk type
-	if (lineChunk.type === "added") {
-		await _copyChunkToLeft(lineChunk);
-	} else if (lineChunk.type === "modified") {
-		await _copyModifiedChunkToLeft(lineChunk);
-	} else if (lineChunk.type === "removed") {
-		// When copying "nothing" from right to left, delete the removed lines from left
-		await _deleteChunkFromLeft(lineChunk);
-	}
+	// For mixed chunks, we need to handle them as a single operation
+	// Create a synthetic chunk that covers the entire diff chunk
+	const syntheticChunk: LineChunk = {
+		type: "mixed", // This is a special type for our handling
+		startIndex: chunk.startIndex,
+		endIndex: chunk.endIndex,
+	};
 
-	// After refresh, navigate to the next appropriate chunk
-	navigateAfterCopy(oldChunkIndex, totalChunks);
+	// Process the entire chunk as one operation
+	await _copyMixedChunkRightToLeft(syntheticChunk);
+
+	// Wait a bit for the diff to be recalculated before navigating
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
 }
 
 function navigateAfterCopy(
@@ -1026,43 +1208,45 @@ function navigateAfterCopy(
 	// After copying and refreshing, we need to determine where to navigate
 
 	// If there are no more diff chunks, nothing to do
-	if (!diffChunks || diffChunks.length === 0) {
-		currentDiffChunkIndex = -1;
+	if (!$diffChunks || $diffChunks.length === 0) {
+		diffStore.setCurrentChunkIndex(-1);
 		return;
 	}
 
 	// Check if the number of chunks decreased (chunk was removed)
-	const chunksRemoved = oldTotalChunks - diffChunks.length;
+	const chunksRemoved = oldTotalChunks - $diffChunks.length;
 
 	if (chunksRemoved > 0) {
 		// Chunk was removed, stay at same index (which moves us forward)
 		// unless we're now past the end
-		if (oldChunkIndex >= diffChunks.length) {
+		if (oldChunkIndex >= $diffChunks.length) {
 			// We were at or past the last chunk, wrap to first
-			currentDiffChunkIndex = 0;
+			diffStore.setCurrentChunkIndex(0);
 		} else {
 			// Stay at same index (effectively moving forward)
-			currentDiffChunkIndex = oldChunkIndex;
+			diffStore.setCurrentChunkIndex(oldChunkIndex);
 		}
 	} else {
 		// No chunks removed (e.g., modified chunk was copied)
 		// Move to next chunk
-		if (oldChunkIndex >= diffChunks.length - 1) {
+		if (oldChunkIndex >= $diffChunks.length - 1) {
 			// We were at the last chunk, wrap to first
-			currentDiffChunkIndex = 0;
+			diffStore.setCurrentChunkIndex(0);
 		} else {
 			// Move to next chunk
-			currentDiffChunkIndex = oldChunkIndex + 1;
+			diffStore.setCurrentChunkIndex(oldChunkIndex + 1);
 		}
 	}
 
-	// Scroll to the selected chunk
-	if (diffChunks[currentDiffChunkIndex]) {
-		scrollToLine(
-			diffChunks[currentDiffChunkIndex].startIndex,
-			currentDiffChunkIndex,
-		);
-	}
+	// Scroll to the selected chunk after a delay to ensure DOM updates
+	setTimeout(() => {
+		if ($diffChunks[$diffStore.currentChunkIndex]) {
+			scrollToLine(
+				$diffChunks[$diffStore.currentChunkIndex].startIndex,
+				$diffStore.currentChunkIndex,
+			);
+		}
+	}, 150);
 }
 
 // ===========================================
@@ -1105,12 +1289,12 @@ function playInvalidSound(): void {
 }
 
 function jumpToNextDiff(): void {
-	if (!diffChunks.length) {
+	if (!$diffChunks.length) {
 		return;
 	}
 
 	// Check if we're at the last chunk
-	if (currentDiffChunkIndex >= diffChunks.length - 1) {
+	if ($diffStore.currentChunkIndex >= $diffChunks.length - 1) {
 		// Already at the last diff, play sound and do nothing
 		playInvalidSound();
 		return;
@@ -1118,26 +1302,26 @@ function jumpToNextDiff(): void {
 
 	// Find the next chunk
 	let nextChunkIndex = -1;
-	if (currentDiffChunkIndex === -1) {
+	if ($diffStore.currentChunkIndex === -1) {
 		// No current chunk, jump to first
 		nextChunkIndex = 0;
 	} else {
 		// Go to next chunk
-		nextChunkIndex = currentDiffChunkIndex + 1;
+		nextChunkIndex = $diffStore.currentChunkIndex + 1;
 	}
 
-	currentDiffChunkIndex = nextChunkIndex;
-	const chunk = diffChunks[nextChunkIndex];
+	diffStore.setCurrentChunkIndex(nextChunkIndex);
+	const chunk = $diffChunks[nextChunkIndex];
 	scrollToLine(chunk.startIndex, nextChunkIndex);
 }
 
 function jumpToPrevDiff(): void {
-	if (!diffChunks.length) {
+	if (!$diffChunks.length) {
 		return;
 	}
 
 	// Check if we're at the first chunk
-	if (currentDiffChunkIndex === 0) {
+	if ($diffStore.currentChunkIndex === 0) {
 		// Already at the first diff, play sound and do nothing
 		playInvalidSound();
 		return;
@@ -1145,16 +1329,16 @@ function jumpToPrevDiff(): void {
 
 	// Find the previous chunk
 	let prevChunkIndex = -1;
-	if (currentDiffChunkIndex === -1) {
+	if ($diffStore.currentChunkIndex === -1) {
 		// No current chunk, jump to last
-		prevChunkIndex = diffChunks.length - 1;
+		prevChunkIndex = $diffChunks.length - 1;
 	} else {
 		// Go to previous chunk
-		prevChunkIndex = currentDiffChunkIndex - 1;
+		prevChunkIndex = $diffStore.currentChunkIndex - 1;
 	}
 
-	currentDiffChunkIndex = prevChunkIndex;
-	const chunk = diffChunks[prevChunkIndex];
+	diffStore.setCurrentChunkIndex(prevChunkIndex);
+	const chunk = $diffChunks[prevChunkIndex];
 	scrollToLine(chunk.startIndex, prevChunkIndex);
 }
 
@@ -1171,13 +1355,13 @@ function _handleChunkClick(event: {
 	const { chunkIndex } = event;
 
 	// Update the current diff chunk index
-	currentDiffChunkIndex = chunkIndex;
+	diffStore.setCurrentChunkIndex(chunkIndex);
 	// Don't scroll - just highlight the chunk where it is
 }
 
 function _handleChunkMouseEnter(lineIndex: number): void {
 	// Find which chunk this line belongs to
-	const chunkIndex = diffChunks.findIndex(
+	const chunkIndex = $diffChunks.findIndex(
 		(chunk) => lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex,
 	);
 
@@ -1190,23 +1374,192 @@ function _handleChunkMouseLeave(): void {
 	hoveredChunkIndex = -1;
 }
 
+// Handler functions for arrow button clicks that include navigation
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleCopyChunkToRight(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the copy operation
+	await _copyChunkToRight(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleCopyChunkToLeft(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the copy operation
+	await _copyChunkToLeft(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleCopyModifiedChunkToRight(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the copy operation
+	await _copyModifiedChunkToRight(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleCopyModifiedChunkToLeft(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the copy operation
+	await _copyModifiedChunkToLeft(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleDeleteChunkFromRight(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the delete operation
+	await _deleteChunkFromRight(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
+async function handleDeleteChunkFromLeft(
+	event: CustomEvent<LineChunk>,
+): Promise<void> {
+	const chunk = event.detail;
+	// Find which chunk index this is for navigation
+	const chunkIndex = $diffChunks.findIndex(
+		(c) => c.startIndex === chunk.startIndex && c.endIndex === chunk.endIndex,
+	);
+
+	// Store the current state for navigation
+	const oldChunkIndex = chunkIndex;
+	const totalChunks = $diffChunks.length;
+
+	// Update current chunk index
+	if (chunkIndex !== -1) {
+		diffStore.setCurrentChunkIndex(chunkIndex);
+	}
+
+	// Perform the delete operation
+	await _deleteChunkFromLeft(chunk);
+
+	// Navigate after copy
+	setTimeout(() => {
+		navigateAfterCopy(oldChunkIndex, totalChunks);
+	}, 100);
+}
+
 // Set initial diff chunk when diff result loads
 $: if (
-	highlightedDiffResult &&
-	diffChunks.length > 0 &&
-	currentDiffChunkIndex === -1
+	$diffStore.highlightedDiff &&
+	$diffChunks.length > 0 &&
+	$diffStore.currentChunkIndex === -1
 ) {
-	const firstDiffIndex = highlightedDiffResult.lines.findIndex(
+	const firstDiffIndex = $diffStore.highlightedDiff.lines.findIndex(
 		(line) => line.type !== "same",
 	);
 
 	if (firstDiffIndex !== -1) {
 		// Set to the first diff chunk
-		currentDiffChunkIndex = 0;
+		diffStore.setCurrentChunkIndex(0);
 		// Trigger initial scroll after a small delay to ensure DOM is ready
 		setTimeout(() => {
-			if (diffChunks[0]) {
-				scrollToLine(diffChunks[0].startIndex, 0);
+			if ($diffChunks[0]) {
+				scrollToLine($diffChunks[0].startIndex, 0);
 			}
 		}, 100);
 	}
@@ -1240,12 +1593,12 @@ function _syncCenterScroll(): void {
 onMount(async () => {
 	// Clear any corrupted cache
 	highlightCache.clear();
-	highlightedDiffResult = null; // Force refresh of highlighted content
+	setHighlightedDiffWithChunks(null); // Force refresh of highlighted content
 
 	// Also clear cache when theme changes
 	document.addEventListener("themeChange", () => {
 		highlightCache.clear();
-		highlightedDiffResult = null;
+		setHighlightedDiffWithChunks(null);
 	});
 
 	// Initialize theme from localStorage or default to dark
@@ -1400,28 +1753,28 @@ function checkHorizontalScrollbar() {
     bind:this={diffViewerComponent}
     leftFilePath={$fileStore.leftFilePath}
     rightFilePath={$fileStore.rightFilePath}
-    diffResult={highlightedDiffResult}
+    diffResult={$diffStore.highlightedDiff}
     hasUnsavedLeftChanges={_hasUnsavedLeftChanges}
     hasUnsavedRightChanges={_hasUnsavedRightChanges}
-    {currentDiffChunkIndex}
+    currentDiffChunkIndex={$diffStore.currentChunkIndex}
     {hoveredChunkIndex}
     showMinimap={_showMinimap}
     isComparing={_isComparing}
     hasCompletedComparison={_hasCompletedComparison}
     {areFilesIdentical}
     isSameFile={$isSameFile}
-    {lineNumberWidth}
-    {diffChunks}
+    lineNumberWidth={$lineNumberWidth}
+    diffChunks={$diffChunks}
     on:saveLeft={saveLeftFile}
     on:saveRight={saveRightFile}
     on:copyLineToLeft={(e) => copyLineToLeft(e.detail)}
     on:copyLineToRight={(e) => copyLineToRight(e.detail)}
-    on:copyChunkToLeft={(e) => _copyChunkToLeft(e.detail)}
-    on:copyChunkToRight={(e) => _copyChunkToRight(e.detail)}
-    on:copyModifiedChunkToLeft={(e) => _copyModifiedChunkToLeft(e.detail)}
-    on:copyModifiedChunkToRight={(e) => _copyModifiedChunkToRight(e.detail)}
-    on:deleteChunkFromLeft={(e) => _deleteChunkFromLeft(e.detail)}
-    on:deleteChunkFromRight={(e) => _deleteChunkFromRight(e.detail)}
+    on:copyChunkToLeft={handleCopyChunkToLeft}
+    on:copyChunkToRight={handleCopyChunkToRight}
+    on:copyModifiedChunkToLeft={handleCopyModifiedChunkToLeft}
+    on:copyModifiedChunkToRight={handleCopyModifiedChunkToRight}
+    on:deleteChunkFromLeft={handleDeleteChunkFromLeft}
+    on:deleteChunkFromRight={handleDeleteChunkFromRight}
     on:chunkClick={(e) => _handleChunkClick(e.detail)}
     on:chunkHover={(e) => _handleChunkMouseEnter(e.detail)}
     on:chunkLeave={_handleChunkMouseLeave}
