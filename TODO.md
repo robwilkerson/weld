@@ -75,6 +75,11 @@
 ### Pending
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
+- [ ] Extract CSS from App.svelte into components
+  - [ ] Move menu styles to a dedicated Menu component
+  - [ ] Move save button styles to DiffViewer component
+  - [ ] Move file header/info styles to DiffViewer component
+  - [ ] Move error and empty state styles to respective components
 - [ ] Create a dedicated MenuBar component
 - [ ] Menu bar option: Edit > Copy Left
 - [ ] Menu bar option: Edit > Copy Right

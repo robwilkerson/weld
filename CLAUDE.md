@@ -236,6 +236,11 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * When completing a task, move it to the appropriate "Completed" section
 * When finding new bugs or needed improvements, add them to the appropriate priority section
 * Use checkbox format: `- [ ]` for pending, `- [x]` for completed
+* **Always update TODO.md** when:
+  - Starting work on a new task
+  - Completing a task
+  - Discovering new work that needs to be done
+  - Moving tasks between priority levels
 
 ### Post-Merge Cleanup
 
