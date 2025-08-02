@@ -3,10 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Extract navigationStore from App.svelte
-  - [ ] Manage currentChunkIndex, canNavigateNext, canNavigatePrev
-  - [ ] Handle keyboard navigation (j/k keys)
-  - [ ] Update menu items based on navigation state
 - [ ] Extract uiStore from App.svelte
   - [ ] Manage showMinimap, isComparing, error state
   - [ ] Handle theme/dark mode state
@@ -58,6 +54,7 @@
 - [x] Extract fileStore from App.svelte - centralized file path/name management
 - [x] Extract diffStore from App.svelte - manage diff state and navigation
 - [x] Extract unsavedChangesStore from App.svelte - track save state
+- [x] Extract navigationStore from App.svelte - handle diff navigation
 - [x] Update pre-commit hooks to run all tests (catch regressions)
 - [x] Fix commit message validation (move to proper commit-msg hook)
 
