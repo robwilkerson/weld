@@ -22,6 +22,14 @@ function createDiffStore() {
 		lineChunks: [],
 	});
 
+	// Set the current diff chunk index
+	function setCurrentChunkIndex(index: number): void {
+		update((state) => ({
+			...state,
+			currentChunkIndex: index,
+		}));
+	}
+
 	return {
 		subscribe,
 
@@ -44,12 +52,7 @@ function createDiffStore() {
 		},
 
 		// Set the current diff chunk index
-		setCurrentChunkIndex(index: number): void {
-			update((state) => ({
-				...state,
-				currentChunkIndex: index,
-			}));
-		},
+		setCurrentChunkIndex,
 
 		// Set line chunks
 		setLineChunks(chunks: LineChunk[]): void {
@@ -69,7 +72,7 @@ function createDiffStore() {
 			const nextIndex = state.currentChunkIndex + 1;
 			if (nextIndex >= chunks.length) return false;
 
-			this.setCurrentChunkIndex(nextIndex);
+			setCurrentChunkIndex(nextIndex);
 			return true;
 		},
 
@@ -83,7 +86,7 @@ function createDiffStore() {
 			const prevIndex = state.currentChunkIndex - 1;
 			if (prevIndex < 0) return false;
 
-			this.setCurrentChunkIndex(prevIndex);
+			setCurrentChunkIndex(prevIndex);
 			return true;
 		},
 

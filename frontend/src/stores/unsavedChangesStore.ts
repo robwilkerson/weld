@@ -4,7 +4,7 @@ import {
 	SaveChanges,
 	UpdateSaveMenuItems,
 } from "../../wailsjs/go/main/App.js";
-import { fileStore } from "./fileStore.js";
+import { fileStore } from "./fileStore";
 
 interface UnsavedChangesState {
 	hasUnsavedLeftChanges: boolean;
@@ -59,7 +59,7 @@ function createUnsavedChangesStore() {
 
 	// Save all files with unsaved changes
 	async function saveAll(): Promise<void> {
-		const state = get(unsavedChangesStore);
+		const state = get({ subscribe });
 		const { leftFilePath, rightFilePath } = get(fileStore);
 
 		if (state.hasUnsavedLeftChanges && leftFilePath) {
@@ -74,10 +74,10 @@ function createUnsavedChangesStore() {
 
 	// Get current state
 	function getState(): UnsavedChangesState {
-		return get(unsavedChangesStore);
+		return get({ subscribe });
 	}
 
-	const unsavedChangesStore = {
+	return {
 		subscribe,
 		updateStatus,
 		saveLeft,
@@ -85,8 +85,6 @@ function createUnsavedChangesStore() {
 		saveAll,
 		getState,
 	};
-
-	return unsavedChangesStore;
 }
 
 export const unsavedChangesStore = createUnsavedChangesStore();
