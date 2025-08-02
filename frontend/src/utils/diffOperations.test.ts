@@ -237,6 +237,28 @@ describe("diffOperations", () => {
 				"Invalid line index",
 			);
 		});
+
+		it("should replace modified line when copying from left to right", async () => {
+			await diffOps.copyLineToRight(3, mockContext);
+
+			// Should use transaction for modified lines
+			expect(BeginOperationGroup).toHaveBeenCalledWith(
+				"Copy modified line to right",
+			);
+
+			// Should first delete the right line
+			expect(RemoveLineFromFile).toHaveBeenCalledWith("/path/to/right.txt", 3);
+
+			// Then copy the left line to the same position
+			expect(CopyToFile).toHaveBeenCalledWith(
+				"/path/to/left.txt",
+				"/path/to/right.txt",
+				3,
+				"old line",
+			);
+
+			expect(CommitOperationGroup).toHaveBeenCalled();
+		});
 	});
 
 	describe("copyLineToLeft", () => {
@@ -256,6 +278,28 @@ describe("diffOperations", () => {
 
 			expect(RemoveLineFromFile).toHaveBeenCalledWith("/path/to/left.txt", 2);
 			expect(CopyToFile).not.toHaveBeenCalled();
+		});
+
+		it("should replace modified line when copying from right to left", async () => {
+			await diffOps.copyLineToLeft(3, mockContext);
+
+			// Should use transaction for modified lines
+			expect(BeginOperationGroup).toHaveBeenCalledWith(
+				"Copy modified line to left",
+			);
+
+			// Should first delete the left line
+			expect(RemoveLineFromFile).toHaveBeenCalledWith("/path/to/left.txt", 3);
+
+			// Then copy the right line to the same position
+			expect(CopyToFile).toHaveBeenCalledWith(
+				"/path/to/right.txt",
+				"/path/to/left.txt",
+				3,
+				"new line",
+			);
+
+			expect(CommitOperationGroup).toHaveBeenCalled();
 		});
 	});
 

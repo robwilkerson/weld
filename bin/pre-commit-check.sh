@@ -54,7 +54,7 @@ if [ -n "$STAGED_GO_FILES" ]; then
     # Check if any Go files need formatting
     NEEDS_FORMAT=false
     for file in $STAGED_GO_FILES; do
-        if ! gofmt -l "$file" | grep -q "^$"; then
+        if [ -n "$(gofmt -l "$file")" ]; then
             print_warning "$file needs formatting"
             NEEDS_FORMAT=true
         fi

@@ -92,32 +92,26 @@ func (a *App) startup(ctx context.Context) {
 
 // GetInitialFiles returns the initial file paths passed via command line
 func (a *App) GetInitialFiles() (string, string) {
-	fmt.Printf("GetInitialFiles called: left='%s', right='%s'\n", a.InitialLeftFile, a.InitialRightFile)
 	return a.InitialLeftFile, a.InitialRightFile
 }
 
 // SelectFile opens a file dialog and returns the selected file path
 func (a *App) SelectFile() (string, error) {
-	fmt.Println("SelectFile called")
 
 	// Use the sample files directory for testing, relative to current working directory
 	// This works regardless of the user's home directory path
 	var defaultDir string
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Could not get current working directory: %v\n", err)
 		// Fallback to user's home directory
 		homeDir, homeErr := os.UserHomeDir()
 		if homeErr != nil {
 			defaultDir = ""
-			fmt.Printf("Opening file dialog in current directory\n")
 		} else {
 			defaultDir = homeDir
-			fmt.Printf("Opening file dialog in home directory: %s\n", defaultDir)
 		}
 	} else {
 		defaultDir = filepath.Join(cwd, "resources", "sample-files", "supported-types")
-		fmt.Printf("Opening file dialog in directory: %s\n", defaultDir)
 	}
 
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
@@ -128,7 +122,6 @@ func (a *App) SelectFile() (string, error) {
 		ResolvesAliases:            true,
 		TreatPackagesAsDirectories: false,
 	})
-	fmt.Printf("File dialog result: file='%s', err=%v\n", file, err)
 
 	// If a file was selected, validate it's not binary
 	if err == nil && file != "" {
@@ -218,30 +211,23 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 
 // CompareFiles compares two files and returns diff results
 func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
-	fmt.Printf("Comparing files: %s vs %s\n", leftPath, rightPath)
 
 	leftLines, err := a.ReadFileContentWithCache(leftPath)
 	if err != nil {
-		fmt.Printf("Error reading left file: %v\n", err)
 		return nil, fmt.Errorf("error reading left file: %w", err)
 	}
-	fmt.Printf("Left file has %d lines\n", len(leftLines))
 
 	rightLines, err := a.ReadFileContentWithCache(rightPath)
 	if err != nil {
-		fmt.Printf("Error reading right file: %v\n", err)
 		return nil, fmt.Errorf("error reading right file: %w", err)
 	}
-	fmt.Printf("Right file has %d lines\n", len(rightLines))
 
 	result := a.computeDiff(leftLines, rightLines)
-	fmt.Printf("Diff result has %d lines\n", len(result.Lines))
 
 	return result, nil
 }
 
 func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
-	fmt.Printf("Starting LCS-based diff computation: %d vs %d lines\n", len(leftLines), len(rightLines))
 
 	// Compute the LCS table
 	m, n := len(leftLines), len(rightLines)
@@ -313,7 +299,6 @@ func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
 	// Post-process to detect modifications (removed followed by added)
 	result = a.detectModifications(result)
 
-	fmt.Printf("Diff computation completed: %d result lines\n", len(result.Lines))
 	return result
 }
 
@@ -358,7 +343,7 @@ func (a *App) detectModifications(result *DiffResult) *DiffResult {
 								LeftLine:    removedLines[j].LeftLine,
 								RightLine:   addedLines[j].RightLine,
 								LeftNumber:  removedLines[j].LeftNumber,
-								RightNumber: removedLines[j].LeftNumber, // Use left line number for alignment
+								RightNumber: addedLines[j].RightNumber, // Use the actual right line number
 								Type:        "modified",
 							})
 						}
@@ -499,7 +484,6 @@ func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
 
 // CopyToFile copies a line from one file to another in memory
 func (a *App) CopyToFile(sourceFile, targetFile string, lineNumber int, lineContent string) error {
-	fmt.Printf("CopyLineToFile: from %s to %s, line %d: %s\n", sourceFile, targetFile, lineNumber, lineContent)
 
 	// Read target file from cache if available, otherwise from disk
 	targetLines, err := a.ReadFileContentWithCache(targetFile)
@@ -543,7 +527,6 @@ func (a *App) CopyToFile(sourceFile, targetFile string, lineNumber int, lineCont
 
 // RemoveLineFromFile removes a line from a file in memory
 func (a *App) RemoveLineFromFile(targetFile string, lineNumber int) error {
-	fmt.Printf("RemoveLineFromFile: from %s, line %d\n", targetFile, lineNumber)
 
 	// Read target file from cache if available, otherwise from disk
 	targetLines, err := a.ReadFileContentWithCache(targetFile)
@@ -589,7 +572,6 @@ var fileCache = make(map[string][]string)
 
 func (a *App) storeFileInMemory(filepath string, lines []string) error {
 	fileCache[filepath] = lines
-	fmt.Printf("Stored %d lines in memory for %s\n", len(lines), filepath)
 	return nil
 }
 
@@ -597,7 +579,6 @@ func (a *App) storeFileInMemory(filepath string, lines []string) error {
 func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 	// Check memory cache first
 	if cachedLines, exists := fileCache[filepath]; exists {
-		fmt.Printf("Reading %d lines from cache for %s\n", len(cachedLines), filepath)
 		return cachedLines, nil
 	}
 
@@ -609,7 +590,6 @@ func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 func (a *App) DiscardAllChanges() error {
 	// Clear the entire cache
 	fileCache = make(map[string][]string)
-	fmt.Println("Discarded all cached changes")
 	return nil
 }
 
@@ -640,7 +620,6 @@ func (a *App) SaveChanges(filepath string) error {
 
 	// Remove from cache after successful save
 	delete(fileCache, filepath)
-	fmt.Printf("Saved file %s and removed from cache\n", filepath)
 
 	return nil
 }
