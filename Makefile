@@ -1,9 +1,10 @@
 .PHONY: build dev clean install-cli
 
 # Build the application and install CLI script
+# Builds a universal binary for macOS (supports both Intel and Apple Silicon)
 build:
 	@echo "Building Weld..."
-	@wails build
+	@wails build -platform darwin/universal
 	@echo "Installing CLI script into app bundle..."
 	@cp bin/weld build/bin/Weld.app/Contents/Resources/weld
 	@chmod +x build/bin/Weld.app/Contents/Resources/weld
