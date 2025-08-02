@@ -12,7 +12,6 @@ import {
 	RemoveLineFromFile,
 	RollbackOperationGroup,
 	SaveSelectedFilesAndQuit,
-	UpdateDiffNavigationMenuItems,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
@@ -38,6 +37,7 @@ import {
 	isSameFile,
 } from "./stores/fileStore.js";
 // biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+import { navigationStore } from "./stores/navigationStore";
 // biome-ignore-start lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
 import {
 	hasAnyUnsavedChanges,
@@ -55,12 +55,10 @@ import type {
 } from "./types/diff.js";
 import { computeInlineDiff, escapeHtml } from "./utils/diff.js";
 import * as diffOps from "./utils/diffOperations.js";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getFileIcon, getFileTypeName } from "./utils/fileIcons.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 import { detectLineChunks } from "./utils/lineChunks.js";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import { getDisplayPath } from "./utils/path.js";
 import { createScrollSynchronizer } from "./utils/scrollSync.js";
 
@@ -154,14 +152,6 @@ $: isLineHovered = (lineIndex: number) => {
 };
 
 // Diff chunks will be computed reactively after highlightedDiffResult is declared
-
-// Update diff navigation menu items whenever diff state changes
-$: {
-	UpdateDiffNavigationMenuItems(
-		$diffNavigation.hasPrevDiff,
-		$diffNavigation.hasNextDiff,
-	);
-}
 
 // isSameFile is now a derived store from fileStore
 
@@ -1196,48 +1186,7 @@ function navigateAfterCopy(
 	oldChunkIndex: number,
 	oldTotalChunks: number,
 ): void {
-	// After copying and refreshing, we need to determine where to navigate
-
-	// If there are no more diff chunks, nothing to do
-	if (!$diffChunks || $diffChunks.length === 0) {
-		diffStore.setCurrentChunkIndex(-1);
-		return;
-	}
-
-	// Check if the number of chunks decreased (chunk was removed)
-	const chunksRemoved = oldTotalChunks - $diffChunks.length;
-
-	if (chunksRemoved > 0) {
-		// Chunk was removed, stay at same index (which moves us forward)
-		// unless we're now past the end
-		if (oldChunkIndex >= $diffChunks.length) {
-			// We were at or past the last chunk, wrap to first
-			diffStore.setCurrentChunkIndex(0);
-		} else {
-			// Stay at same index (effectively moving forward)
-			diffStore.setCurrentChunkIndex(oldChunkIndex);
-		}
-	} else {
-		// No chunks removed (e.g., modified chunk was copied)
-		// Move to next chunk
-		if (oldChunkIndex >= $diffChunks.length - 1) {
-			// We were at the last chunk, wrap to first
-			diffStore.setCurrentChunkIndex(0);
-		} else {
-			// Move to next chunk
-			diffStore.setCurrentChunkIndex(oldChunkIndex + 1);
-		}
-	}
-
-	// Scroll to the selected chunk after a delay to ensure DOM updates
-	setTimeout(() => {
-		if ($diffChunks[$diffStore.currentChunkIndex]) {
-			scrollToLine(
-				$diffChunks[$diffStore.currentChunkIndex].startIndex,
-				$diffStore.currentChunkIndex,
-			);
-		}
-	}, 150);
+	navigationStore.navigateAfterCopy(oldChunkIndex, oldTotalChunks);
 }
 
 // ===========================================
@@ -1280,57 +1229,11 @@ function playInvalidSound(): void {
 }
 
 function jumpToNextDiff(): void {
-	if (!$diffChunks.length) {
-		return;
-	}
-
-	// Check if we're at the last chunk
-	if ($diffStore.currentChunkIndex >= $diffChunks.length - 1) {
-		// Already at the last diff, play sound and do nothing
-		playInvalidSound();
-		return;
-	}
-
-	// Find the next chunk
-	let nextChunkIndex = -1;
-	if ($diffStore.currentChunkIndex === -1) {
-		// No current chunk, jump to first
-		nextChunkIndex = 0;
-	} else {
-		// Go to next chunk
-		nextChunkIndex = $diffStore.currentChunkIndex + 1;
-	}
-
-	diffStore.setCurrentChunkIndex(nextChunkIndex);
-	const chunk = $diffChunks[nextChunkIndex];
-	scrollToLine(chunk.startIndex, nextChunkIndex);
+	navigationStore.jumpToNextDiff();
 }
 
 function jumpToPrevDiff(): void {
-	if (!$diffChunks.length) {
-		return;
-	}
-
-	// Check if we're at the first chunk
-	if ($diffStore.currentChunkIndex === 0) {
-		// Already at the first diff, play sound and do nothing
-		playInvalidSound();
-		return;
-	}
-
-	// Find the previous chunk
-	let prevChunkIndex = -1;
-	if ($diffStore.currentChunkIndex === -1) {
-		// No current chunk, jump to last
-		prevChunkIndex = $diffChunks.length - 1;
-	} else {
-		// Go to previous chunk
-		prevChunkIndex = $diffStore.currentChunkIndex - 1;
-	}
-
-	diffStore.setCurrentChunkIndex(prevChunkIndex);
-	const chunk = $diffChunks[prevChunkIndex];
-	scrollToLine(chunk.startIndex, prevChunkIndex);
+	navigationStore.jumpToPrevDiff();
 }
 
 function scrollToLine(lineIndex: number, chunkIndex?: number): void {
@@ -1582,6 +1485,12 @@ function _syncCenterScroll(): void {
 }
 
 onMount(async () => {
+	// Set up navigation callbacks
+	navigationStore.setCallbacks({
+		scrollToLine,
+		playInvalidSound,
+	});
+
 	// Clear any corrupted cache
 	highlightCache.clear();
 	setHighlightedDiffWithChunks(null); // Force refresh of highlighted content
