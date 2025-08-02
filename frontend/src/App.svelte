@@ -737,7 +737,7 @@ async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
 					copies.push({
 						from: $fileStore.leftFilePath,
 						to: $fileStore.rightFilePath,
-						lineNumber: line.leftNumber,
+						lineNumber: line.rightNumber,
 						content: line.leftLine,
 					});
 				} else if (line.type === "added" && line.rightNumber !== null) {
@@ -831,7 +831,7 @@ async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
 					copies.push({
 						from: $fileStore.rightFilePath,
 						to: $fileStore.leftFilePath,
-						lineNumber: line.rightNumber,
+						lineNumber: line.leftNumber,
 						content: line.rightLine,
 					});
 				} else if (line.type === "removed" && line.leftNumber !== null) {

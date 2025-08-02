@@ -164,11 +164,12 @@ export async function copyModifiedChunkToRight(
 			) {
 				// First delete the current right line
 				await RemoveLineFromFile(rightFilePath, line.rightNumber);
-				// Then copy the left line to the right
+				// Then copy the left line to the right at the same position
+				// After deletion, we insert at rightNumber (where we just deleted)
 				await CopyToFile(
 					leftFilePath,
 					rightFilePath,
-					line.leftNumber,
+					line.rightNumber,
 					line.leftLine,
 				);
 			}
@@ -223,11 +224,12 @@ export async function copyModifiedChunkToLeft(
 			) {
 				// First delete the current left line
 				await RemoveLineFromFile(leftFilePath, line.leftNumber);
-				// Then copy the right line to the left
+				// Then copy the right line to the left at the same position
+				// After deletion, we insert at leftNumber (where we just deleted)
 				await CopyToFile(
 					rightFilePath,
 					leftFilePath,
-					line.rightNumber,
+					line.leftNumber,
 					line.rightLine,
 				);
 			}
@@ -435,21 +437,33 @@ export async function copyLineToRight(
 		await deleteLineFromRight(lineIndex, context);
 		return; // deleteLineFromRight already handles refresh
 	} else if (clickedLine.type === "modified") {
-		// For modified lines, find the corresponding removed line to copy
-		for (let i = lineIndex; i >= 0; i--) {
-			const line = diffResult.lines[i];
-			if (line.type === "removed" && line.leftNumber !== null) {
+		// For modified lines, we need to replace the right line with the left line
+		if (clickedLine.leftNumber !== null && clickedLine.rightNumber !== null) {
+			// Since CopyToFile inserts (not replaces), we need to delete first, then insert
+			await BeginOperationGroup("Copy modified line to right");
+			try {
+				// First delete the current right line
+				await RemoveLineFromFile(rightFilePath, clickedLine.rightNumber);
+				// Then insert the left line at the same position
+				// After deletion, the line that was at rightNumber+1 is now at rightNumber
+				// So inserting at rightNumber will put our content in the right place
 				await CopyToFile(
 					leftFilePath,
 					rightFilePath,
-					line.leftNumber,
-					line.leftLine,
+					clickedLine.rightNumber,
+					clickedLine.leftLine,
 				);
-				break;
+				await CommitOperationGroup();
+			} catch (error) {
+				await RollbackOperationGroup();
+				throw error;
 			}
-			if (line.type === "same") break;
 		}
 	}
+
+	// Refresh the diff to show the changes
+	await context.compareBothFiles(true);
+	await context.updateUnsavedChangesStatus();
 }
 
 export async function copyLineToLeft(
@@ -490,19 +504,31 @@ export async function copyLineToLeft(
 		await deleteLineFromLeft(lineIndex, context);
 		return; // deleteLineFromLeft already handles refresh
 	} else if (clickedLine.type === "modified") {
-		// For modified lines, find the corresponding added line to copy
-		for (let i = lineIndex; i <= diffResult.lines.length - 1; i++) {
-			const line = diffResult.lines[i];
-			if (line.type === "added" && line.rightNumber !== null) {
+		// For modified lines, we need to replace the left line with the right line
+		if (clickedLine.leftNumber !== null && clickedLine.rightNumber !== null) {
+			// Since CopyToFile inserts (not replaces), we need to delete first, then insert
+			await BeginOperationGroup("Copy modified line to left");
+			try {
+				// First delete the current left line
+				await RemoveLineFromFile(leftFilePath, clickedLine.leftNumber);
+				// Then insert the right line at the same position
+				// After deletion, the line that was at leftNumber+1 is now at leftNumber
+				// So inserting at leftNumber will put our content in the right place
 				await CopyToFile(
 					rightFilePath,
 					leftFilePath,
-					line.rightNumber,
-					line.rightLine,
+					clickedLine.leftNumber,
+					clickedLine.rightLine,
 				);
-				break;
+				await CommitOperationGroup();
+			} catch (error) {
+				await RollbackOperationGroup();
+				throw error;
 			}
-			if (line.type === "same") break;
 		}
 	}
+
+	// Refresh the diff to show the changes
+	await context.compareBothFiles(true);
+	await context.updateUnsavedChangesStatus();
 }
