@@ -3,10 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Extract uiStore from App.svelte
-  - [ ] Manage showMinimap, isComparing, error state
-  - [ ] Handle theme/dark mode state
-  - [ ] Consolidate UI-related state management
 - [ ] Be more deliberate about handling errors (error-noread.txt)
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
@@ -57,6 +53,10 @@
 - [x] Extract navigationStore from App.svelte - handle diff navigation
 - [x] Update pre-commit hooks to run all tests (catch regressions)
 - [x] Fix commit message validation (move to proper commit-msg hook)
+- [x] Extract uiStore from App.svelte
+  - [x] Manage showMinimap, isComparing, error state
+  - [x] Handle theme/dark mode state
+  - [x] Consolidate UI-related state management
 
 ## Medium Priority
 
