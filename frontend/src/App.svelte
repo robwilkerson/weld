@@ -17,6 +17,8 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import ErrorMessage from "./components/ErrorMessage.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import Menu from "./components/Menu.svelte";
@@ -1584,9 +1586,7 @@ function checkHorizontalScrollbar() {
       on:error={handleError}
     />
     
-    {#if $uiStore.errorMessage}
-      <div class="error">{$uiStore.errorMessage}</div>
-    {/if}
+    <ErrorMessage message={$uiStore.errorMessage} />
   </div>
 
   <DiffViewer
@@ -1714,14 +1714,6 @@ function checkHorizontalScrollbar() {
 
 
 
-  :global([data-theme="dark"]) .error {
-    background: #ed8796;
-    color: #24273a;
-  }
-
-  :global([data-theme="dark"]) .empty-state {
-    color: #a5adcb;
-  }
 
   .header {
     padding: 1rem;
@@ -1772,32 +1764,9 @@ function checkHorizontalScrollbar() {
   }
 
 
-  .error {
-    color: #d20f39;
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    background: #eff1f5;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-  }
-
-
   /* ===========================================
    * MINIMAP STYLES
    * =========================================== */
-
-
-
-
-
-  .empty-state {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6c6f85;
-    font-size: 1.1rem;
-  }
 
   .same-file-banner {
     display: flex;
