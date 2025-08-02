@@ -5,7 +5,7 @@ import {
 	RemoveLineFromFile,
 	RollbackOperationGroup,
 } from "../../wailsjs/go/main/App.js";
-import type { DiffResult, LineChunk } from "../types";
+import type { DiffResult, LineChunk } from "../types/diff";
 
 export interface DiffOperationContext {
 	leftFilePath: string;

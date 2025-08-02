@@ -6,7 +6,7 @@ import {
 	RemoveLineFromFile,
 	RollbackOperationGroup,
 } from "../../wailsjs/go/main/App.js";
-import type { DiffResult, LineChunk } from "../types";
+import type { DiffResult, LineChunk } from "../types/diff";
 import * as diffOps from "./diffOperations";
 
 // Mock the Wails API

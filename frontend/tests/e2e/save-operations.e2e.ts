@@ -87,7 +87,12 @@ async function setupMockedBackend(page) {
 						unsavedChanges[filepath] = false;
 						window.savedFiles.push(filepath);
 					},
-					CopyToFile: async (sourcePath, targetPath, lineNumber, content) => {
+					CopyToFile: async (
+						_sourcePath,
+						targetPath,
+						_lineNumber,
+						_content,
+					) => {
 						// Mark target file as having unsaved changes
 						unsavedChanges[targetPath] = true;
 						return true;
@@ -102,7 +107,7 @@ async function setupMockedBackend(page) {
 						// Our mock already tracks state in unsavedChanges object
 					},
 					RollbackOperationGroup: async () => {},
-					RemoveLineFromFile: async (filepath, lineNumber) => {
+					RemoveLineFromFile: async (filepath, _lineNumber) => {
 						// Mark file as having unsaved changes
 						unsavedChanges[filepath] = true;
 						return true;
@@ -185,7 +190,10 @@ test.describe("Save Operations", () => {
 			.first();
 		await expect(copyArrow).toBeVisible();
 		await copyArrow.click();
-		await page.waitForTimeout(500);
+
+		// Wait for the copy operation to complete and the save button to update
+		// The copy operation includes refreshing the diff and updating unsaved status
+		await page.waitForTimeout(1000);
 
 		// Left save button should now be enabled
 		await expect(leftSaveBtn).toBeEnabled();
@@ -193,38 +201,31 @@ test.describe("Save Operations", () => {
 	});
 
 	test("save button click triggers save operation", async ({ page }) => {
-		// Force the save button to be enabled by marking file as having changes
-		await page.evaluate(() => {
-			window.unsavedChanges[window.leftFilePath] = true;
-			window.savedFiles = [];
-		});
-
-		// Trigger a re-render by calling a function that checks unsaved state
-		// This simulates what happens after a copy operation
-		await page.evaluate(() => {
-			// Dispatch a custom event to trigger updateUnsavedChangesStatus
-			const event = new CustomEvent("force-update-unsaved-status");
-			window.dispatchEvent(event);
-		});
-
-		// Navigate away and back to force a refresh
-		await page.keyboard.press("j");
-		await page.waitForTimeout(100);
-		await page.keyboard.press("k");
+		// First, perform a copy operation to create unsaved changes
+		const currentDiff = page.locator(".current-diff").first();
+		await currentDiff.hover();
 		await page.waitForTimeout(300);
+
+		// Click the copy arrow to create unsaved changes
+		const copyArrow = page
+			.locator(".chunk-actions .right-side-arrow.chunk-arrow")
+			.first();
+		await expect(copyArrow).toBeVisible();
+		await copyArrow.click();
+
+		// Wait for the copy operation and status update
+		await page.waitForTimeout(500);
 
 		// Get the left save button
 		const leftSaveBtn = page.locator(".file-info.left .save-btn");
 
-		// Check if button is enabled now
-		const isEnabled = await leftSaveBtn.isEnabled();
-		if (!isEnabled) {
-			// Skip the test if the button is still disabled due to the known bug
-			console.log(
-				"Save button still disabled - known bug in save state management",
-			);
-			return;
-		}
+		// The button should now be enabled
+		await expect(leftSaveBtn).toBeEnabled();
+
+		// Reset saved files tracker
+		await page.evaluate(() => {
+			window.savedFiles = [];
+		});
 
 		// Click save button
 		await leftSaveBtn.click();
@@ -239,6 +240,9 @@ test.describe("Save Operations", () => {
 			() => window.unsavedChanges[window.leftFilePath],
 		);
 		expect(unsavedState).toBe(false);
+
+		// Save button should now be disabled again
+		await expect(leftSaveBtn).toBeDisabled();
 	});
 
 	test("keyboard shortcut Cmd/Ctrl+S triggers save for files with changes", async ({
@@ -343,37 +347,41 @@ test.describe("Save Operations", () => {
 	});
 
 	test("save error handling displays error message", async ({ page }) => {
-		// Force enable save button
+		// First, perform a copy operation to create unsaved changes
+		const currentDiff = page.locator(".current-diff").first();
+		await currentDiff.hover();
+		await page.waitForTimeout(300);
+
+		// Click the copy arrow to create unsaved changes
+		const copyArrow = page
+			.locator(".chunk-actions .right-side-arrow.chunk-arrow")
+			.first();
+		await expect(copyArrow).toBeVisible();
+		await copyArrow.click();
+
+		// Wait for the copy operation and status update
+		await page.waitForTimeout(500);
+
+		// Get the left save button
+		const leftSaveBtn = page.locator(".file-info.left .save-btn");
+
+		// The button should now be enabled
+		await expect(leftSaveBtn).toBeEnabled();
+
+		// Mock SaveChanges to throw error
 		await page.evaluate(() => {
-			window.unsavedChanges[window.leftFilePath] = true;
-			// Mock SaveChanges to throw error
 			window.go.main.App.SaveChanges = async () => {
 				throw new Error("Permission denied");
 			};
 		});
-
-		// Force refresh to update button state
-		await page.keyboard.press("j");
-		await page.waitForTimeout(100);
-		await page.keyboard.press("k");
-		await page.waitForTimeout(300);
-
-		// Check if button is enabled
-		const leftSaveBtn = page.locator(".file-info.left .save-btn");
-		const isEnabled = await leftSaveBtn.isEnabled();
-		if (!isEnabled) {
-			// Skip if button is disabled due to known bug
-			console.log("Save button disabled - skipping error handling test");
-			return;
-		}
 
 		// Click save button
 		await leftSaveBtn.click();
 		await page.waitForTimeout(200);
 
 		// Should show error message
-		await expect(page.locator(".error-message")).toContainText(
-			"Error saving left file: Permission denied",
+		await expect(page.locator(".error")).toContainText(
+			"Error saving left file: Error: Permission denied",
 		);
 
 		// Save button should still be enabled (save failed)

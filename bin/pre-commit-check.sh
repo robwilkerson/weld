@@ -119,63 +119,20 @@ fi
 
 # Check if we have frontend changes that need testing
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
-    # Check if any of the changed files have corresponding test files
-    TEST_FILES=""
-    for file in $STAGED_FRONTEND_FILES; do
-        # Convert source file to test file path
-        TEST_FILE=$(echo "$file" | sed 's/\.svelte$/\.test\.ts/' | sed 's/\.ts$/\.test\.ts/' | sed 's/\.test\.test/\.test/')
-        if [ -f "$TEST_FILE" ]; then
-            # Keep the path relative to frontend directory
-            RELATIVE_TEST_FILE=$(echo "$TEST_FILE" | sed 's|^frontend/||')
-            TEST_FILES="$TEST_FILES $RELATIVE_TEST_FILE"
-        fi
-    done
-    
-    if [ -n "$TEST_FILES" ]; then
-        print_info "Running tests for changed frontend files..."
-        cd frontend
-        if ! bun run test $TEST_FILES --run > /tmp/frontend-test-commit.log 2>&1; then
-            print_error "Frontend tests failed"
-            echo "See /tmp/frontend-test-commit.log for details"
-            CHECKS_PASSED=false
-        else
-            print_success "Frontend tests passed"
-        fi
-        cd ..
-    else
-        print_info "No frontend tests to run for changed files"
-    fi
-fi
-
-# 4. Check commit message (this is critical - always check)
-echo -e "\n📝 Checking commit message..."
-
-# Get the commit message from either the file or stdin
-if [ -f .git/COMMIT_EDITMSG ]; then
-    # Normal commit flow
-    FIRST_LINE=$(head -n1 .git/COMMIT_EDITMSG | grep -v "^#" | head -n1)
-elif [ -p /dev/stdin ]; then
-    # Git hook flow (message comes via stdin)
-    FIRST_LINE=$(cat | head -n1)
-else
-    # Try to get from git log if we're amending
-    FIRST_LINE=$(git log -1 --pretty=%s 2>/dev/null || echo "")
-fi
-
-if [ -n "$FIRST_LINE" ]; then
-    LENGTH=$(echo -n "$FIRST_LINE" | wc -c | tr -d ' ')
-    
-    if [ "$LENGTH" -gt 50 ]; then
-        print_error "Commit subject line is $LENGTH characters (max 50)"
-        print_info "Subject: \"$FIRST_LINE\""
-        echo -e "\nPlease shorten your commit message subject line."
+    print_info "Running all frontend tests to catch regressions..."
+    cd frontend
+    # Run all tests except integration tests (which are outdated)
+    if ! bun run test src/stores/ src/components/ src/utils/ --run > /tmp/frontend-test-commit.log 2>&1; then
+        print_error "Frontend tests failed"
+        echo "See /tmp/frontend-test-commit.log for details"
         CHECKS_PASSED=false
     else
-        print_success "Commit message length OK ($LENGTH/50 chars)"
+        print_success "Frontend tests passed"
     fi
-else
-    print_warning "Could not check commit message length"
+    cd ..
 fi
+
+# Note: Commit message checking moved to .githooks/commit-msg hook
 
 # 5. Run E2E tests if frontend files changed (run last to avoid multiple runs)
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
@@ -186,8 +143,8 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
         print_info "Wails dev server detected. Running E2E tests..."
         cd frontend
         
-        # Run E2E tests (they have their own timeout in playwright.config.ts)
-        if ! bun run test:e2e > /tmp/e2e-test-commit.log 2>&1; then
+        # Run E2E tests in headless mode (they have their own timeout in playwright.config.ts)
+        if ! bun run test:e2e:headless > /tmp/e2e-test-commit.log 2>&1; then
             print_error "E2E tests failed or timed out (2 min limit)"
             echo "See /tmp/e2e-test-commit.log for details"
             print_info "You can skip with --no-verify, but please ensure E2E tests pass before pushing"

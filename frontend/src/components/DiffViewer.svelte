@@ -4,11 +4,11 @@ import { createEventDispatcher, onDestroy } from "svelte";
 import type {
 	DiffViewerEvents,
 	DiffViewerProps,
-	HighlightedDiffLine,
 	LineChunk,
 } from "../types/diff";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getDisplayPath } from "../utils/diff";
+import { detectLineChunks } from "../utils/lineChunks.js";
 import { calculateScrollToCenterLine } from "../utils/scrollSync";
 import { throttle } from "../utils/throttle";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
@@ -72,38 +72,6 @@ $: if (diffResult) {
 }
 
 // Helper functions
-function detectLineChunks(lines: HighlightedDiffLine[]): LineChunk[] {
-	const chunks: LineChunk[] = [];
-	let currentChunk: LineChunk | null = null;
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-
-		if (!currentChunk || currentChunk.type !== line.type) {
-			// Start a new chunk
-			if (currentChunk) {
-				chunks.push(currentChunk);
-			}
-			currentChunk = {
-				startIndex: i,
-				endIndex: i,
-				type: line.type,
-				lines: 1,
-			};
-		} else {
-			// Continue current chunk
-			currentChunk.endIndex = i;
-			currentChunk.lines++;
-		}
-	}
-
-	// Don't forget the last chunk
-	if (currentChunk) {
-		chunks.push(currentChunk);
-	}
-
-	return chunks;
-}
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
@@ -112,9 +80,18 @@ function isFirstLineOfChunk(lineIndex: number, chunk: LineChunk): boolean {
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function getChunkForLine(lineIndex: number): LineChunk | null {
-	for (const chunk of lineChunks) {
+	// Check if this line is part of any diff chunk (non-same lines)
+	for (const chunk of diffChunks) {
 		if (lineIndex >= chunk.startIndex && lineIndex <= chunk.endIndex) {
-			return chunk;
+			// Find the corresponding lineChunk for type information
+			for (const lineChunk of lineChunks) {
+				if (
+					lineIndex >= lineChunk.startIndex &&
+					lineIndex <= lineChunk.endIndex
+				) {
+					return lineChunk;
+				}
+			}
 		}
 	}
 	return null;

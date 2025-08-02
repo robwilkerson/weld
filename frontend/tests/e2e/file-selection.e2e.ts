@@ -133,7 +133,7 @@ test.describe("File Selection", () => {
 		page,
 	}) => {
 		const leftButton = page.locator(".file-btn").first();
-		const rightButton = page.locator(".file-btn").nth(1);
+		const _rightButton = page.locator(".file-btn").nth(1);
 		const compareButton = page.locator(".compare-btn");
 
 		// Click left file button

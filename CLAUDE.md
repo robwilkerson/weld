@@ -174,6 +174,27 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 * **TypeScript**: All frontend code uses TypeScript with proper type annotations
 * **CSS**: Avoid using `!important` - properly structure selectors and specificity instead
 
+### Biome Linting Patterns
+
+**IMPORTANT**: When suppressing Biome warnings for Svelte-specific patterns:
+
+* **Single-line imports**: Use `// biome-ignore lint/rule/name: reason` on the line before
+* **Multi-line imports with start/end pattern**:
+  ```typescript
+  // biome-ignore-start lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+  import {
+    someStore,
+    anotherStore,
+  } from "./stores/store.js";
+  // biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
+  ```
+  **Critical**: The `biome-ignore-end` line MUST include the exact same lint rule and comment as the `biome-ignore-start` line
+
+* **Common Svelte patterns that need suppression**:
+  * Stores accessed via `$storeName` syntax (marked as unused imports)
+  * Components imported but only used in templates (marked as unused imports)
+  * Type imports that Biome suggests converting to `import type` but are actually used as components
+
 ### Component Architecture
 
 **IMPORTANT**: Always prefer creating Svelte components over adding to existing files:

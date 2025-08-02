@@ -1,6 +1,6 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
-import type { LineChunk } from "../types";
+import type { LineChunk } from "../types/diff";
 import Minimap from "./Minimap.svelte";
 
 describe("Minimap", () => {

@@ -47,6 +47,16 @@
   - [x] minimap-interaction.test.ts
   - [x] save-operations.test.ts
   - [x] copy-operations.test.ts
+- [x] Extract fileStore from App.svelte - centralized file path/name management
+- [x] Extract diffStore from App.svelte - manage diff state and navigation
+- [x] Extract unsavedChangesStore from App.svelte - track save state
+- [x] Extract navigationStore from App.svelte - handle diff navigation
+- [x] Update pre-commit hooks to run all tests (catch regressions)
+- [x] Fix commit message validation (move to proper commit-msg hook)
+- [x] Extract uiStore from App.svelte
+  - [x] Manage showMinimap, isComparing, error state
+  - [x] Handle theme/dark mode state
+  - [x] Consolidate UI-related state management
 
 ## Medium Priority
 
@@ -55,16 +65,14 @@
 - [ ] Implement: Jump to last diff with G key
 - [ ] Implement: `Enter` to compare files if the `Compare` button is enabled
 - [ ] Add an unsaved indicator
-- [ ] Create Svelte stores for state management - Extract global state into stores
-- [ ] Extract unsaved changes logic into a store or service
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
   * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
 - [ ] Enable performant syntax highlighting
+- [ ] Review backend test coverage and add quality tests to improve coverage from 60.6%
 
 ## Low Priority
 
 ### Pending
-- [ ] Moving global state to Svelte stores for better state management
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
 - [ ] Create a dedicated MenuBar component
