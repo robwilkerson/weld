@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { get } from "svelte/store";
 import {
 	BeginOperationGroup,
 	CommitOperationGroup,
@@ -17,7 +18,11 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import ErrorMessage from "./components/ErrorMessage.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import Menu from "./components/Menu.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import QuitDialog from "./components/QuitDialog.svelte";
 // biome-ignore lint/style/useImportType: UndoManager is used as a component, not just a type
@@ -441,6 +446,29 @@ async function compareBothFiles(
 
 		// Mark comparison as completed
 		uiStore.setCompletionState(true);
+
+		// Auto-navigate to first diff if not preserving current diff
+		if (
+			!preserveCurrentDiff &&
+			result &&
+			result.lines &&
+			result.lines.length > 0
+		) {
+			// Wait for diffChunks to be calculated
+			setTimeout(() => {
+				const chunks = get(diffChunks);
+				const currentIndex = get(diffStore).currentChunkIndex;
+				if (chunks.length > 0 && currentIndex === -1) {
+					diffStore.setCurrentChunkIndex(0);
+					// Scroll to first diff after a delay
+					setTimeout(() => {
+						if (diffViewerComponent && chunks[0]) {
+							scrollToLine(chunks[0].startIndex, 0);
+						}
+					}, 100);
+				}
+			}, 50);
+		}
 
 		// Check for horizontal scrollbar after diff is loaded
 		setTimeout(() => {
@@ -1421,7 +1449,7 @@ $: if (
 			if ($diffChunks[0]) {
 				scrollToLine($diffChunks[0].startIndex, 0);
 			}
-		}, 100);
+		}, 150);
 	}
 }
 
@@ -1563,25 +1591,11 @@ function checkHorizontalScrollbar() {
 
 <main>
   <div class="header">
-    <div class="menu-container">
-      <button class="menu-toggle" on:click={() => uiStore.toggleMenu()} title="Menu">
-        ☰
-      </button>
-      {#if $uiStore.showMenu}
-        <div class="dropdown-menu">
-          <button class="menu-item" on:click={_toggleDarkMode}>
-            {$uiStore.isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
-          <button 
-            class="menu-item" 
-            on:click={_handleDiscardChanges}
-            disabled={!$hasAnyUnsavedChanges}
-          >
-            🗑️ Discard Changes
-          </button>
-        </div>
-      {/if}
-    </div>
+    <Menu 
+      hasAnyUnsavedChanges={$hasAnyUnsavedChanges}
+      onDiscardChanges={_handleDiscardChanges}
+      onToggleDarkMode={_toggleDarkMode}
+    />
     <FileSelector
       leftFilePath={$fileStore.leftFilePath}
       rightFilePath={$fileStore.rightFilePath}
@@ -1596,9 +1610,7 @@ function checkHorizontalScrollbar() {
       on:error={handleError}
     />
     
-    {#if $uiStore.errorMessage}
-      <div class="error">{$uiStore.errorMessage}</div>
-    {/if}
+    <ErrorMessage message={$uiStore.errorMessage} />
   </div>
 
   <DiffViewer
@@ -1689,146 +1701,18 @@ function checkHorizontalScrollbar() {
     border-bottom-color: #363a4f;
   }
 
-  :global([data-theme="dark"]) .menu-toggle {
-    color: #a5adcb;
-    border-color: rgba(165, 173, 203, 0.3);
-  }
-
-  :global([data-theme="dark"]) .menu-toggle:hover {
-    background: rgba(202, 211, 245, 0.1);
-    border-color: rgba(202, 211, 245, 0.5);
-    color: #cad3f5;
-  }
-
-  :global([data-theme="dark"]) .dropdown-menu {
-    background: #24273a;
-    border-color: #363a4f;
-  }
-
-  :global([data-theme="dark"]) .menu-item {
-    color: #cad3f5;
-  }
-
-  :global([data-theme="dark"]) .menu-item:hover:not(:disabled) {
-    background: rgba(202, 211, 245, 0.1);
-  }
-
-  :global([data-theme="dark"]) .menu-item:not(:last-child) {
-    border-bottom-color: #363a4f;
-  }
-
-  :global([data-theme="dark"]) .file-header {
-    background: #1e2030;
-  }
-
-  :global([data-theme="dark"]) .file-info {
-    border-right-color: #363a4f;
-    color: #cad3f5;
-  }
-
-  /* Dark mode bottom borders for file info sections */
-  :global([data-theme="dark"]) .file-info.left,
-  :global([data-theme="dark"]) .file-info.right {
-    border-bottom-color: #363a4f;
-  }
-
-  :global([data-theme="dark"]) .save-btn {
-    background: #494d64;
-    border: 1px solid #5b6078;
-  }
-
-  :global([data-theme="dark"]) .save-btn:disabled {
-    background: #363a4f;
-    border: 1px solid #5b6078;
-    opacity: 0.4;
-  }
-
-  :global([data-theme="dark"]) .save-btn:not(:disabled):hover {
-    background: #5b6078;
-    border-color: #6e738d;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
 
 
 
 
-  :global([data-theme="dark"]) .error {
-    background: #ed8796;
-    color: #24273a;
-  }
 
-  :global([data-theme="dark"]) .empty-state {
-    color: #a5adcb;
-  }
+
 
   .header {
     padding: 1rem;
     border-bottom: 1px solid #9ca0b0;
     background: #e6e9ef;
     position: relative;
-  }
-
-  .menu-container {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1000;
-  }
-
-  .menu-toggle {
-    background: none;
-    border: 1px solid rgba(108, 111, 133, 0.3);
-    cursor: pointer;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    color: #6c6f85;
-    transition: all 0.2s ease;
-    font-size: 1.2rem;
-    line-height: 1;
-  }
-
-  .menu-toggle:hover {
-    background: rgba(76, 79, 105, 0.1);
-    border-color: rgba(76, 79, 105, 0.5);
-    color: #4c4f69;
-  }
-
-  .dropdown-menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 0.5rem;
-    background: #eff1f5;
-    border: 1px solid #9ca0b0;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    min-width: 150px;
-  }
-
-  .menu-item {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: none;
-    border: none;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    color: #4c4f69;
-  }
-
-  .menu-item:hover:not(:disabled) {
-    background: rgba(76, 79, 105, 0.1);
-  }
-
-  .menu-item:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .menu-item:not(:last-child) {
-    border-bottom: 1px solid #9ca0b0;
   }
 
   /* Custom scrollbar styling for light mode (Catppuccin Latte) */
@@ -1873,265 +1757,9 @@ function checkHorizontalScrollbar() {
   }
 
 
-  .error {
-    color: #d20f39;
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    background: #eff1f5;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-  }
-
-
   /* ===========================================
    * MINIMAP STYLES
    * =========================================== */
-
-
-
-
-
-  .empty-state {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6c6f85;
-    font-size: 1.1rem;
-  }
-
-  .same-file-banner {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: #fdf6e3;
-    color: #d20f39;
-    border-top: 1px solid #df8e1d;
-    border-left: 4px solid #df8e1d;
-    border-right: 4px solid #df8e1d;
-    border-bottom: 1px solid #df8e1d;
-    font-size: 0.9rem;
-    gap: 0.5rem;
-  }
-
-  .warning-icon {
-    font-size: 1.1rem;
-    color: #df8e1d;
-  }
-
-  .warning-text {
-    flex: 1;
-    color: #4c4f69;
-  }
-
-  .warning-text strong {
-    font-weight: 600;
-    color: #d20f39;
-  }
-
-  /* Dark mode banner styling */
-  :global([data-theme="dark"]) .same-file-banner {
-    background: #363a4f;
-    color: #cad3f5;
-    border-top-color: #f5a97f;
-    border-left-color: #f5a97f;
-    border-right-color: #f5a97f;
-    border-bottom-color: #f5a97f;
-  }
-
-  :global([data-theme="dark"]) .warning-icon {
-    color: #f5a97f;
-  }
-
-  :global([data-theme="dark"]) .warning-text {
-    color: #cad3f5;
-  }
-
-  :global([data-theme="dark"]) .warning-text strong {
-    color: #f5a97f;
-  }
-
-  .identical-files-banner {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: #f0f9ff;
-    color: #0369a1;
-    border-top: 1px solid #0ea5e9;
-    border-left: 4px solid #0ea5e9;
-    border-right: 4px solid #0ea5e9;
-    border-bottom: 1px solid #0ea5e9;
-    font-size: 0.9rem;
-    gap: 0.5rem;
-  }
-
-  .info-icon {
-    font-size: 1.1rem;
-    color: #0ea5e9;
-  }
-
-  .info-text {
-    flex: 1;
-    color: #0369a1;
-    font-weight: 500;
-  }
-
-  /* Dark mode identical files banner styling */
-  :global([data-theme="dark"]) .identical-files-banner {
-    background: #363a4f;
-    color: #7dc4e4;
-    border-top-color: #7dc4e4;
-    border-left-color: #7dc4e4;
-    border-right-color: #7dc4e4;
-    border-bottom-color: #7dc4e4;
-  }
-
-  :global([data-theme="dark"]) .info-icon {
-    color: #7dc4e4;
-  }
-
-  :global([data-theme="dark"]) .info-text {
-    color: #7dc4e4;
-  }
-
-
-
-  /* Quit Dialog Modal Styles */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  .quit-dialog {
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 24px;
-    min-width: 400px;
-    max-width: 500px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  }
-
-  :global([data-theme="dark"]) .quit-dialog {
-    background: #363a4f;
-    color: #cad3f5;
-  }
-
-  .quit-dialog h3 {
-    margin: 0 0 16px 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-
-  .quit-dialog p {
-    margin: 0 0 20px 0;
-    color: #6c7086;
-  }
-
-  :global([data-theme="dark"]) .quit-dialog p {
-    color: #a5adcb;
-  }
-
-  .file-list {
-    margin-bottom: 24px;
-  }
-
-  .file-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 0;
-    cursor: pointer;
-  }
-
-  .file-item input[type="checkbox"] {
-    margin: 0;
-  }
-
-  .file-item input[type="checkbox"]:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .file-item:has(input[type="checkbox"]:disabled) {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-
-  .file-name {
-    font-weight: 500;
-  }
-
-  .file-status {
-    color: #6c7086;
-    font-size: 14px;
-    font-style: italic;
-  }
-
-  :global([data-theme="dark"]) .file-status {
-    color: #a5adcb;
-  }
-
-  .dialog-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-  }
-
-  .btn-primary, .btn-secondary, .btn-tertiary {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn-primary {
-    background: #8aadf4;
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: #7da3f0;
-  }
-
-  .btn-secondary {
-    background: #ed8796;
-    color: white;
-  }
-
-  .btn-secondary:hover {
-    background: #ea7183;
-  }
-
-  .btn-tertiary {
-    background: #eff1f5;
-    color: #4c4f69;
-    border: 1px solid #ddd;
-  }
-
-  .btn-tertiary:hover {
-    background: #e4e6ea;
-  }
-
-  :global([data-theme="dark"]) .btn-tertiary {
-    background: #494d64;
-    color: #cad3f5;
-    border-color: #5b6078;
-  }
-
-  :global([data-theme="dark"]) .btn-tertiary:hover {
-    background: #5b6078;
-  }
 
 
 </style>

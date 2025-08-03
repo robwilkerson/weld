@@ -71,6 +71,7 @@ function handleSaveRight(): void {
 
 	:global([data-theme="dark"]) .file-info {
 		border-bottom-color: #363a4f;
+		border-right-color: #363a4f;
 		color: #cad3f5;
 	}
 

@@ -57,6 +57,11 @@
   - [x] Manage showMinimap, isComparing, error state
   - [x] Handle theme/dark mode state
   - [x] Consolidate UI-related state management
+- [x] Fix copy operation bug for modified lines - CopyToFile was INSERT not REPLACE
+- [x] Fix Intel Mac support - build universal binaries with -platform darwin/universal
+- [x] Quick fixes from code review
+  - [x] Remove unused 'set' variable in uiStore.ts (line 38)
+  - [x] Replace 'any' type in uiStore.test.ts with proper DocumentMock interface
 
 ## Medium Priority
 
@@ -73,13 +78,12 @@
 ## Low Priority
 
 ### Pending
+- [ ] Extract save button logic from DiffViewer into separate component
+- [ ] Review DiffViewer.svelte for further extraction opportunities (currently 706 lines)
+- [ ] Consider creating a DiffViewerToolbar component (combine save buttons and file headers)
+- [ ] Fix flicker when copying lines (diff navigation reset)
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
-- [ ] Extract CSS from App.svelte into components
-  - [ ] Move menu styles to a dedicated Menu component
-  - [ ] Move save button styles to DiffViewer component
-  - [ ] Move file header/info styles to DiffViewer component
-  - [ ] Move error and empty state styles to respective components
 - [ ] Create a dedicated MenuBar component
 - [ ] Menu bar option: Edit > Copy Left
 - [ ] Menu bar option: Edit > Copy Right
@@ -98,6 +102,17 @@
     - [ ] ...
 - [ ] Make the file content editable directly
 - [ ] Implement E2E tests in CI for Linux and Windows platforms (currently macOS only)
+
+### Completed
+- [x] Move error styles to ErrorMessage component (reduced App.svelte by 31 lines)
+  - Note: empty-state styles already existed in DiffViewer, removed duplicates from App
+- [x] Extract CSS from App.svelte into components (COMPLETE - reduced by 396 lines total)
+  - [x] Move file comparison banners to DiffViewer (reduced by 95 lines)
+  - [x] Extract quit dialog styles to QuitDialog component (reduced by 138 lines)
+  - [x] Remove duplicate save button styles (reduced by 17 lines)
+  - [x] Move file header/info dark mode styles to DiffHeader (reduced by 14 lines)
+- [x] Extract copy operation UI from DiffGutter into CopyOperations component
+- [x] Fix current diff indicator not showing on initial load - auto-navigate to first diff
 
 ## Notes
 

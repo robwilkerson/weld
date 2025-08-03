@@ -8,8 +8,7 @@ PROJECT_ROOT=$(git rev-parse --show-toplevel)
 
 # Run the pre-commit check script
 if [ -x "$PROJECT_ROOT/bin/pre-commit-check.sh" ]; then
-    # Pass any stdin (commit message) to the script
-    "$PROJECT_ROOT/bin/pre-commit-check.sh" < /dev/stdin
+    "$PROJECT_ROOT/bin/pre-commit-check.sh"
     exit $?
 else
     echo "Warning: pre-commit-check.sh not found or not executable"
