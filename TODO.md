@@ -3,7 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Be more deliberate about handling errors (error-noread.txt)
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
@@ -62,6 +61,7 @@
 - [x] Quick fixes from code review
   - [x] Remove unused 'set' variable in uiStore.ts (line 38)
   - [x] Replace 'any' type in uiStore.test.ts with proper DocumentMock interface
+- [x] Be more deliberate about handling errors - implemented flash message system
 
 ## Medium Priority
 
