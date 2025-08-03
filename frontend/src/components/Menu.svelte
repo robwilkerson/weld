@@ -31,8 +31,9 @@ export let onToggleDarkMode: () => void;
 <style>
   .menu-container {
     position: absolute;
-    top: 1rem;
+    top: 50%;
     right: 1rem;
+    transform: translateY(-50%);
     z-index: 1000;
   }
 
