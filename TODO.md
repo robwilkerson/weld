@@ -71,7 +71,9 @@
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
   * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
 - [ ] Enable performant syntax highlighting
-- [ ] Review backend test coverage and add quality tests to improve coverage from 60.6%
+- [ ] Review backend test coverage and add quality tests to improve coverage from 58%
+- [ ] Address accessibility warnings - Add proper ARIA labels and keyboard focus management for screen readers
+- [ ] Remove unused CSS selectors flagged by biome (QuitDialog .button-group styles)
 
 ## Low Priority
 
@@ -117,6 +119,10 @@
   - [x] Implement Enter key to compare files when Compare button is enabled
 - [x] Implement: Jump to first diff with g key and menu item
 - [x] Implement: Jump to last diff with G key and menu item
+- [x] Add comprehensive keyboard handling test suite (keyboard.test.ts with 20 tests)
+- [x] Add dynamic navigation tests for g/G after chunk removal scenarios
+- [x] Fix E2E test regression - Flash message component and UpdateDiffNavigationMenuItems mocks
+- [x] Cut v0.5.0 release with g/G navigation and comprehensive test coverage
 
 ## Notes
 
