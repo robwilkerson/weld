@@ -62,6 +62,9 @@ function handleCompareClick(): void {
       Compare
     {/if}
   </button>
+  <div class="menu-slot">
+    <slot name="menu" />
+  </div>
 </div>
 
 <style>
@@ -69,6 +72,14 @@ function handleCompareClick(): void {
     display: flex;
     gap: 1rem;
     margin-bottom: 0.5rem;
+    align-items: center;
+    width: 100%;
+    position: relative;
+  }
+
+  .menu-slot {
+    margin-left: auto;
+    display: flex;
     align-items: center;
   }
 

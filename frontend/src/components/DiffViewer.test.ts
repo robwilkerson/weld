@@ -140,26 +140,6 @@ describe("DiffViewer", () => {
 		expect(viewer).toHaveClass("comparing");
 	});
 
-	it("should show identical files banner", () => {
-		const { getByText } = render(DiffViewer, {
-			props: {
-				...defaultProps,
-				areFilesIdentical: true,
-			},
-		});
-		expect(getByText("Files are identical")).toBeInTheDocument();
-	});
-
-	it("should show same file banner", () => {
-		const { getByText } = render(DiffViewer, {
-			props: {
-				...defaultProps,
-				isSameFile: true,
-			},
-		});
-		expect(getByText(/is being compared to itself/)).toBeInTheDocument();
-	});
-
 	it("should render all sub-components", () => {
 		const { container } = render(DiffViewer, { props: defaultProps });
 

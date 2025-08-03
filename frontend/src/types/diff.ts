@@ -41,8 +41,6 @@ export interface DiffViewerProps {
 	isDarkMode: boolean;
 	isComparing: boolean;
 	hasCompletedComparison: boolean;
-	areFilesIdentical: boolean;
-	isSameFile: boolean;
 	lineNumberWidth: string;
 }
 

@@ -1,10 +1,16 @@
 import { get, writable } from "svelte/store";
 
+interface FlashMessage {
+	message: string;
+	type: "error" | "warning" | "info";
+}
+
 interface UIState {
 	// Comparison state
 	isComparing: boolean;
 	hasCompletedComparison: boolean;
-	errorMessage: string;
+	errorMessage: string; // Deprecated - will be removed
+	flashMessage: FlashMessage | null;
 
 	// Theme state
 	isDarkMode: boolean;
@@ -39,6 +45,7 @@ function createUIStore() {
 		isComparing: false,
 		hasCompletedComparison: false,
 		errorMessage: "",
+		flashMessage: null,
 		isDarkMode: initialDarkMode,
 		showMenu: false,
 		showMinimap: true,
@@ -81,6 +88,25 @@ function createUIStore() {
 			update((state) => ({
 				...state,
 				errorMessage: "",
+			}));
+		},
+
+		// Show flash message
+		showFlash(
+			message: string,
+			type: "error" | "warning" | "info" = "info",
+		): void {
+			update((state) => ({
+				...state,
+				flashMessage: { message, type },
+			}));
+		},
+
+		// Clear flash message
+		clearFlash(): void {
+			update((state) => ({
+				...state,
+				flashMessage: null,
 			}));
 		},
 

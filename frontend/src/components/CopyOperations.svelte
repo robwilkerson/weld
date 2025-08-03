@@ -88,8 +88,8 @@ const dispatch = createEventDispatcher<{
 		width: 100%;
 		left: 0;
 		padding: 0 4px;
-		top: 50%;
-		transform: translateY(calc(-50% + (var(--chunk-height) - 1) * var(--line-height) / 2));
+		top: 0;
+		height: calc(var(--chunk-height) * var(--line-height));
 		z-index: 10;
 		box-sizing: border-box;
 	}

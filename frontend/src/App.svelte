@@ -18,9 +18,9 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
-import ErrorMessage from "./components/ErrorMessage.svelte";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import FlashMessage from "./components/FlashMessage.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import Menu from "./components/Menu.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
@@ -130,13 +130,6 @@ $: isLineHovered = (lineIndex: number) => {
 // Diff chunks will be computed reactively after highlightedDiffResult is declared
 
 // isSameFile is now a derived store from fileStore
-
-// Only show "files are identical" banner if they're identical on disk
-$: areFilesIdentical =
-	$diffStore.rawDiff?.lines &&
-	$diffStore.rawDiff.lines.length > 0 &&
-	$diffStore.rawDiff.lines.every((line) => line.type === "same") &&
-	!$isSameFile;
 
 // Line number width is now computed by diffStore as a derived store
 
@@ -342,7 +335,7 @@ async function _handleSaveAndQuit(): Promise<void> {
 		await SaveSelectedFilesAndQuit(filesToSave);
 	} catch (error) {
 		console.error("Error saving files:", error);
-		uiStore.setError(`Error saving files: ${error}`);
+		uiStore.showFlash(`Error saving files: ${error}`, "error");
 	}
 }
 
@@ -396,14 +389,13 @@ async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
 	fileStore.setLeftFile(path);
 	await updateUnsavedChangesStatus();
-	uiStore.setError(`Left file selected: ${fileStore.getState().leftFileName}`);
 	diffStore.clear(); // Clear previous results
 	uiStore.resetComparisonState(); // Reset comparison state
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleError(event: CustomEvent<{ message: string }>) {
-	uiStore.setError(event.detail.message);
+	uiStore.showFlash(event.detail.message, "error");
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
@@ -411,9 +403,6 @@ async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 	const path = event.detail.path;
 	fileStore.setRightFile(path);
 	await updateUnsavedChangesStatus();
-	uiStore.setError(
-		`Right file selected: ${fileStore.getState().rightFileName}`,
-	);
 	diffStore.clear(); // Clear previous results
 	uiStore.resetComparisonState(); // Reset comparison state
 }
@@ -423,25 +412,45 @@ async function compareBothFiles(
 ): Promise<void> {
 	const { leftFilePath, rightFilePath } = fileStore.getState();
 	if (!leftFilePath || !rightFilePath) {
-		uiStore.setError("Please select both files before comparing");
+		uiStore.showFlash("Please select both files before comparing", "warning");
 		return;
 	}
 
 	try {
 		uiStore.setComparing(true);
 		uiStore.clearError();
+		uiStore.clearFlash(); // Clear any previous messages
+
 		if (!preserveCurrentDiff) {
 			diffStore.setCurrentChunkIndex(-1); // Reset current diff tracking only when not preserving
+		}
+
+		// Check if comparing the same file
+		if (get(isSameFile)) {
+			const fileName = fileStore.getState().leftFileName;
+			uiStore.showFlash(
+				`File "${fileName}" is being compared to itself`,
+				"warning",
+			);
 		}
 
 		const result = await CompareFiles(leftFilePath, rightFilePath);
 		diffStore.setRawDiff(result);
 
 		if (!result || !result.lines) {
-			uiStore.setError("No comparison result received");
+			uiStore.showFlash("No comparison result received", "error");
 			diffStore.setRawDiff(null);
 		} else if (result.lines.length === 0) {
-			uiStore.setError("Files are identical");
+			// Files are empty or identical
+			if (!get(isSameFile)) {
+				uiStore.showFlash("Files are identical", "info");
+			}
+		} else if (
+			result.lines.every((line) => line.type === "same") &&
+			!get(isSameFile)
+		) {
+			// Files have content but no differences
+			uiStore.showFlash("Files are identical", "info");
 		}
 
 		// Mark comparison as completed
@@ -476,7 +485,7 @@ async function compareBothFiles(
 		}, 100);
 	} catch (error) {
 		console.error("Comparison error:", error);
-		uiStore.setError(`Error comparing files: ${error}`);
+		uiStore.showFlash(`Error comparing files: ${error}`, "error");
 		diffStore.clear();
 	} finally {
 		uiStore.setComparing(false);
@@ -555,8 +564,6 @@ function _toggleDarkMode(): void {
 
 async function _handleDiscardChanges(): Promise<void> {
 	try {
-		uiStore.setError("Discarding all changes...");
-
 		// Clear the cache
 		await DiscardAllChanges();
 
@@ -564,11 +571,11 @@ async function _handleDiscardChanges(): Promise<void> {
 		await compareBothFiles();
 		await updateUnsavedChangesStatus();
 
-		uiStore.setError("All changes discarded");
+		uiStore.showFlash("All changes discarded", "info");
 		uiStore.setMenuVisible(false);
 	} catch (error) {
 		console.error("Error discarding changes:", error);
-		uiStore.setError(`Error discarding changes: ${error}`);
+		uiStore.showFlash(`Error discarding changes: ${error}`, "error");
 	}
 }
 
@@ -579,13 +586,11 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 	if (line.type !== "removed") return;
 
 	try {
-		uiStore.setError("Copying line to right file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyLineToRight(lineIndex, context);
-		uiStore.setError("Line copied successfully");
 	} catch (error) {
 		console.error("Error copying line to right:", error);
-		uiStore.setError(`Error copying line: ${error}`);
+		uiStore.showFlash(`Error copying line: ${error}`, "error");
 	}
 }
 
@@ -596,13 +601,11 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 	if (line.type !== "added") return;
 
 	try {
-		uiStore.setError("Copying line to left file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyLineToLeft(lineIndex, context);
-		uiStore.setError("Line copied successfully");
 	} catch (error) {
 		console.error("Error copying line to left:", error);
-		uiStore.setError(`Error copying line: ${error}`);
+		uiStore.showFlash(`Error copying line: ${error}`, "error");
 	}
 }
 
@@ -635,13 +638,11 @@ async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Copying chunk to right file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyChunkToRight(chunk, context);
-		uiStore.setError("Chunk copied successfully");
 	} catch (error) {
 		console.error("Error copying chunk to right:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -649,13 +650,11 @@ async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Copying chunk to left file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyChunkToLeft(chunk, context);
-		uiStore.setError("Chunk copied successfully");
 	} catch (error) {
 		console.error("Error copying chunk to left:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -663,13 +662,11 @@ async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Copying modified chunk to right file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyModifiedChunkToRight(chunk, context);
-		uiStore.setError("Modified chunk copied to right successfully");
 	} catch (error) {
 		console.error("Error copying modified chunk to right:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -677,13 +674,11 @@ async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Copying modified chunk to left file...");
 		const context = getDiffOperationContext();
 		await diffOps.copyModifiedChunkToLeft(chunk, context);
-		uiStore.setError("Modified chunk copied to left successfully");
 	} catch (error) {
 		console.error("Error copying modified chunk to left:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -691,13 +686,11 @@ async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Deleting chunk from right file...");
 		const context = getDiffOperationContext();
 		await diffOps.deleteChunkFromRight(chunk, context);
-		uiStore.setError("Chunk deleted successfully");
 	} catch (error) {
 		console.error("Error deleting chunk from right:", error);
-		uiStore.setError(`Error deleting chunk: ${error}`);
+		uiStore.showFlash(`Error deleting chunk: ${error}`, "error");
 	}
 }
 
@@ -705,13 +698,11 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 	if (!$diffStore.rawDiff || !$diffStore.highlightedDiff) return;
 
 	try {
-		uiStore.setError("Deleting chunk from left file...");
 		const context = getDiffOperationContext();
 		await diffOps.deleteChunkFromLeft(chunk, context);
-		uiStore.setError("Chunk deleted successfully");
 	} catch (error) {
 		console.error("Error deleting chunk from left:", error);
-		uiStore.setError(`Error deleting chunk: ${error}`);
+		uiStore.showFlash(`Error deleting chunk: ${error}`, "error");
 	}
 }
 
@@ -725,8 +716,6 @@ async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
 		return;
 
 	try {
-		uiStore.setError("Copying mixed chunk from left to right...");
-
 		// Start a single transaction for all operations
 		await BeginOperationGroup("Copy mixed chunk left to right");
 
@@ -796,8 +785,6 @@ async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
 			// Refresh the diff
 			await compareBothFiles(true);
 			await updateUnsavedChangesStatus();
-
-			uiStore.setError("Mixed chunk copied successfully");
 		} catch (error) {
 			// Rollback on error
 			await RollbackOperationGroup();
@@ -805,7 +792,7 @@ async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
 		}
 	} catch (error) {
 		console.error("Error copying mixed chunk:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -819,8 +806,6 @@ async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
 		return;
 
 	try {
-		uiStore.setError("Copying mixed chunk from right to left...");
-
 		// Start a single transaction for all operations
 		await BeginOperationGroup("Copy mixed chunk right to left");
 
@@ -890,8 +875,6 @@ async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
 			// Refresh the diff
 			await compareBothFiles(true);
 			await updateUnsavedChangesStatus();
-
-			uiStore.setError("Mixed chunk copied successfully");
 		} catch (error) {
 			// Rollback on error
 			await RollbackOperationGroup();
@@ -899,7 +882,7 @@ async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
 		}
 	} catch (error) {
 		console.error("Error copying mixed chunk:", error);
-		uiStore.setError(`Error copying chunk: ${error}`);
+		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
 
@@ -910,13 +893,11 @@ async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 	if (line.type !== "added") return;
 
 	try {
-		uiStore.setError("Deleting line from right file...");
 		const context = getDiffOperationContext();
 		await diffOps.deleteLineFromRight(lineIndex, context);
-		uiStore.setError("Line deleted successfully");
 	} catch (error) {
 		console.error("Error deleting line from right:", error);
-		uiStore.setError(`Error deleting line: ${error}`);
+		uiStore.showFlash(`Error deleting line: ${error}`, "error");
 	}
 }
 
@@ -927,33 +908,31 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 	if (line.type !== "removed") return;
 
 	try {
-		uiStore.setError("Deleting line from left file...");
 		const context = getDiffOperationContext();
 		await diffOps.deleteLineFromLeft(lineIndex, context);
-		uiStore.setError("Line deleted successfully");
 	} catch (error) {
 		console.error("Error deleting line from left:", error);
-		uiStore.setError(`Error deleting line: ${error}`);
+		uiStore.showFlash(`Error deleting line: ${error}`, "error");
 	}
 }
 
 async function saveLeftFile(): Promise<void> {
 	try {
 		await unsavedChangesStore.saveLeft();
-		uiStore.setError("Left file saved successfully");
+		uiStore.showFlash("Left file saved successfully", "info");
 	} catch (error) {
 		console.error("Error saving left file:", error);
-		uiStore.setError(`Error saving left file: ${error}`);
+		uiStore.showFlash(`Error saving left file: ${error}`, "error");
 	}
 }
 
 async function saveRightFile(): Promise<void> {
 	try {
 		await unsavedChangesStore.saveRight();
-		uiStore.setError("Right file saved successfully");
+		uiStore.showFlash("Right file saved successfully", "info");
 	} catch (error) {
 		console.error("Error saving right file:", error);
-		uiStore.setError(`Error saving right file: ${error}`);
+		uiStore.showFlash(`Error saving right file: ${error}`, "error");
 	}
 }
 
@@ -1591,11 +1570,6 @@ function checkHorizontalScrollbar() {
 
 <main>
   <div class="header">
-    <Menu 
-      hasAnyUnsavedChanges={$hasAnyUnsavedChanges}
-      onDiscardChanges={_handleDiscardChanges}
-      onToggleDarkMode={_toggleDarkMode}
-    />
     <FileSelector
       leftFilePath={$fileStore.leftFilePath}
       rightFilePath={$fileStore.rightFilePath}
@@ -1608,9 +1582,21 @@ function checkHorizontalScrollbar() {
       on:rightFileSelected={handleRightFileSelected}
       on:compare={compareBothFiles}
       on:error={handleError}
-    />
+    >
+      <Menu 
+        slot="menu"
+        hasAnyUnsavedChanges={$hasAnyUnsavedChanges}
+        onDiscardChanges={_handleDiscardChanges}
+        onToggleDarkMode={_toggleDarkMode}
+      />
+    </FileSelector>
     
-    <ErrorMessage message={$uiStore.errorMessage} />
+    {#if $uiStore.flashMessage}
+      <FlashMessage 
+        message={$uiStore.flashMessage.message}
+        type={$uiStore.flashMessage.type}
+      />
+    {/if}
   </div>
 
   <DiffViewer
@@ -1625,8 +1611,6 @@ function checkHorizontalScrollbar() {
     showMinimap={$uiStore.showMinimap}
     isComparing={$uiStore.isComparing}
     hasCompletedComparison={$uiStore.hasCompletedComparison}
-    {areFilesIdentical}
-    isSameFile={$isSameFile}
     lineNumberWidth={$lineNumberWidth}
     diffChunks={$diffChunks}
     on:saveLeft={saveLeftFile}
