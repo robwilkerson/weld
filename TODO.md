@@ -70,6 +70,7 @@
 - [ ] Implement: Jump to last diff with G key
 - [ ] Implement: `Enter` to compare files if the `Compare` button is enabled
 - [ ] Add an unsaved indicator
+- [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
   * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
 - [ ] Enable performant syntax highlighting
@@ -89,6 +90,7 @@
 - [ ] Menu bar option: Edit > Copy Right
 - [ ] Investigate tooltip display consistency issue
 - [ ] Extract syntax highlighting logic into a separate service
+- [ ] Recently compared files - Quick access to recent file pairs for faster re-comparison
 - [ ] Redo functionality
 - [ ] Undo multiple (up to 50, perhaps)
 - [ ] Optionally display a status bar
