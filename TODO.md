@@ -79,6 +79,9 @@
 
 ### Pending
 - [ ] Extract save button logic from DiffViewer into separate component
+- [ ] Review DiffViewer.svelte for further extraction opportunities (currently 706 lines)
+- [ ] Consider creating a DiffViewerToolbar component (combine save buttons and file headers)
+- [ ] Fix flicker when copying lines (diff navigation reset)
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
 - [ ] Create a dedicated MenuBar component
