@@ -7,6 +7,18 @@ Weld is a visual diff and merge tool targeted at developers.
 
 It is inspired by and modeled after [Meld](https://github.com/yousseb/meld) which seems to have been deprecated (at best) in favor of [this fork](https://gitlab.com/dehesselle/meld_macos) - at least in terms of the [Homebrew](https://brew.sh/) package. Recent(-ish) churn due to bugs and slow development inspired me to start this project as an alternative, but Meld itself seems to have stabilized recently. Nonetheless, the idea lingered and I decided to explore it as an experiment in some new technologies and as a use case for heavy AI usage.
 
+## Features
+
+- **Side-by-side file comparison** with syntax highlighting
+- **Interactive diff navigation** with keyboard shortcuts
+- **Selective merging** - copy individual changes or entire chunks between files
+- **Smart diff chunking** - intelligently groups related changes
+- **Undo support** for all copy operations
+- **Dark/Light themes** with automatic OS detection
+- **Minimap** for quick navigation in large files
+- **Cross-platform** - works on macOS, Windows, and Linux
+- **CLI support** for quick comparisons from the terminal
+
 Weld, while inspired by Meld, offers a slightly streamlined set of functionality. The following features of Meld are not part of Weld:
 
 * 3-way comparison
@@ -46,15 +58,55 @@ Weld is licensed under the terms of the MIT license.
 
 ### GUI Mode
 
-1. Launch Weld from your Applications folder (macOS), Start Menu (Windows), or by running the executable (Linux)
-2. Click "Browse" to select files for comparison:
-   - Left pane: Select the original/source file
-   - Right pane: Select the modified/target file
-3. View differences with syntax highlighting
-4. Navigate changes using:
-   - Scroll to review all changes
-   - Click on specific diff regions to jump to them
-5. Copy changes between files using the arrow buttons
+1. **Launch Weld** from your Applications folder (macOS), Start Menu (Windows), or by running the executable (Linux)
+
+2. **Select files to compare:**
+   - Click the left "Browse" button to select the original/source file
+   - Click the right "Browse" button to select the modified/target file
+   - Click "Compare" to see the differences
+
+3. **Navigate differences:**
+   - Scroll through the files to review all changes
+   - Click on any diff chunk to jump to it
+   - Use the minimap on the right for quick navigation in large files
+   - All differences are highlighted with a light blue background
+   - Within modified lines, the specific changed parts are highlighted with a darker blue
+   - The current diff is highlighted with a stronger blue when navigating with j/k keys
+
+4. **Copy changes between files:**
+   - Click arrows to copy changes in either direction
+   - Use keyboard shortcuts for faster operation (see below)
+   - All operations can be undone via the Edit menu or keyboard shortcuts (see below)
+
+5. **Save your changes:**
+   - The save button (📥) appears when files have unsaved changes
+   - Save individual files or use keyboard shortcuts (see below)
+   - Weld will prompt you to save unsaved changes when quitting
+
+### Tips
+
+- **Supported Files:** Weld works with any text-based file format. Binary files are not supported.
+- **Large Files:** The minimap is especially useful for navigating large files with many differences.
+- **Vim Users:** Navigation keys `j` and `k` work just like in Vim for moving between diffs.
+- **Safe Operations:** All copy operations can be undone, and Weld always prompts before discarding unsaved changes.
+
+### Keyboard Shortcuts
+
+| Action | macOS | Windows/Linux |
+|--------|-------|---------------|
+| **Navigation** | | |
+| Next difference | `j` or `↓` | `j` or `↓` |
+| Previous difference | `k` or `↑` | `k` or `↑` |
+| **Copy Operations** | | |
+| Copy current diff left → right | `Shift+L` | `Shift+L` |
+| Copy current diff right → left | `Shift+H` | `Shift+H` |
+| **File Operations** | | |
+| Save left file | `Cmd+S` (when left file focused) | `Ctrl+S` (when left file focused) |
+| Save right file | `Cmd+S` (when right file focused) | `Ctrl+S` (when right file focused) |
+| **General** | | |
+| Undo last operation | `Cmd+Z` or `u` | `Ctrl+Z` or `u` |
+| Toggle minimap | Via menu (☰) | Via menu (☰) |
+| Toggle dark/light mode | Via menu (☰) | Via menu (☰) |
 
 ### From the CLI
 
