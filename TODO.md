@@ -114,6 +114,8 @@
   - [x] Move file header/info dark mode styles to DiffHeader (reduced by 14 lines)
 - [x] Extract copy operation UI from DiffGutter into CopyOperations component
 - [x] Fix current diff indicator not showing on initial load - auto-navigate to first diff
+- [x] Extract keyboard handling from App.svelte to utils/keyboard.ts (reduced by 40 lines)
+  - [x] Implement Enter key to compare files when Compare button is enabled
 
 ## Notes
 
