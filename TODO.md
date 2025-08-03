@@ -77,17 +77,11 @@
 
 ## Low Priority
 
-### Pending
-- [ ] Extract DiffViewer.svelte components (approaching 500 lines)
-  - [ ] Extract copy operation UI into separate component
-  - [ ] Extract save button logic into separate component
+### Pending  
+- [ ] Extract copy operation UI from DiffViewer into separate component (IN PROGRESS)
+- [ ] Extract save button logic from DiffViewer into separate component
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
-- [ ] Extract CSS from App.svelte into components (in progress)
-  - [ ] Move save button styles to DiffViewer component
-  - [ ] Move file header/info styles to DiffViewer component
-  - [ ] Extract file comparison banners (same-file, identical-files)
-  - [ ] Extract quit dialog styles to QuitDialog component
 - [ ] Create a dedicated MenuBar component
 - [ ] Menu bar option: Edit > Copy Left
 - [ ] Menu bar option: Edit > Copy Right
@@ -108,9 +102,13 @@
 - [ ] Implement E2E tests in CI for Linux and Windows platforms (currently macOS only)
 
 ### Completed
-- [x] Move menu styles to Menu component (reduced App.svelte by 101 lines)
 - [x] Move error styles to ErrorMessage component (reduced App.svelte by 31 lines)
   - Note: empty-state styles already existed in DiffViewer, removed duplicates from App
+- [x] Extract CSS from App.svelte into components (COMPLETE - reduced by 396 lines total)
+  - [x] Move file comparison banners to DiffViewer (reduced by 95 lines)
+  - [x] Extract quit dialog styles to QuitDialog component (reduced by 138 lines)
+  - [x] Remove duplicate save button styles (reduced by 17 lines)
+  - [x] Move file header/info dark mode styles to DiffHeader (reduced by 14 lines)
 
 ## Notes
 
