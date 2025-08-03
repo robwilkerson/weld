@@ -272,8 +272,13 @@ describe("Keyboard Utilities", () => {
 					saveLeftFile: mockSaveLeftFile,
 					saveRightFile: mockSaveRightFile,
 				},
-				leftFilePath,
-				rightFilePath,
+				{
+					leftFilePath,
+					rightFilePath,
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -304,8 +309,13 @@ describe("Keyboard Utilities", () => {
 					saveLeftFile: mockSaveLeftFile,
 					saveRightFile: mockSaveRightFile,
 				},
-				leftFilePath,
-				rightFilePath,
+				{
+					leftFilePath,
+					rightFilePath,
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -328,8 +338,13 @@ describe("Keyboard Utilities", () => {
 					saveLeftFile: mockSaveLeftFile,
 					saveRightFile: mockSaveRightFile,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			// Should not prevent default or save for other keys
@@ -354,8 +369,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					copyCurrentDiffLeftToRight: mockCopyRightToLeft,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -378,8 +398,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					copyCurrentDiffRightToLeft: mockCopyLeftToRight,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -402,8 +427,13 @@ describe("Keyboard Utilities", () => {
 					jumpToNextDiff: mockJumpToNext,
 					jumpToPrevDiff: mockJumpToPrev,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -427,8 +457,13 @@ describe("Keyboard Utilities", () => {
 					jumpToNextDiff: mockJumpToNext,
 					jumpToPrevDiff: mockJumpToPrev,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -451,8 +486,13 @@ describe("Keyboard Utilities", () => {
 					jumpToNextDiff: mockJumpToNext,
 					jumpToPrevDiff: mockJumpToPrev,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -476,8 +516,13 @@ describe("Keyboard Utilities", () => {
 					jumpToNextDiff: mockJumpToNext,
 					jumpToPrevDiff: mockJumpToPrev,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -505,8 +550,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					undoLastChange: mockUndo,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -534,8 +584,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					undoLastChange: mockUndo,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -556,8 +611,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					undoLastChange: mockUndo,
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -576,8 +636,13 @@ describe("Keyboard Utilities", () => {
 					saveRightFile: vi.fn(),
 					// No navigation callbacks provided
 				},
-				"/path/left.txt",
-				"/path/right.txt",
+				{
+					leftFilePath: "/path/left.txt",
+					rightFilePath: "/path/right.txt",
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			// Should not prevent default when callbacks are missing
@@ -605,8 +670,13 @@ describe("Keyboard Utilities", () => {
 					saveLeftFile: mockSaveLeft,
 					saveRightFile: mockSaveRight,
 				},
-				"", // Empty left path
-				"", // Empty right path
+				{
+					leftFilePath: "", // Empty left path
+					rightFilePath: "", // Empty right path
+					isComparing: false,
+					hasCompletedComparison: false,
+					showMenu: false,
+				},
 			);
 
 			// preventDefault is called when Ctrl+S is pressed regardless of paths
