@@ -82,6 +82,14 @@ export function SetDiscardMenuItem(arg1) {
   return window['go']['main']['App']['SetDiscardMenuItem'](arg1);
 }
 
+export function SetFirstDiffMenuItem(arg1) {
+  return window['go']['main']['App']['SetFirstDiffMenuItem'](arg1);
+}
+
+export function SetLastDiffMenuItem(arg1) {
+  return window['go']['main']['App']['SetLastDiffMenuItem'](arg1);
+}
+
 export function SetMinimapMenuItem(arg1) {
   return window['go']['main']['App']['SetMinimapMenuItem'](arg1);
 }
@@ -118,8 +126,8 @@ export function UndoLastOperation() {
   return window['go']['main']['App']['UndoLastOperation']();
 }
 
-export function UpdateDiffNavigationMenuItems(arg1, arg2) {
-  return window['go']['main']['App']['UpdateDiffNavigationMenuItems'](arg1, arg2);
+export function UpdateDiffNavigationMenuItems(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UpdateDiffNavigationMenuItems'](arg1, arg2, arg3, arg4);
 }
 
 export function UpdateSaveMenuItems(arg1, arg2) {

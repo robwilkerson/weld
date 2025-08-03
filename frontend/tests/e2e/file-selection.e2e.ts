@@ -71,7 +71,12 @@ async function setupMockedBackend(page) {
 						hasUnsavedRight: false,
 					}),
 					UpdateSaveMenuItems: async () => {},
-					UpdateDiffNavigationMenuItems: async () => {},
+					UpdateDiffNavigationMenuItems: async (
+						_canNavigatePrev,
+						_canNavigateNext,
+						_canNavigateFirst,
+						_canNavigateLast,
+					) => {},
 					GetInitialFiles: async () => ["", ""],
 					_selectFileCallCount: 0,
 				},

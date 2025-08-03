@@ -66,8 +66,6 @@
 ## Medium Priority
 
 ### Pending
-- [ ] Implement: Jump to first diff with g key
-- [ ] Implement: Jump to last diff with G key
 - [ ] Add an unsaved indicator
 - [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
@@ -90,6 +88,7 @@
 - [ ] Investigate tooltip display consistency issue
 - [ ] Extract syntax highlighting logic into a separate service
 - [ ] Recently compared files - Quick access to recent file pairs for faster re-comparison
+- [ ] Support custom themes - Allow users to customize colors and appearance
 - [ ] Redo functionality
 - [ ] Undo multiple (up to 50, perhaps)
 - [ ] Optionally display a status bar
@@ -116,6 +115,8 @@
 - [x] Fix current diff indicator not showing on initial load - auto-navigate to first diff
 - [x] Extract keyboard handling from App.svelte to utils/keyboard.ts (reduced by 40 lines)
   - [x] Implement Enter key to compare files when Compare button is enabled
+- [x] Implement: Jump to first diff with g key and menu item
+- [x] Implement: Jump to last diff with G key and menu item
 
 ## Notes
 

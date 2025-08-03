@@ -947,6 +947,8 @@ function handleKeydown(event: KeyboardEvent): void {
 			saveRightFile,
 			jumpToNextDiff,
 			jumpToPrevDiff,
+			jumpToFirstDiff,
+			jumpToLastDiff,
 			copyCurrentDiffLeftToRight,
 			copyCurrentDiffRightToLeft,
 			undoLastChange,
@@ -1210,6 +1212,14 @@ function jumpToNextDiff(): void {
 
 function jumpToPrevDiff(): void {
 	navigationStore.jumpToPrevDiff();
+}
+
+function jumpToFirstDiff(): void {
+	navigationStore.jumpToFirstDiff();
+}
+
+function jumpToLastDiff(): void {
+	navigationStore.jumpToLastDiff();
 }
 
 function scrollToLine(lineIndex: number, chunkIndex?: number): void {
@@ -1494,6 +1504,8 @@ onMount(async () => {
 	EventsOn("menu-discard-all", _handleDiscardChanges);
 	EventsOn("menu-prev-diff", jumpToPrevDiff);
 	EventsOn("menu-next-diff", jumpToNextDiff);
+	EventsOn("menu-first-diff", jumpToFirstDiff);
+	EventsOn("menu-last-diff", jumpToLastDiff);
 
 	// Check for initial files from command line
 	try {

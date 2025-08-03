@@ -7,6 +7,8 @@
  * - Cmd/Ctrl + S: Save all files with changes
  * - ArrowDown or j: Jump to next diff
  * - ArrowUp or k: Jump to previous diff
+ * - g: Jump to first diff
+ * - G: Jump to last diff
  * - Shift + L: Copy current diff from right to left
  * - Shift + H: Copy current diff from left to right
  * - Cmd/Ctrl + Z or u: Undo last change
@@ -17,6 +19,8 @@ export interface KeyboardHandlerCallbacks {
 	saveRightFile: () => void;
 	jumpToNextDiff?: () => void;
 	jumpToPrevDiff?: () => void;
+	jumpToFirstDiff?: () => void;
+	jumpToLastDiff?: () => void;
 	copyCurrentDiffLeftToRight?: () => void;
 	copyCurrentDiffRightToLeft?: () => void;
 	undoLastChange?: () => void;
@@ -105,6 +109,30 @@ export function handleKeydown(
 		} else if (event.key === "ArrowUp" || event.key === "k") {
 			event.preventDefault();
 			callbacks.jumpToPrevDiff();
+		}
+	}
+
+	// Jump to first/last diff with g/G keys
+	if (
+		event.key === "g" &&
+		!event.shiftKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.altKey
+	) {
+		if (callbacks.jumpToFirstDiff) {
+			event.preventDefault();
+			callbacks.jumpToFirstDiff();
+		}
+	} else if (
+		event.key === "G" &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.altKey
+	) {
+		if (callbacks.jumpToLastDiff) {
+			event.preventDefault();
+			callbacks.jumpToLastDiff();
 		}
 	}
 
