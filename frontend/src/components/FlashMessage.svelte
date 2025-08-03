@@ -6,7 +6,9 @@ import infoIcon from "../assets/message-icons/info.svg?raw";
 import warningIcon from "../assets/message-icons/warning.svg?raw";
 import { uiStore } from "../stores/uiStore.js";
 
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
 export let message: string = "";
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
 export let type: "error" | "warning" | "info" = "info";
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template

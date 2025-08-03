@@ -210,6 +210,60 @@ describe("navigationStore", () => {
 			expect(mockScrollToLine).not.toHaveBeenCalled();
 			expect(get(diffStore).currentChunkIndex).toBe(0);
 		});
+
+		it("should jump to NEW first chunk after original first is removed", () => {
+			// Setup initial diff with chunks
+			setupDiffWithChunks(20);
+			const originalChunks = get(diffChunks);
+			expect(originalChunks.length).toBe(2); // Verify we have 2 chunks
+
+			// Remember the second chunk (which will become first)
+			const _secondChunkStartIndex = originalChunks[1].startIndex;
+
+			// Navigate to somewhere else (not first)
+			diffStore.setCurrentChunkIndex(1);
+
+			// Simulate removing the first chunk (like after a copy operation)
+			// We'll create a new diff that only has what was the second chunk
+			const lines: HighlightedDiffLine[] = [];
+			// Add some same lines
+			for (let i = 0; i < 12; i++) {
+				lines.push({
+					type: "same",
+					leftLine: `line ${i}`,
+					rightLine: `line ${i}`,
+					leftNumber: i + 1,
+					rightNumber: i + 1,
+					leftLineHighlighted: `line ${i}`,
+					rightLineHighlighted: `line ${i}`,
+				});
+			}
+			// Add only the second chunk (what was added lines)
+			for (let i = 12; i < 15; i++) {
+				lines.push({
+					type: "added",
+					leftLine: "",
+					rightLine: `added ${i}`,
+					leftNumber: null,
+					rightNumber: i - 2,
+					leftLineHighlighted: "",
+					rightLineHighlighted: `added ${i}`,
+				});
+			}
+
+			diffStore.setHighlightedDiff({ lines });
+			const newChunks = get(diffChunks);
+			expect(newChunks.length).toBe(1); // Now we only have 1 chunk
+
+			// Reset current index since chunks changed
+			diffStore.setCurrentChunkIndex(-1);
+
+			// Now jump to first diff - should go to what was the second chunk
+			navigationStore.jumpToFirstDiff();
+
+			expect(get(diffStore).currentChunkIndex).toBe(0);
+			expect(mockScrollToLine).toHaveBeenCalledWith(newChunks[0].startIndex, 0);
+		});
 	});
 
 	describe("jumpToLastDiff", () => {
@@ -250,6 +304,72 @@ describe("navigationStore", () => {
 			expect(mockPlayInvalidSound).toHaveBeenCalled();
 			expect(mockScrollToLine).not.toHaveBeenCalled();
 			expect(get(diffStore).currentChunkIndex).toBe(lastIndex);
+		});
+
+		it("should jump to NEW last chunk after original last is removed", () => {
+			// Setup initial diff with chunks
+			setupDiffWithChunks(20);
+			const originalChunks = get(diffChunks);
+			expect(originalChunks.length).toBe(2); // Verify we have 2 chunks
+
+			// Remember the first chunk (which will become last after second is removed)
+			const _firstChunkStartIndex = originalChunks[0].startIndex;
+
+			// Navigate to somewhere else (not last)
+			diffStore.setCurrentChunkIndex(0);
+
+			// Simulate removing the last chunk (like after a copy operation)
+			// We'll create a new diff that only has what was the first chunk
+			const lines: HighlightedDiffLine[] = [];
+			// Add some same lines
+			for (let i = 0; i < 5; i++) {
+				lines.push({
+					type: "same",
+					leftLine: `line ${i}`,
+					rightLine: `line ${i}`,
+					leftNumber: i + 1,
+					rightNumber: i + 1,
+					leftLineHighlighted: `line ${i}`,
+					rightLineHighlighted: `line ${i}`,
+				});
+			}
+			// Add only the first chunk (removed lines)
+			for (let i = 5; i < 8; i++) {
+				lines.push({
+					type: "removed",
+					leftLine: `removed ${i}`,
+					rightLine: "",
+					leftNumber: i + 1,
+					rightNumber: null,
+					leftLineHighlighted: `removed ${i}`,
+					rightLineHighlighted: "",
+				});
+			}
+			// Add more same lines
+			for (let i = 8; i < 15; i++) {
+				lines.push({
+					type: "same",
+					leftLine: `line ${i}`,
+					rightLine: `line ${i}`,
+					leftNumber: i + 1,
+					rightNumber: i - 2,
+					leftLineHighlighted: `line ${i}`,
+					rightLineHighlighted: `line ${i}`,
+				});
+			}
+
+			diffStore.setHighlightedDiff({ lines });
+			const newChunks = get(diffChunks);
+			expect(newChunks.length).toBe(1); // Now we only have 1 chunk
+
+			// Reset current index since chunks changed
+			diffStore.setCurrentChunkIndex(-1);
+
+			// Now jump to last diff - should go to what was the first chunk (now the only chunk)
+			navigationStore.jumpToLastDiff();
+
+			expect(get(diffStore).currentChunkIndex).toBe(0);
+			expect(mockScrollToLine).toHaveBeenCalledWith(newChunks[0].startIndex, 0);
 		});
 	});
 

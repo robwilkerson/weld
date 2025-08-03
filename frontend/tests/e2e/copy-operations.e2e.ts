@@ -214,7 +214,12 @@ async function setupMockedBackend(page) {
 					},
 					GetMinimapVisible: async () => true,
 					GetInitialFiles: async () => ["", ""],
-					UpdateDiffNavigationMenuItems: async () => {},
+					UpdateDiffNavigationMenuItems: async (
+						_canNavigatePrev,
+						_canNavigateNext,
+						_canNavigateFirst,
+						_canNavigateLast,
+					) => {},
 					UpdateSaveMenuItems: async () => {},
 					// Operation group functions for transaction support
 					BeginOperationGroup: async (_description) => {

@@ -123,7 +123,12 @@ async function setupMockedBackend(page) {
 						window.savedFiles = selections;
 					},
 					UpdateSaveMenuItems: async () => {},
-					UpdateDiffNavigationMenuItems: async () => {},
+					UpdateDiffNavigationMenuItems: async (
+						_canNavigatePrev,
+						_canNavigateNext,
+						_canNavigateFirst,
+						_canNavigateLast,
+					) => {},
 					GetInitialFiles: async () => ["", ""],
 				},
 			},

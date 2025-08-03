@@ -119,7 +119,12 @@ async function setupMockedBackend(page) {
 						hasUnsavedLeft: false,
 						hasUnsavedRight: false,
 					}),
-					UpdateDiffNavigationMenuItems: async () => {},
+					UpdateDiffNavigationMenuItems: async (
+						_canNavigatePrev,
+						_canNavigateNext,
+						_canNavigateFirst,
+						_canNavigateLast,
+					) => {},
 					UpdateSaveMenuItems: async () => {},
 				},
 			},
