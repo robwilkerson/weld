@@ -6,8 +6,8 @@ import infoIcon from "../assets/message-icons/info.svg?raw";
 import warningIcon from "../assets/message-icons/warning.svg?raw";
 import { uiStore } from "../stores/uiStore.js";
 
-export const message: string = "";
-export const type: "error" | "warning" | "info" = "info";
+export let message: string = "";
+export let type: "error" | "warning" | "info" = "info";
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template
 let visible = false;
@@ -16,14 +16,8 @@ $: if (message) {
 	visible = true;
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template
-function dismiss() {
-	visible = false;
-	uiStore.clearFlash();
-}
-
-// biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template
-function getIcon() {
+// Make icon reactive - recompute when type changes
+$: icon = (() => {
 	switch (type) {
 		case "error":
 			return errorIcon;
@@ -34,6 +28,12 @@ function getIcon() {
 		default:
 			return infoIcon;
 	}
+})();
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template
+function dismiss() {
+	visible = false;
+	uiStore.clearFlash();
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in Svelte template
@@ -49,10 +49,10 @@ function isHtmlIcon(icon: string): boolean {
     role="alert"
   >
     <span class="flash-icon">
-      {#if isHtmlIcon(getIcon())}
-        {@html getIcon()}
+      {#if isHtmlIcon(icon)}
+        {@html icon}
       {:else}
-        {getIcon()}
+        {icon}
       {/if}
     </span>
     <span class="flash-text">{message}</span>

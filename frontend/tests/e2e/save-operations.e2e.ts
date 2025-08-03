@@ -379,8 +379,8 @@ test.describe("Save Operations", () => {
 		await leftSaveBtn.click();
 		await page.waitForTimeout(200);
 
-		// Should show error message
-		await expect(page.locator(".error")).toContainText(
+		// Should show error message in flash
+		await expect(page.locator(".flash-message.flash-error")).toContainText(
 			"Error saving left file: Error: Permission denied",
 		);
 
