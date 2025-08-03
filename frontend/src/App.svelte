@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { get } from "svelte/store";
 import {
 	BeginOperationGroup,
 	CommitOperationGroup,
@@ -445,6 +446,29 @@ async function compareBothFiles(
 
 		// Mark comparison as completed
 		uiStore.setCompletionState(true);
+
+		// Auto-navigate to first diff if not preserving current diff
+		if (
+			!preserveCurrentDiff &&
+			result &&
+			result.lines &&
+			result.lines.length > 0
+		) {
+			// Wait for diffChunks to be calculated
+			setTimeout(() => {
+				const chunks = get(diffChunks);
+				const currentIndex = get(diffStore).currentChunkIndex;
+				if (chunks.length > 0 && currentIndex === -1) {
+					diffStore.setCurrentChunkIndex(0);
+					// Scroll to first diff after a delay
+					setTimeout(() => {
+						if (diffViewerComponent && chunks[0]) {
+							scrollToLine(chunks[0].startIndex, 0);
+						}
+					}, 100);
+				}
+			}, 50);
+		}
 
 		// Check for horizontal scrollbar after diff is loaded
 		setTimeout(() => {
@@ -1425,7 +1449,7 @@ $: if (
 			if ($diffChunks[0]) {
 				scrollToLine($diffChunks[0].startIndex, 0);
 			}
-		}, 100);
+		}, 150);
 	}
 }
 

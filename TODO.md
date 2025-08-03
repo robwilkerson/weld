@@ -77,8 +77,7 @@
 
 ## Low Priority
 
-### Pending  
-- [ ] Extract copy operation UI from DiffViewer into separate component (IN PROGRESS)
+### Pending
 - [ ] Extract save button logic from DiffViewer into separate component
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
@@ -109,6 +108,8 @@
   - [x] Extract quit dialog styles to QuitDialog component (reduced by 138 lines)
   - [x] Remove duplicate save button styles (reduced by 17 lines)
   - [x] Move file header/info dark mode styles to DiffHeader (reduced by 14 lines)
+- [x] Extract copy operation UI from DiffGutter into CopyOperations component
+- [x] Fix current diff indicator not showing on initial load - auto-navigate to first diff
 
 ## Notes
 

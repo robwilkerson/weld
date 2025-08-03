@@ -14,8 +14,13 @@ print_error() { echo -e "\033[31m✗ $1\033[0m"; }
 print_info() { echo -e "\033[34mℹ $1\033[0m"; }
 print_warning() { echo -e "\033[33m⚠ $1\033[0m"; }
 
-# Track if any checks fail
-CHECKS_PASSED=true
+# Exit immediately on first failure
+exit_on_error() {
+    print_error "$1"
+    echo -e "\nTip: Fix this issue and run the check again."
+    echo "You can bypass these checks with 'git commit --no-verify' but it's not recommended."
+    exit 1
+}
 
 # 1. Check for debugging code
 echo -e "\n🔍 Checking for debugging code..."
@@ -39,11 +44,9 @@ for pattern in "${PATTERNS[@]}"; do
 done
 
 if [ "$FOUND_DEBUG" = true ]; then
-    print_error "Debugging code or markers found. Please clean up before committing."
-    CHECKS_PASSED=false
-else
-    print_success "No debugging code found"
+    exit_on_error "Debugging code or markers found. Please clean up before committing."
 fi
+print_success "No debugging code found"
 
 # 2. Run formatters on staged files only
 echo -e "\n🎨 Running formatters..."
@@ -63,11 +66,9 @@ if [ -n "$STAGED_GO_FILES" ]; then
     if [ "$NEEDS_FORMAT" = true ]; then
         print_info "Running go fmt on staged Go files..."
         echo "$STAGED_GO_FILES" | xargs go fmt
-        print_warning "Go files formatted. Please stage the formatting changes."
-        CHECKS_PASSED=false
-    else
-        print_success "Go files are properly formatted"
+        exit_on_error "Go files formatted. Please stage the formatting changes."
     fi
+    print_success "Go files are properly formatted"
 else
     print_info "No Go files to check"
 fi
@@ -83,11 +84,11 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
     if ! cat /tmp/staged-files.txt | xargs npx @biomejs/biome check 2>/dev/null; then
         print_info "Running biome formatter on staged frontend files..."
         cat /tmp/staged-files.txt | xargs npx @biomejs/biome check --write
-        print_warning "Frontend files formatted. Please stage the formatting changes."
-        CHECKS_PASSED=false
-    else
-        print_success "Frontend files pass biome checks"
+        rm /tmp/staged-files.txt
+        cd ..
+        exit_on_error "Frontend files formatted. Please stage the formatting changes."
     fi
+    print_success "Frontend files pass biome checks"
     
     rm /tmp/staged-files.txt
     cd ..
@@ -106,15 +107,12 @@ if [ -n "$STAGED_GO_FILES" ]; then
     print_info "Running tests for changed Go packages..."
     for pkg in $CHANGED_PACKAGES; do
         if ! go test "./$pkg" -v > /tmp/go-test-commit.log 2>&1; then
-            print_error "Tests failed in package: $pkg"
             echo "See /tmp/go-test-commit.log for details"
-            CHECKS_PASSED=false
+            exit_on_error "Tests failed in package: $pkg"
         fi
     done
     
-    if [ "$CHECKS_PASSED" = true ]; then
-        print_success "Backend tests passed"
-    fi
+    print_success "Backend tests passed"
 fi
 
 # Check if we have frontend changes that need testing
@@ -123,12 +121,11 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
     cd frontend
     # Run all tests except integration tests (which are outdated)
     if ! bun run test src/stores/ src/components/ src/utils/ --run > /tmp/frontend-test-commit.log 2>&1; then
-        print_error "Frontend tests failed"
         echo "See /tmp/frontend-test-commit.log for details"
-        CHECKS_PASSED=false
-    else
-        print_success "Frontend tests passed"
+        cd ..
+        exit_on_error "Frontend tests failed"
     fi
+    print_success "Frontend tests passed"
     cd ..
 fi
 
@@ -145,13 +142,11 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
         
         # Run E2E tests in headless mode (they have their own timeout in playwright.config.ts)
         if ! bun run test:e2e:headless > /tmp/e2e-test-commit.log 2>&1; then
-            print_error "E2E tests failed or timed out (2 min limit)"
             echo "See /tmp/e2e-test-commit.log for details"
-            print_info "You can skip with --no-verify, but please ensure E2E tests pass before pushing"
-            CHECKS_PASSED=false
-        else
-            print_success "E2E tests passed"
+            cd ..
+            exit_on_error "E2E tests failed or timed out (2 min limit)\nPlease ensure E2E tests pass before pushing"
         fi
+        print_success "E2E tests passed"
         cd ..
     else
         print_warning "Wails dev server not running. Skipping E2E tests."
@@ -159,13 +154,7 @@ if [ -n "$STAGED_FRONTEND_FILES" ]; then
     fi
 fi
 
-# Final summary
+# Final summary - only shown if all checks pass
 echo -e "\n================================"
-if [ "$CHECKS_PASSED" = true ]; then
-    print_success "All pre-commit checks passed! ✨"
-    echo -e "\nYou're ready to commit."
-else
-    print_error "Some checks failed. Please fix the issues above before committing."
-    echo -e "\nTip: You can bypass these checks with 'git commit --no-verify' but it's not recommended."
-    exit 1
-fi
+print_success "All pre-commit checks passed! ✨"
+echo -e "\nYou're ready to commit."

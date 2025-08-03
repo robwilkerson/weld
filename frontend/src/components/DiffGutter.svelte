@@ -1,6 +1,8 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
 import type { HighlightedDiffLine, LineChunk } from "../types/diff";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
+import CopyOperations from "./CopyOperations.svelte";
 
 // Props
 export let lines: HighlightedDiffLine[];
@@ -63,55 +65,27 @@ export function setScrollLeft(scrollLeft: number): void {
 			{@const isLastInChunk = chunk ? index === chunk.endIndex : false}
 			
 			<div class="gutter-line {chunk && isFirstLineOfChunk(index, chunk) ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff-line' : ''}">
-			{#if diffChunk && isFirstInDiffChunk && line.type !== 'same'}
-				<!-- Show chunk arrows only on the first line of the diff chunk -->
-				<div class="chunk-actions" style="--chunk-height: {diffChunk.endIndex - diffChunk.startIndex + 1};">
-					{#if currentDiffChunkIndex !== -1 && diffChunks[currentDiffChunkIndex] && diffChunk.startIndex === diffChunks[currentDiffChunkIndex].startIndex}
-						<div class="current-diff-indicator" title="Current diff"></div>
-					{/if}
-					{#if line.type === 'added'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromRight', chunk)} title="Delete chunk from right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							→
-						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToLeft', chunk)} title="Copy chunk to left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							←
-						</button>
-					{:else if line.type === 'removed'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow" on:click={() => dispatch('copyChunkToRight', chunk)} title="Copy chunk to right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							→
-						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow" on:click={() => dispatch('deleteChunkFromLeft', chunk)} title="Delete chunk from left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							←
-						</button>
-					{:else if line.type === 'modified'}
-						<button class="gutter-arrow left-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToRight', chunk)} title="Copy left version to right ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							→
-						</button>
-						<button class="gutter-arrow right-side-arrow chunk-arrow modified-arrow" on:click={() => dispatch('copyModifiedChunkToLeft', chunk)} title="Copy right version to left ({diffChunk.endIndex - diffChunk.startIndex + 1} lines)">
-							←
-						</button>
-					{/if}
-				</div>
-			{:else if line.type === 'modified' && isFirstOfConsecutiveModified(index)}
-				<!-- Show arrows only on the first of consecutive modified lines -->
-				<button class="gutter-arrow left-side-arrow" on:click={() => dispatch('copyLineToRight', index)} title="Copy left to right">
-					→
-				</button>
-				<button class="gutter-arrow right-side-arrow" on:click={() => dispatch('copyLineToLeft', index)} title="Copy right to left">
-					←
-				</button>
-			{:else if !chunk && line.type === 'same' && line.leftLine && line.rightLine && line.leftLine !== line.rightLine}
-				<!-- Backend marked as 'same' but content actually differs -->
-				<button class="gutter-arrow left-side-arrow" on:click={() => dispatch('copyLineToRight', index)} title="Copy left to right">
-					→
-				</button>
-				<button class="gutter-arrow right-side-arrow" on:click={() => dispatch('copyLineToLeft', index)} title="Copy right to left">
-					←
-				</button>
-			{/if}
-			<!-- Invisible content to match line structure -->
-			<span style="visibility: hidden; font-size: var(--font-size);">​</span>
-		</div>
+				<CopyOperations
+					{line}
+					{index}
+					{chunk}
+					{diffChunk}
+					{isFirstInDiffChunk}
+					isFirstOfConsecutiveModified={isFirstOfConsecutiveModified(index)}
+					{currentDiffChunkIndex}
+					{diffChunks}
+					on:copyLineToLeft={(e) => dispatch('copyLineToLeft', e.detail)}
+					on:copyLineToRight={(e) => dispatch('copyLineToRight', e.detail)}
+					on:copyChunkToLeft={(e) => dispatch('copyChunkToLeft', e.detail)}
+					on:copyChunkToRight={(e) => dispatch('copyChunkToRight', e.detail)}
+					on:copyModifiedChunkToLeft={(e) => dispatch('copyModifiedChunkToLeft', e.detail)}
+					on:copyModifiedChunkToRight={(e) => dispatch('copyModifiedChunkToRight', e.detail)}
+					on:deleteChunkFromLeft={(e) => dispatch('deleteChunkFromLeft', e.detail)}
+					on:deleteChunkFromRight={(e) => dispatch('deleteChunkFromRight', e.detail)}
+			/>
+				<!-- Invisible content to match line structure -->
+				<span style="visibility: hidden; font-size: var(--font-size);">​</span>
+			</div>
 		{/each}
 	</div>
 </div>
@@ -161,133 +135,9 @@ export function setScrollLeft(scrollLeft: number): void {
 		padding: 0 4px 0 4px;
 	}
 
+	/* Chunk start needs relative positioning for absolute child elements */
 	.gutter-line.chunk-start {
 		position: relative;
 	}
 
-	/* Chunk actions */
-	.chunk-actions {
-		position: absolute;
-		top: 50%;
-		left: 0;
-		right: 0;
-		transform: translateY(calc(-50% + (var(--chunk-height) - 1) * var(--line-height) / 2));
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		z-index: 10;
-		padding: 0 4px;
-	}
-
-	/* Gutter arrows */
-	.gutter-arrow {
-		background: transparent !important;
-		border: none;
-		border-radius: 4px;
-		width: 20px;
-		height: 20px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		font-size: 12px;
-		font-weight: bold;
-		transition: all 0.2s ease;
-		box-shadow: none;
-		padding: 0;
-		line-height: 1;
-		color: #7287fd !important; /* Catppuccin Latte Blue */
-		-webkit-appearance: none;
-		appearance: none;
-		outline: none;
-	}
-
-	.gutter-arrow:hover {
-		background: rgba(114, 135, 253, 0.1) !important;
-		transform: scale(1.1);
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	}
-
-	:global([data-theme="dark"]) .center-gutter .gutter-arrow {
-		background: transparent !important;
-		color: #8aadf4 !important; /* Catppuccin Macchiato Blue */
-	}
-
-	:global([data-theme="dark"]) .center-gutter .gutter-arrow:hover {
-		background: rgba(138, 173, 244, 0.1) !important;
-		transform: scale(1.1);
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-	}
-
-
-	.gutter-arrow.chunk-arrow {
-		height: 22px;
-		width: 22px;
-		font-size: 14px;
-	}
-
-	/* Modified arrows use the same color as other arrows */
-
-	/* Current diff indicator */
-	.current-diff-indicator {
-		position: absolute;
-		width: 6px;
-		height: 6px;
-		background-color: #1e66f5;
-		border-radius: 50%;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
-		z-index: 20;
-		box-shadow: 
-			0 0 0 1px rgba(255, 255, 255, 0.3),
-			0 0 8px rgba(30, 102, 245, 0.8),
-			0 0 12px rgba(30, 102, 245, 0.6),
-			0 0 16px rgba(30, 102, 245, 0.4);
-		animation: pulse-glow 2s ease-in-out infinite;
-	}
-
-	@keyframes pulse-glow {
-		0%, 100% {
-			box-shadow: 
-				0 0 0 1px rgba(255, 255, 255, 0.3),
-				0 0 8px rgba(30, 102, 245, 0.8),
-				0 0 12px rgba(30, 102, 245, 0.6),
-				0 0 16px rgba(30, 102, 245, 0.4);
-		}
-		50% {
-			box-shadow: 
-				0 0 0 1px rgba(255, 255, 255, 0.5),
-				0 0 10px rgba(30, 102, 245, 1),
-				0 0 16px rgba(30, 102, 245, 0.8),
-				0 0 20px rgba(30, 102, 245, 0.6);
-		}
-	}
-
-	:global([data-theme="dark"]) .current-diff-indicator {
-		background-color: #8aadf4;
-		box-shadow: 
-			0 0 0 1px rgba(0, 0, 0, 0.3),
-			0 0 8px rgba(138, 173, 244, 0.8),
-			0 0 12px rgba(138, 173, 244, 0.6),
-			0 0 16px rgba(138, 173, 244, 0.4);
-		animation: pulse-glow-dark 2s ease-in-out infinite;
-	}
-
-	@keyframes pulse-glow-dark {
-		0%, 100% {
-			box-shadow: 
-				0 0 0 1px rgba(0, 0, 0, 0.3),
-				0 0 8px rgba(138, 173, 244, 0.8),
-				0 0 12px rgba(138, 173, 244, 0.6),
-				0 0 16px rgba(138, 173, 244, 0.4);
-		}
-		50% {
-			box-shadow: 
-				0 0 0 1px rgba(0, 0, 0, 0.5),
-				0 0 10px rgba(138, 173, 244, 1),
-				0 0 16px rgba(138, 173, 244, 0.8),
-				0 0 20px rgba(138, 173, 244, 0.6);
-		}
-	}
 </style>
