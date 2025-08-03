@@ -104,6 +104,7 @@ Weld is licensed under the terms of the MIT license.
 | Save left file | `Cmd+S` (when left file focused) | `Ctrl+S` (when left file focused) |
 | Save right file | `Cmd+S` (when right file focused) | `Ctrl+S` (when right file focused) |
 | **General** | | |
+| Compare files | `Enter` (when both files selected) | `Enter` (when both files selected) |
 | Undo last operation | `Cmd+Z` or `u` | `Ctrl+Z` or `u` |
 | Toggle minimap | Via menu (☰) | Via menu (☰) |
 | Toggle dark/light mode | Via menu (☰) | Via menu (☰) |

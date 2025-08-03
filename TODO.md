@@ -68,7 +68,6 @@
 ### Pending
 - [ ] Implement: Jump to first diff with g key
 - [ ] Implement: Jump to last diff with G key
-- [ ] Implement: `Enter` to compare files if the `Compare` button is enabled
 - [ ] Add an unsaved indicator
 - [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)

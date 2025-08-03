@@ -937,12 +937,8 @@ async function saveRightFile(): Promise<void> {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-	// Handle Escape key to close menu
-	if (event.key === "Escape" && $uiStore.showMenu) {
-		event.preventDefault();
-		uiStore.setMenuVisible(false);
-		return;
-	}
+	const { leftFilePath, rightFilePath } = fileStore.getState();
+	const { isComparing, hasCompletedComparison, showMenu } = uiStore.getState();
 
 	handleKeyboardShortcut(
 		event,
@@ -954,9 +950,16 @@ function handleKeydown(event: KeyboardEvent): void {
 			copyCurrentDiffLeftToRight,
 			copyCurrentDiffRightToLeft,
 			undoLastChange,
+			compareFiles: compareBothFiles,
+			closeMenu: () => uiStore.setMenuVisible(false),
 		},
-		fileStore.getState().leftFilePath,
-		fileStore.getState().rightFilePath,
+		{
+			leftFilePath,
+			rightFilePath,
+			isComparing,
+			hasCompletedComparison,
+			showMenu,
+		},
 	);
 }
 
