@@ -1693,23 +1693,6 @@ function checkHorizontalScrollbar() {
     border-bottom-color: #363a4f;
   }
 
-  :global([data-theme="dark"]) .save-btn {
-    background: #494d64;
-    border: 1px solid #5b6078;
-  }
-
-  :global([data-theme="dark"]) .save-btn:disabled {
-    background: #363a4f;
-    border: 1px solid #5b6078;
-    opacity: 0.4;
-  }
-
-  :global([data-theme="dark"]) .save-btn:not(:disabled):hover {
-    background: #5b6078;
-    border-color: #6e738d;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
 
 
 
