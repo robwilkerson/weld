@@ -177,6 +177,82 @@ describe("navigationStore", () => {
 		});
 	});
 
+	describe("jumpToFirstDiff", () => {
+		it("should do nothing when there are no chunks", () => {
+			// Create an empty diff result
+			diffStore.setRawDiff({ lines: [] });
+
+			navigationStore.jumpToFirstDiff();
+
+			expect(get(diffStore).currentChunkIndex).toBe(-1);
+			expect(mockScrollToLine).not.toHaveBeenCalled();
+			expect(mockPlayInvalidSound).not.toHaveBeenCalled();
+		});
+
+		it("should jump to first chunk when not at first", () => {
+			setupDiffWithChunks(20);
+			diffStore.setCurrentChunkIndex(2);
+
+			navigationStore.jumpToFirstDiff();
+
+			expect(get(diffStore).currentChunkIndex).toBe(0);
+			const chunks = get(diffChunks);
+			expect(mockScrollToLine).toHaveBeenCalledWith(chunks[0].startIndex, 0);
+		});
+
+		it("should play invalid sound when already at first chunk", () => {
+			setupDiffWithChunks(20);
+			diffStore.setCurrentChunkIndex(0);
+
+			navigationStore.jumpToFirstDiff();
+
+			expect(mockPlayInvalidSound).toHaveBeenCalled();
+			expect(mockScrollToLine).not.toHaveBeenCalled();
+			expect(get(diffStore).currentChunkIndex).toBe(0);
+		});
+	});
+
+	describe("jumpToLastDiff", () => {
+		it("should do nothing when there are no chunks", () => {
+			// Create an empty diff result
+			diffStore.setRawDiff({ lines: [] });
+
+			navigationStore.jumpToLastDiff();
+
+			expect(get(diffStore).currentChunkIndex).toBe(-1);
+			expect(mockScrollToLine).not.toHaveBeenCalled();
+			expect(mockPlayInvalidSound).not.toHaveBeenCalled();
+		});
+
+		it("should jump to last chunk when not at last", () => {
+			setupDiffWithChunks(20);
+			diffStore.setCurrentChunkIndex(0);
+
+			navigationStore.jumpToLastDiff();
+
+			const chunks = get(diffChunks);
+			const lastIndex = chunks.length - 1;
+			expect(get(diffStore).currentChunkIndex).toBe(lastIndex);
+			expect(mockScrollToLine).toHaveBeenCalledWith(
+				chunks[lastIndex].startIndex,
+				lastIndex,
+			);
+		});
+
+		it("should play invalid sound when already at last chunk", () => {
+			setupDiffWithChunks(20);
+			const chunks = get(diffChunks);
+			const lastIndex = chunks.length - 1;
+			diffStore.setCurrentChunkIndex(lastIndex);
+
+			navigationStore.jumpToLastDiff();
+
+			expect(mockPlayInvalidSound).toHaveBeenCalled();
+			expect(mockScrollToLine).not.toHaveBeenCalled();
+			expect(get(diffStore).currentChunkIndex).toBe(lastIndex);
+		});
+	});
+
 	describe("navigateAfterCopy", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
@@ -351,8 +427,13 @@ describe("navigationStore", () => {
 			// Wait for subscription to fire
 			await new Promise((resolve) => setTimeout(resolve, 0));
 
-			// Should have been called with canNavigatePrev=false, canNavigateNext=true
-			expect(UpdateDiffNavigationMenuItems).toHaveBeenCalledWith(false, true);
+			// Should have been called with canNavigatePrev=false, canNavigateNext=true, canNavigateFirst=false, canNavigateLast=true
+			expect(UpdateDiffNavigationMenuItems).toHaveBeenCalledWith(
+				false,
+				true,
+				false,
+				true,
+			);
 		});
 	});
 });

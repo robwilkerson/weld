@@ -41,6 +41,52 @@ function createNavigationStore() {
 		callbacks?.scrollToLine(chunk.startIndex, nextChunkIndex);
 	}
 
+	// Jump to first diff
+	function jumpToFirstDiff(): void {
+		const chunks = get(diffChunks);
+		const currentIndex = get(diffStore).currentChunkIndex;
+
+		if (!chunks.length) {
+			return;
+		}
+
+		// Check if we're already at the first chunk
+		if (currentIndex === 0) {
+			// Already at the first diff, play sound and do nothing
+			callbacks?.playInvalidSound();
+			return;
+		}
+
+		// Jump to first chunk
+		diffStore.setCurrentChunkIndex(0);
+		const chunk = chunks[0];
+		callbacks?.scrollToLine(chunk.startIndex, 0);
+	}
+
+	// Jump to last diff
+	function jumpToLastDiff(): void {
+		const chunks = get(diffChunks);
+		const currentIndex = get(diffStore).currentChunkIndex;
+
+		if (!chunks.length) {
+			return;
+		}
+
+		const lastIndex = chunks.length - 1;
+
+		// Check if we're already at the last chunk
+		if (currentIndex === lastIndex) {
+			// Already at the last diff, play sound and do nothing
+			callbacks?.playInvalidSound();
+			return;
+		}
+
+		// Jump to last chunk
+		diffStore.setCurrentChunkIndex(lastIndex);
+		const chunk = chunks[lastIndex];
+		callbacks?.scrollToLine(chunk.startIndex, lastIndex);
+	}
+
 	// Jump to previous diff
 	function jumpToPrevDiff(): void {
 		const chunks = get(diffChunks);
@@ -146,6 +192,8 @@ function createNavigationStore() {
 	return {
 		jumpToNextDiff,
 		jumpToPrevDiff,
+		jumpToFirstDiff,
+		jumpToLastDiff,
 		navigateAfterCopy,
 		setCallbacks,
 		getState,
@@ -166,6 +214,9 @@ export const navigationState = derived(
 			isLastChunk: currentIndex === $chunks.length - 1,
 			canNavigateNext: $chunks.length > 0 && currentIndex < $chunks.length - 1,
 			canNavigatePrev: $chunks.length > 0 && currentIndex > 0,
+			canNavigateFirst: $chunks.length > 0 && currentIndex !== 0,
+			canNavigateLast:
+				$chunks.length > 0 && currentIndex !== $chunks.length - 1,
 		};
 	},
 );
@@ -175,5 +226,7 @@ navigationState.subscribe(($navState) => {
 	UpdateDiffNavigationMenuItems(
 		$navState.canNavigatePrev,
 		$navState.canNavigateNext,
+		$navState.canNavigateFirst,
+		$navState.canNavigateLast,
 	);
 });

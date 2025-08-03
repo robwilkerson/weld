@@ -95,6 +95,8 @@ Weld is licensed under the terms of the MIT license.
 | Action | macOS | Windows/Linux |
 |--------|-------|---------------|
 | **Navigation** | | |
+| First difference | `g` | `g` |
+| Last difference | `G` (Shift+G) | `G` (Shift+G) |
 | Next difference | `j` or `↓` | `j` or `↓` |
 | Previous difference | `k` or `↑` | `k` or `↑` |
 | **Copy Operations** | | |

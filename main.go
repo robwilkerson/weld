@@ -105,6 +105,22 @@ func BuildMenu(app *App) *menu.Menu {
 	// Go menu
 	goMenu := appMenu.AddSubmenu("Go")
 
+	// First Diff
+	firstDiffItem := goMenu.AddText("First Diff", keys.Key("g"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-first-diff")
+	})
+	app.SetFirstDiffMenuItem(firstDiffItem)
+	firstDiffItem.Disabled = true
+
+	// Last Diff
+	lastDiffItem := goMenu.AddText("Last Diff", keys.Shift("G"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-last-diff")
+	})
+	app.SetLastDiffMenuItem(lastDiffItem)
+	lastDiffItem.Disabled = true
+
+	goMenu.AddSeparator()
+
 	// Previous Diff
 	prevDiffItem := goMenu.AddText("Previous Diff", keys.Key("k"), func(_ *menu.CallbackData) {
 		runtime.EventsEmit(app.ctx, "menu-prev-diff")
@@ -177,7 +193,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("Opening with files: %s and %s\n", leftFile, rightFile)
+		// Files are valid and will be opened
 	}
 
 	// Create an instance of the app structure
