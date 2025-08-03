@@ -3,9 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Quick fixes from code review
-  - [ ] Remove unused 'set' variable in uiStore.ts (line 38)
-  - [ ] Replace 'any' type in uiStore.test.ts (line 21)
 - [ ] Be more deliberate about handling errors (error-noread.txt)
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
@@ -62,6 +59,9 @@
   - [x] Consolidate UI-related state management
 - [x] Fix copy operation bug for modified lines - CopyToFile was INSERT not REPLACE
 - [x] Fix Intel Mac support - build universal binaries with -platform darwin/universal
+- [x] Quick fixes from code review
+  - [x] Remove unused 'set' variable in uiStore.ts (line 38)
+  - [x] Replace 'any' type in uiStore.test.ts with proper DocumentMock interface
 
 ## Medium Priority
 
