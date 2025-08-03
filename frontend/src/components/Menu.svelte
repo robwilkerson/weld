@@ -30,10 +30,7 @@ export let onToggleDarkMode: () => void;
 
 <style>
   .menu-container {
-    position: absolute;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
+    position: relative;
     z-index: 1000;
   }
 
@@ -41,18 +38,20 @@ export let onToggleDarkMode: () => void;
     background: none;
     border: 1px solid rgba(108, 111, 133, 0.3);
     cursor: pointer;
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.9rem;
     border-radius: 4px;
     color: #6c6f85;
     transition: all 0.2s ease;
-    font-size: 1.2rem;
+    font-size: 1.6rem;
     line-height: 1;
+    font-weight: 500;
   }
 
   .menu-toggle:hover {
-    background: rgba(76, 79, 105, 0.1);
-    border-color: rgba(76, 79, 105, 0.5);
+    background: rgba(76, 79, 105, 0.15);
+    border-color: rgba(76, 79, 105, 0.6);
     color: #4c4f69;
+    transform: scale(1.05);
   }
 
   .dropdown-menu {

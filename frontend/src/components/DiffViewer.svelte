@@ -31,8 +31,6 @@ export let hoveredChunkIndex: DiffViewerProps["hoveredChunkIndex"];
 export let showMinimap: DiffViewerProps["showMinimap"];
 export let isComparing: DiffViewerProps["isComparing"];
 export let hasCompletedComparison: DiffViewerProps["hasCompletedComparison"];
-export let areFilesIdentical: DiffViewerProps["areFilesIdentical"];
-export let isSameFile: DiffViewerProps["isSameFile"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
 // biome-ignore lint/style/useConst: Needs to be reassignable for reactive updates
 export let diffChunks: { startIndex: number; endIndex: number }[] = [];
@@ -381,22 +379,6 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 			on:saveRight={handleSaveRight}
 		/>
 		
-		{#if isSameFile}
-			<div class="same-file-banner">
-				<div class="warning-icon">⚠️</div>
-				<div class="warning-text">
-					File <strong>{getDisplayPath(leftFilePath, rightFilePath, true)}</strong> is being compared to itself
-				</div>
-			</div>
-		{:else if areFilesIdentical}
-			<div class="identical-files-banner">
-				<div class="info-icon">💡</div>
-				<div class="info-text">
-					Files are identical
-				</div>
-			</div>
-		{/if}
-		
 		<div class="diff-content" style="--line-number-width: {lineNumberWidth}">
 			<!-- Left pane -->
 			<DiffPane
@@ -493,55 +475,6 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 		pointer-events: none;
 	}
 
-	/* Banner styles */
-	.same-file-banner,
-	.identical-files-banner {
-		display: flex;
-		align-items: center;
-		padding: 1rem;
-		background: #fef3c7;
-		border-bottom: 1px solid #f59e0b;
-		gap: 0.75rem;
-	}
-
-	.identical-files-banner {
-		background: #dbeafe;
-		border-bottom-color: #3b82f6;
-	}
-
-	:global([data-theme="dark"]) .same-file-banner {
-		background: rgba(245, 158, 11, 0.2);
-		border-bottom-color: #f59e0b;
-	}
-
-	:global([data-theme="dark"]) .identical-files-banner {
-		background: rgba(59, 130, 246, 0.2);
-		border-bottom-color: #3b82f6;
-	}
-
-	.warning-icon,
-	.info-icon {
-		font-size: 1.5rem;
-		flex-shrink: 0;
-	}
-
-	.warning-text,
-	.info-text {
-		color: #92400e;
-		font-size: 0.9rem;
-	}
-
-	.info-text {
-		color: #1e40af;
-	}
-
-	:global([data-theme="dark"]) .warning-text {
-		color: #fbbf24;
-	}
-
-	:global([data-theme="dark"]) .info-text {
-		color: #93bbfc;
-	}
 
 	/* Diff content area */
 	.diff-content {
@@ -610,98 +543,4 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 		color: #cad3f5;
 	}
 
-	/* File comparison banners */
-	.same-file-banner {
-		display: flex;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: #fdf6e3;
-		color: #d20f39;
-		border-top: 1px solid #df8e1d;
-		border-left: 4px solid #df8e1d;
-		border-right: 4px solid #df8e1d;
-		border-bottom: 1px solid #df8e1d;
-		font-size: 0.9rem;
-		gap: 0.5rem;
-	}
-
-	.warning-icon {
-		font-size: 1.1rem;
-		color: #df8e1d;
-	}
-
-	.warning-text {
-		flex: 1;
-		color: #4c4f69;
-	}
-
-	.warning-text strong {
-		font-weight: 600;
-		color: #d20f39;
-	}
-
-	/* Dark mode banner styling */
-	:global([data-theme="dark"]) .same-file-banner {
-		background: #363a4f;
-		color: #cad3f5;
-		border-top-color: #f5a97f;
-		border-left-color: #f5a97f;
-		border-right-color: #f5a97f;
-		border-bottom-color: #f5a97f;
-	}
-
-	:global([data-theme="dark"]) .warning-icon {
-		color: #f5a97f;
-	}
-
-	:global([data-theme="dark"]) .warning-text {
-		color: #cad3f5;
-	}
-
-	:global([data-theme="dark"]) .warning-text strong {
-		color: #f5a97f;
-	}
-
-	.identical-files-banner {
-		display: flex;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: #f0f9ff;
-		color: #0369a1;
-		border-top: 1px solid #0ea5e9;
-		border-left: 4px solid #0ea5e9;
-		border-right: 4px solid #0ea5e9;
-		border-bottom: 1px solid #0ea5e9;
-		font-size: 0.9rem;
-		gap: 0.5rem;
-	}
-
-	.info-icon {
-		font-size: 1.1rem;
-		color: #0ea5e9;
-	}
-
-	.info-text {
-		flex: 1;
-		color: #0369a1;
-		font-weight: 500;
-	}
-
-	/* Dark mode identical files banner styling */
-	:global([data-theme="dark"]) .identical-files-banner {
-		background: #363a4f;
-		color: #7dc4e4;
-		border-top-color: #7dc4e4;
-		border-left-color: #7dc4e4;
-		border-right-color: #7dc4e4;
-		border-bottom-color: #7dc4e4;
-	}
-
-	:global([data-theme="dark"]) .info-icon {
-		color: #7dc4e4;
-	}
-
-	:global([data-theme="dark"]) .info-text {
-		color: #7dc4e4;
-	}
 </style>
