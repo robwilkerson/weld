@@ -2,6 +2,15 @@
 
 # Pre-Commit Check Script
 # Run this before committing to ensure basic quality checks pass
+#
+# Checks are run in order, stopping at the first failure:
+# 1. Check for debugging code (console.log, fmt.Printf, etc.)
+# 2. Run formatters (Go fmt, Biome) on staged files
+# 3. Run tests for changed packages/components
+# 4. Run E2E tests if frontend changed and dev server is running
+#
+# Note: Commit message validation happens after these checks
+# in .githooks/commit-msg (50 char subject limit)
 
 set -e  # Exit on error
 
@@ -131,7 +140,7 @@ fi
 
 # Note: Commit message checking moved to .githooks/commit-msg hook
 
-# 5. Run E2E tests if frontend files changed (run last to avoid multiple runs)
+# 4. Run E2E tests if frontend files changed (run last to avoid multiple runs)
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
     echo -e "\n🎭 Checking if E2E tests should run..."
     
