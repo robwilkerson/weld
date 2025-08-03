@@ -3,6 +3,9 @@
 ## High Priority
 
 ### Pending
+- [ ] Quick fixes from code review
+  - [ ] Remove unused 'set' variable in uiStore.ts (line 38)
+  - [ ] Replace 'any' type in uiStore.test.ts (line 21)
 - [ ] Be more deliberate about handling errors (error-noread.txt)
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
@@ -75,6 +78,9 @@
 ## Low Priority
 
 ### Pending
+- [ ] Extract DiffViewer.svelte components (approaching 500 lines)
+  - [ ] Extract copy operation UI into separate component
+  - [ ] Extract save button logic into separate component
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
 - [ ] Extract CSS from App.svelte into components (in progress)
