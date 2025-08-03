@@ -35,7 +35,7 @@ function createUIStore() {
 		);
 	}
 
-	const { subscribe, set, update } = writable<UIState>({
+	const { subscribe, update } = writable<UIState>({
 		isComparing: false,
 		hasCompletedComparison: false,
 		errorMessage: "",

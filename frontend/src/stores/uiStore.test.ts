@@ -13,12 +13,19 @@ const localStorageMock = {
 global.localStorage = localStorageMock as Storage;
 
 // Mock document
-const documentMock = {
+interface DocumentMock {
+	documentElement: {
+		setAttribute: ReturnType<typeof vi.fn>;
+	};
+}
+
+const documentMock: DocumentMock = {
 	documentElement: {
 		setAttribute: vi.fn(),
 	},
 };
-global.document = documentMock as any;
+
+global.document = documentMock as unknown as Document;
 
 import { uiStore } from "./uiStore";
 
