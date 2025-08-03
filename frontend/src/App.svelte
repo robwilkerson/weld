@@ -1678,20 +1678,6 @@ function checkHorizontalScrollbar() {
   }
 
 
-  :global([data-theme="dark"]) .file-header {
-    background: #1e2030;
-  }
-
-  :global([data-theme="dark"]) .file-info {
-    border-right-color: #363a4f;
-    color: #cad3f5;
-  }
-
-  /* Dark mode bottom borders for file info sections */
-  :global([data-theme="dark"]) .file-info.left,
-  :global([data-theme="dark"]) .file-info.right {
-    border-bottom-color: #363a4f;
-  }
 
 
 
