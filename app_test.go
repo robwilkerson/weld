@@ -951,14 +951,14 @@ func TestApp_GetInitialFiles(t *testing.T) {
 		InitialRightFile: "/path/to/right.txt",
 	}
 
-	left, right := app.GetInitialFiles()
+	files := app.GetInitialFiles()
 
-	if left != "/path/to/left.txt" {
-		t.Errorf("Expected left file %s, got %s", "/path/to/left.txt", left)
+	if files.LeftFile != "/path/to/left.txt" {
+		t.Errorf("Expected left file %s, got %s", "/path/to/left.txt", files.LeftFile)
 	}
 
-	if right != "/path/to/right.txt" {
-		t.Errorf("Expected right file %s, got %s", "/path/to/right.txt", right)
+	if files.RightFile != "/path/to/right.txt" {
+		t.Errorf("Expected right file %s, got %s", "/path/to/right.txt", files.RightFile)
 	}
 }
 

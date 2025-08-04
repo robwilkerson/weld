@@ -1509,9 +1509,9 @@ onMount(async () => {
 
 	// Check for initial files from command line
 	try {
-		const [initialLeft, initialRight] = await GetInitialFiles();
-		if (initialLeft && initialRight) {
-			fileStore.setBothFiles(initialLeft, initialRight);
+		const initialFiles = await GetInitialFiles();
+		if (initialFiles && initialFiles.leftFile && initialFiles.rightFile) {
+			fileStore.setBothFiles(initialFiles.leftFile, initialFiles.rightFile);
 
 			// Automatically compare the files
 			await compareBothFiles();

@@ -15,7 +15,7 @@ export function CopyToFile(arg1:string,arg2:string,arg3:number,arg4:string):Prom
 
 export function DiscardAllChanges():Promise<void>;
 
-export function GetInitialFiles():Promise<string|string>;
+export function GetInitialFiles():Promise<main.InitialFiles>;
 
 export function GetLastOperationDescription():Promise<string>;
 
