@@ -109,20 +109,11 @@ func (a *App) GetInitialFiles() InitialFiles {
 // SelectFile opens a file dialog and returns the selected file path
 func (a *App) SelectFile() (string, error) {
 
-	// Use the sample files directory for testing, relative to current working directory
-	// This works regardless of the user's home directory path
-	var defaultDir string
-	cwd, err := os.Getwd()
+	// Default to user's home directory
+	defaultDir, err := os.UserHomeDir()
 	if err != nil {
-		// Fallback to user's home directory
-		homeDir, homeErr := os.UserHomeDir()
-		if homeErr != nil {
-			defaultDir = ""
-		} else {
-			defaultDir = homeDir
-		}
-	} else {
-		defaultDir = filepath.Join(cwd, "resources", "sample-files", "supported-types")
+		// If we can't get home directory, use empty string (system default)
+		defaultDir = ""
 	}
 
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
