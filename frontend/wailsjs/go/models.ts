@@ -69,6 +69,20 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class InitialFiles {
+	    leftFile: string;
+	    rightFile: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InitialFiles(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.leftFile = source["leftFile"];
+	        this.rightFile = source["rightFile"];
+	    }
+	}
 
 }
 

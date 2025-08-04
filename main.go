@@ -147,7 +147,7 @@ func main() {
 
 	// Check if we have file arguments
 	if len(args) >= 2 {
-		// Convert to absolute paths
+		// Convert to absolute paths (shell already handles tilde expansion)
 		var err error
 		leftFile, err = filepath.Abs(args[0])
 		if err != nil {

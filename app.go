@@ -92,9 +92,18 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
+// InitialFiles represents the initial file paths for comparison
+type InitialFiles struct {
+	LeftFile  string `json:"leftFile"`
+	RightFile string `json:"rightFile"`
+}
+
 // GetInitialFiles returns the initial file paths passed via command line
-func (a *App) GetInitialFiles() (string, string) {
-	return a.InitialLeftFile, a.InitialRightFile
+func (a *App) GetInitialFiles() InitialFiles {
+	return InitialFiles{
+		LeftFile:  a.InitialLeftFile,
+		RightFile: a.InitialRightFile,
+	}
 }
 
 // SelectFile opens a file dialog and returns the selected file path
@@ -213,7 +222,6 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 
 // CompareFiles compares two files and returns diff results
 func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
-
 	leftLines, err := a.ReadFileContentWithCache(leftPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading left file: %w", err)
