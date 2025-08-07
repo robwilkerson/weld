@@ -3,6 +3,10 @@
 ## High Priority
 
 ### Pending
+- [ ] Fix Wails/Go version mismatch issue
+  - [ ] Install Wails via `go install` instead of Nix to avoid version conflicts
+  - [ ] Document the installation method in README
+  - [ ] Consider creating a mise plugin for Wails or using direnv
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
