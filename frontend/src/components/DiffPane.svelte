@@ -85,6 +85,7 @@ export function setScrollLeft(scrollLeft: number): void {
 			{@const chunk = getChunkForLine(index)}
 			{@const isFirstInChunk = chunk ? isFirstLineOfChunk(index, chunk) : false}
 			{@const isLastInChunk = chunk ? index === chunk.endIndex : false}
+			<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 			<div 
 				class="line {getLineClass(line.type)} {chunk && isFirstInChunk ? 'chunk-start' : ''} {chunk && isLastInChunk ? 'chunk-end' : ''} {isLineHighlighted(index) ? 'current-diff' : ''} {chunk ? 'clickable-chunk' : ''} {isLineHovered(index) ? 'chunk-hover' : ''}" 
 				data-line-type={line.type}

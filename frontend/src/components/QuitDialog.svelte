@@ -77,14 +77,13 @@ function handleDialogKeyDown(event: KeyboardEvent) {
 </script>
 
 {#if show}
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
   <div 
     class="modal-overlay" 
     on:click={handleOverlayClick}
     on:keydown={handleKeyDown}
   >
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
     <div 
       bind:this={dialogRef}
       class="quit-dialog" 
@@ -344,14 +343,12 @@ function handleDialogKeyDown(event: KeyboardEvent) {
     font-style: italic;
   }
 
-  .button-group,
   .dialog-buttons {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
   }
 
-  .button-group button,
   .dialog-buttons button {
     padding: 8px 16px;
     border-radius: 6px;
