@@ -213,6 +213,28 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 
 // CompareFiles compares two files and returns diff results
 func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
+	// Validate both files exist and are not empty paths
+	if leftPath == "" || rightPath == "" {
+		return nil, fmt.Errorf("file paths cannot be empty")
+	}
+
+	// Check if files are binary before attempting comparison
+	leftBinary, err := IsBinaryFile(leftPath)
+	if err != nil {
+		return nil, fmt.Errorf("error checking left file type: %w", err)
+	}
+	if leftBinary {
+		return nil, fmt.Errorf("cannot compare binary file: %s", filepath.Base(leftPath))
+	}
+
+	rightBinary, err := IsBinaryFile(rightPath)
+	if err != nil {
+		return nil, fmt.Errorf("error checking right file type: %w", err)
+	}
+	if rightBinary {
+		return nil, fmt.Errorf("cannot compare binary file: %s", filepath.Base(rightPath))
+	}
+
 	leftLines, err := a.ReadFileContentWithCache(leftPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading left file: %w", err)
@@ -221,6 +243,12 @@ func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 	rightLines, err := a.ReadFileContentWithCache(rightPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading right file: %w", err)
+	}
+
+	// Additional safety check for very large files that might cause memory issues
+	const maxLines = 100000
+	if len(leftLines) > maxLines || len(rightLines) > maxLines {
+		return nil, fmt.Errorf("file too large for comparison (max %d lines)", maxLines)
 	}
 
 	result := a.computeDiff(leftLines, rightLines)

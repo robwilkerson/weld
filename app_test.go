@@ -1005,7 +1005,8 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 		if err == nil {
 			t.Error("CompareFiles should return error when right file doesn't exist")
 		}
-		if !strings.Contains(err.Error(), "error reading right file") {
+		// The error could be from checking file type or reading the file
+		if !strings.Contains(err.Error(), "error checking right file type") && !strings.Contains(err.Error(), "error reading right file") {
 			t.Errorf("Expected error about right file, got: %v", err)
 		}
 	})
@@ -1233,7 +1234,7 @@ func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
 	if err == nil {
 		t.Error("CompareFiles should return error when left file is binary")
 	}
-	if !strings.Contains(err.Error(), "error reading left file") || !strings.Contains(err.Error(), "cannot read binary file") {
+	if !strings.Contains(err.Error(), "cannot compare binary file") {
 		t.Errorf("Expected error about binary file, got: %v", err)
 	}
 
@@ -1242,7 +1243,7 @@ func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
 	if err == nil {
 		t.Error("CompareFiles should return error when right file is binary")
 	}
-	if !strings.Contains(err.Error(), "error reading right file") || !strings.Contains(err.Error(), "cannot read binary file") {
+	if !strings.Contains(err.Error(), "cannot compare binary file") {
 		t.Errorf("Expected error about binary file, got: %v", err)
 	}
 
@@ -1251,7 +1252,7 @@ func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
 	if err == nil {
 		t.Error("CompareFiles should return error when both files are binary")
 	}
-	if !strings.Contains(err.Error(), "cannot read binary file") {
+	if !strings.Contains(err.Error(), "cannot compare binary file") {
 		t.Errorf("Expected error about binary file, got: %v", err)
 	}
 }
@@ -1316,7 +1317,6 @@ func main() {
 	if !hasChanges {
 		t.Error("Expected to find changes in diff result")
 	}
-
 	// Test that we can copy a line and save changes
 	err = app.CopyToFile(file1, file2, 6, "\tx := 42") // Copy "x := 42" to replace "x := 43"
 	if err != nil {
@@ -1337,5 +1337,82 @@ func main() {
 	// Verify no more unsaved changes
 	if app.HasUnsavedChanges(file2) {
 		t.Error("Expected no unsaved changes after SaveChanges")
+	}
+}
+
+func TestApp_CompareFiles_TextAndHTML(t *testing.T) {
+	app := &App{}
+	tempDir := t.TempDir()
+
+	// Create a plain text file
+	textFile := filepath.Join(tempDir, "document.txt")
+	textContent := `This is a plain text document.
+It has multiple lines.
+Some content here.`
+
+	// Create an HTML file
+	htmlFile := filepath.Join(tempDir, "document.html")
+	htmlContent := `<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Document</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>This is a test</h1>
+    <p>Some content here.</p>
+</body>
+</html>`
+
+	err := os.WriteFile(textFile, []byte(textContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create text file: %v", err)
+	}
+	err = os.WriteFile(htmlFile, []byte(htmlContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create HTML file: %v", err)
+	}
+
+	// Compare text and HTML files - should succeed as both are text-based
+	result, err := app.CompareFiles(textFile, htmlFile)
+	if err != nil {
+		t.Fatalf("CompareFiles failed: %v", err)
+	}
+
+	if result == nil || len(result.Lines) == 0 {
+		t.Fatal("Expected diff results, got empty")
+	}
+
+	// Test with HTML file containing potential Windows-problematic content
+	htmlWithSpecialChars := filepath.Join(tempDir, "special.html")
+	specialContent := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <style>
+        /* Some CSS with special chars */
+        .class::before { content: "→"; }
+    </style>
+</head>
+<body>
+    <p>Text with special chars: © ® ™ • … ""</p>
+    <script>console.log("test");</script>
+</body>
+</html>`
+
+	err = os.WriteFile(htmlWithSpecialChars, []byte(specialContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create HTML file with special chars: %v", err)
+	}
+
+	// Compare with HTML containing special characters
+	result, err = app.CompareFiles(textFile, htmlWithSpecialChars)
+	if err != nil {
+		t.Fatalf("CompareFiles failed with special chars HTML: %v", err)
+	}
+
+	if result == nil || len(result.Lines) == 0 {
+		t.Fatal("Expected diff results for special chars comparison, got empty")
 	}
 }
