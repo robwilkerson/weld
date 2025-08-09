@@ -221,6 +221,7 @@ async function setupMockedBackend(page) {
 						_canNavigateLast,
 					) => {},
 					UpdateSaveMenuItems: async () => {},
+					UpdateCopyMenuItems: async () => {},
 					// Operation group functions for transaction support
 					BeginOperationGroup: async (_description) => {
 						// Return a mock transaction ID

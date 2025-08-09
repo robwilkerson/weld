@@ -78,6 +78,14 @@ export function SelectFile() {
   return window['go']['main']['App']['SelectFile']();
 }
 
+export function SetCopyLeftMenuItem(arg1) {
+  return window['go']['main']['App']['SetCopyLeftMenuItem'](arg1);
+}
+
+export function SetCopyRightMenuItem(arg1) {
+  return window['go']['main']['App']['SetCopyRightMenuItem'](arg1);
+}
+
 export function SetDiscardMenuItem(arg1) {
   return window['go']['main']['App']['SetDiscardMenuItem'](arg1);
 }
@@ -124,6 +132,10 @@ export function SetUndoMenuItem(arg1) {
 
 export function UndoLastOperation() {
   return window['go']['main']['App']['UndoLastOperation']();
+}
+
+export function UpdateCopyMenuItems(arg1) {
+  return window['go']['main']['App']['UpdateCopyMenuItems'](arg1);
 }
 
 export function UpdateDiffNavigationMenuItems(arg1, arg2, arg3, arg4) {

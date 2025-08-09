@@ -41,6 +41,10 @@ export function SaveSelectedFilesAndQuit(arg1:Array<string>):Promise<void>;
 
 export function SelectFile():Promise<string>;
 
+export function SetCopyLeftMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetCopyRightMenuItem(arg1:menu.MenuItem):Promise<void>;
+
 export function SetDiscardMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetFirstDiffMenuItem(arg1:menu.MenuItem):Promise<void>;
@@ -64,6 +68,8 @@ export function SetSaveRightMenuItem(arg1:menu.MenuItem):Promise<void>;
 export function SetUndoMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function UndoLastOperation():Promise<void>;
+
+export function UpdateCopyMenuItems(arg1:string):Promise<void>;
 
 export function UpdateDiffNavigationMenuItems(arg1:boolean,arg2:boolean,arg3:boolean,arg4:boolean):Promise<void>;
 

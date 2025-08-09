@@ -71,6 +71,7 @@ async function setupMockedBackend(page) {
 						hasUnsavedRight: false,
 					}),
 					UpdateSaveMenuItems: async () => {},
+					UpdateCopyMenuItems: async () => {},
 					UpdateDiffNavigationMenuItems: async (
 						_canNavigatePrev,
 						_canNavigateNext,
