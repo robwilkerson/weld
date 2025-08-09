@@ -21,6 +21,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: arm64
+            use_qemu: true
           
           # Windows builds
           - os: windows-latest
@@ -43,6 +44,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    # Set up QEMU for ARM64 builds
+    - name: Set up QEMU
+      if: matrix.use_qemu == true
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/arm64
+    
+    # Set up Docker Buildx for multi-arch builds
+    - name: Set up Docker Buildx
+      if: matrix.use_qemu == true
+      uses: docker/setup-buildx-action@v3
+    
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
@@ -60,33 +73,25 @@ jobs:
     
     # Linux specific setup
     - name: Install Linux dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && matrix.use_qemu != true
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
         
-        # Install cross-compilation tools for ARM64
-        if [ "${{ matrix.arch }}" = "arm64" ]; then
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-        fi
-        
         # Create symlink for webkit2gtk-4.0 pointing to 4.1
         sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc || true
     
-    # Install Wails
+    # Install Wails (skip for QEMU builds - we'll install in Docker)
     - name: Install Wails
+      if: matrix.use_qemu != true
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
-    # Build for production
+    # Build for production (non-QEMU)
     - name: Build Weld
+      if: matrix.use_qemu != true
       run: |
         # For cross-compilation support
-        if [ "${{ matrix.platform }}" = "linux" ] && [ "${{ matrix.arch }}" = "arm64" ]; then
-          export GOARCH=arm64
-          export CGO_ENABLED=1
-          export CC=aarch64-linux-gnu-gcc
-          export CXX=aarch64-linux-gnu-g++
-        elif [ "${{ matrix.platform }}" = "windows" ] && [ "${{ matrix.arch }}" = "arm64" ]; then
+        if [ "${{ matrix.platform }}" = "windows" ] && [ "${{ matrix.arch }}" = "arm64" ]; then
           export GOARCH=arm64
         elif [ "${{ matrix.platform }}" = "darwin" ]; then
           # macOS can build for both architectures natively
@@ -94,6 +99,47 @@ jobs:
         fi
         
         wails build -platform ${{ matrix.platform }}/${{ matrix.arch }} -clean
+      shell: bash
+    
+    # Build for Linux ARM64 using Docker/QEMU
+    - name: Build Weld (Linux ARM64 with QEMU)
+      if: matrix.use_qemu == true
+      run: |
+        # Create a Dockerfile for ARM64 build
+        cat > Dockerfile.arm64 << 'EOF'
+        FROM --platform=linux/arm64 golang:1.21-bookworm
+        
+        # Install dependencies
+        RUN apt-get update && apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            pkg-config \
+            nodejs \
+            npm \
+            curl \
+            git
+        
+        # Install Bun
+        RUN curl -fsSL https://bun.sh/install | bash
+        ENV PATH="/root/.bun/bin:$PATH"
+        
+        # Install Wails
+        RUN go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+        
+        # Copy source code
+        WORKDIR /build
+        COPY . .
+        
+        # Build the application
+        RUN wails build -platform linux/arm64 -clean
+        EOF
+        
+        # Build using Docker with QEMU emulation
+        docker buildx create --use --name mybuilder || true
+        docker buildx build --platform linux/arm64 -f Dockerfile.arm64 --output type=local,dest=. .
+        
+        # The build output will be in build/bin/
       shell: bash
     
     # Ad-hoc sign macOS app to prevent "damaged app" error
