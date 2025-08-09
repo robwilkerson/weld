@@ -148,6 +148,7 @@ The `weld` executable can be used directly or added to your PATH.
 - **Node.js** 20 or later
 - **Bun** (latest version)
 - **Wails** 2.10+
+- **Just** (command runner) - Install with `brew install just` or see [installation options](https://github.com/casey/just#installation)
 
 ### Platform-specific Requirements
 
@@ -236,8 +237,8 @@ cd frontend && bun run test:watch
 # Build for your current platform
 wails build
 
-# Build with the Makefile (includes CLI tool installation)
-make build
+# Build with just (includes CLI tool installation)
+just build
 
 # Build for specific platforms (Linux example, requires Docker)
 wails build -platform linux/amd64

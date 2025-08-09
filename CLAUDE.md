@@ -10,6 +10,7 @@ This is a visual diff tool. It's built using AI (Claude Code, specifically) and 
 * Wails 2.10+
 * [Bun](https://bun.sh/)
 * [Biome](https://biomejs.dev/)
+* [Just](https://github.com/casey/just) (command runner)
 
 ## First time setup:
 
@@ -387,9 +388,11 @@ The pre-commit script will:
 
 # Developer Environment Setup
 
-* Use [mise](https://mise.jdx.dev/getting-started.html) to install Go, Node.js, Wails, and Bun only if they are not installed, not in `$PATH`, or if the installed version is lower than that specified in the Tech Stack instructions above
+* Use [mise](https://mise.jdx.dev/getting-started.html) to manage Go and Node.js versions:
   * Install the latest version of Go and make it the default version for the project directory only by running `mise use go@latest`
   * Install the latest version of Node.js and make it the default version for the project directory only by running `mise use node@latest`
-  * Install the latest version of Bun and make it the default version for the project directory only by running `mise use bun@latest`
-  * If the Wails CLI isn't already installed, run `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+* Install other tools using their recommended methods:
+  * **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+  * **Bun**: See [installation instructions](https://bun.sh/docs/installation) (e.g., `brew install oven-sh/bun/bun` on macOS)
+  * **Just**: See [installation options](https://github.com/casey/just#installation) (e.g., `brew install just` on macOS)
 * Run `wails doctor` after setup to verify environment
