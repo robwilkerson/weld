@@ -51,6 +51,7 @@ import {
 	hasUnsavedRightChanges,
 	unsavedChangesStore,
 } from "./stores/unsavedChangesStore.js";
+import type { DiffViewerRef } from "./types/components";
 // biome-ignore-end lint/correctness/noUnusedImports: Used in Svelte reactive statements with $ prefix
 import type {
 	DiffLine,
@@ -67,8 +68,8 @@ import { detectLineChunks } from "./utils/lineChunks.js";
 import { createScrollSynchronizer } from "./utils/scrollSync.js";
 
 // Shiki highlighter instance
-// biome-ignore lint/suspicious/noExplicitAny: Highlighter is disabled and set to null
-let highlighter: any = null;
+// Highlighter is disabled and set to null
+let highlighter: null = null;
 
 // Cache for highlighted lines to avoid re-processing
 const highlightCache: Map<string, string> = new Map();
@@ -76,8 +77,7 @@ const highlightCache: Map<string, string> = new Map();
 // Create scroll synchronizer instance (no longer used, will be removed with state management refactor)
 const scrollSync = createScrollSynchronizer();
 
-// biome-ignore lint/suspicious/noExplicitAny: Svelte component ref
-let diffViewerComponent: any;
+let diffViewerComponent: DiffViewerRef | undefined;
 
 // File state is now managed by fileStore
 // Diff state is now managed by diffStore
@@ -1189,9 +1189,17 @@ function _handleViewportMouseUp(): void {
 
 function playInvalidSound(): void {
 	// Create a simple beep sound
-	const audioContext =
-		new // biome-ignore lint/suspicious/noExplicitAny: webkitAudioContext is for browser compatibility
-		(window.AudioContext || (window as any).webkitAudioContext)();
+	// Extend window type for webkit prefix
+	const AudioContextConstructor =
+		window.AudioContext ||
+		(window as Window & { webkitAudioContext?: typeof AudioContext })
+			.webkitAudioContext;
+
+	if (!AudioContextConstructor) {
+		return; // No audio support
+	}
+
+	const audioContext = new AudioContextConstructor();
 	const oscillator = audioContext.createOscillator();
 	const gainNode = audioContext.createGain();
 
@@ -1510,7 +1518,7 @@ onMount(async () => {
 	// Check for initial files from command line
 	try {
 		const initialFiles = await GetInitialFiles();
-		if (initialFiles && initialFiles.leftFile && initialFiles.rightFile) {
+		if (initialFiles?.leftFile && initialFiles?.rightFile) {
 			fileStore.setBothFiles(initialFiles.leftFile, initialFiles.rightFile);
 
 			// Automatically compare the files
