@@ -121,13 +121,24 @@ run:
         exit 1; \
     fi
 
-# Open the project in your editor (customize as needed)
-edit:
-    code .
+# === Git/PR Commands ===
 
-# Show git status in a nice format
-status:
-    @git status -sb
+# Clean up after PR merge
+pr-cleanup:
+    @echo "🧹 Starting PR cleanup process..."
+    @echo "📌 Switching to main branch..."
+    @git checkout main
+    @echo "⬇️  Pulling latest changes..."
+    @git pull
+    @echo "✂️  Pruning deleted remote branches..."
+    @git remote prune origin
+    @echo "🗑️  Cleaning up merged local branches..."
+    @git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -L1 git branch -D 2>/dev/null || echo "✨ No local branches to clean up!"
+    @echo "✅ PR cleanup complete!"
+    @echo ""
+    @echo "Current branch: $(git branch --show-current)"
+    @echo "Branches remaining:"
+    @git branch -a
 
 # Create a new feature branch
 feature name:
