@@ -13,6 +13,7 @@ import {
 	RemoveLineFromFile,
 	RollbackOperationGroup,
 	SaveSelectedFilesAndQuit,
+	UpdateCopyMenuItems,
 } from "../wailsjs/go/main/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
@@ -704,6 +705,18 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 		console.error("Error deleting chunk from left:", error);
 		uiStore.showFlash(`Error deleting chunk: ${error}`, "error");
 	}
+}
+
+// Menu handler for Copy to Left (from right)
+async function handleMenuCopyToLeft(): Promise<void> {
+	// Use the existing function that copies from right to left
+	await copyCurrentDiffRightToLeft();
+}
+
+// Menu handler for Copy to Right (from left)
+async function handleMenuCopyToRight(): Promise<void> {
+	// Use the existing function that copies from left to right
+	await copyCurrentDiffLeftToRight();
 }
 
 async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
@@ -1453,6 +1466,26 @@ $: if (
 	}
 }
 
+// Update copy menu items when current chunk changes
+$: {
+	if (
+		$diffStore.currentChunkIndex >= 0 &&
+		$diffChunks &&
+		$diffChunks[$diffStore.currentChunkIndex] &&
+		$diffStore.highlightedDiff
+	) {
+		const currentChunk = $diffChunks[$diffStore.currentChunkIndex];
+		const currentLine =
+			$diffStore.highlightedDiff.lines[currentChunk.startIndex];
+		if (currentLine) {
+			UpdateCopyMenuItems(currentLine.type);
+		}
+	} else {
+		// No chunk selected, disable both menu items
+		UpdateCopyMenuItems("");
+	}
+}
+
 // Scroll sync handlers
 function _syncLeftScroll(): void {
 	scrollSync.syncFromLeft({
@@ -1514,6 +1547,8 @@ onMount(async () => {
 	EventsOn("menu-next-diff", jumpToNextDiff);
 	EventsOn("menu-first-diff", jumpToFirstDiff);
 	EventsOn("menu-last-diff", jumpToLastDiff);
+	EventsOn("menu-copy-left", handleMenuCopyToLeft);
+	EventsOn("menu-copy-right", handleMenuCopyToRight);
 
 	// Check for initial files from command line
 	try {

@@ -77,6 +77,8 @@ type App struct {
 	lastDiffMenuItem  *menu.MenuItem
 	prevDiffMenuItem  *menu.MenuItem
 	nextDiffMenuItem  *menu.MenuItem
+	copyLeftMenuItem  *menu.MenuItem
+	copyRightMenuItem *menu.MenuItem
 }
 
 // NewApp creates a new App application struct
@@ -777,6 +779,16 @@ func (a *App) SetNextDiffMenuItem(item *menu.MenuItem) {
 	a.nextDiffMenuItem = item
 }
 
+// SetCopyLeftMenuItem stores a reference to the copy left menu item
+func (a *App) SetCopyLeftMenuItem(item *menu.MenuItem) {
+	a.copyLeftMenuItem = item
+}
+
+// SetCopyRightMenuItem stores a reference to the copy right menu item
+func (a *App) SetCopyRightMenuItem(item *menu.MenuItem) {
+	a.copyRightMenuItem = item
+}
+
 // UpdateSaveMenuItems updates the state of all save-related menu items
 func (a *App) UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight bool) {
 	// Update individual save items
@@ -814,6 +826,23 @@ func (a *App) UpdateDiffNavigationMenuItems(hasPrevDiff, hasNextDiff, hasFirstDi
 	if a.nextDiffMenuItem != nil {
 		a.nextDiffMenuItem.Disabled = !hasNextDiff
 	}
+	runtime.MenuUpdateApplicationMenu(a.ctx)
+}
+
+// UpdateCopyMenuItems updates the state of the copy menu items based on whether a diff is selected
+func (a *App) UpdateCopyMenuItems(currentDiffType string) {
+	// Both menu items are enabled whenever any diff is selected (not empty)
+	// Both panes are equal - users can copy in either direction for any diff
+	hasDiff := currentDiffType != ""
+
+	if a.copyLeftMenuItem != nil {
+		a.copyLeftMenuItem.Disabled = !hasDiff
+	}
+
+	if a.copyRightMenuItem != nil {
+		a.copyRightMenuItem.Disabled = !hasDiff
+	}
+
 	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
 

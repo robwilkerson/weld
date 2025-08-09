@@ -86,6 +86,22 @@ func BuildMenu(app *App) *menu.Menu {
 	app.SetDiscardMenuItem(discardItem)
 	discardItem.Disabled = true
 
+	editMenu.AddSeparator()
+
+	// Copy to Left menu item
+	copyLeftItem := editMenu.AddText("Copy to Left", keys.Shift("h"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-copy-left")
+	})
+	app.SetCopyLeftMenuItem(copyLeftItem)
+	copyLeftItem.Disabled = true
+
+	// Copy to Right menu item
+	copyRightItem := editMenu.AddText("Copy to Right", keys.Shift("l"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu-copy-right")
+	})
+	app.SetCopyRightMenuItem(copyRightItem)
+	copyRightItem.Disabled = true
+
 	// View menu
 	viewMenu := appMenu.AddSubmenu("View")
 	minimapItem := viewMenu.AddText("Show Minimap", keys.CmdOrCtrl("m"), func(cd *menu.CallbackData) {
