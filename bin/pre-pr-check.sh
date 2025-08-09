@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Pre-PR Check Script
-# Run this before opening a pull request to ensure all checks pass
+# Run this before opening a pull request to ensure local-only checks pass
+# CI will handle: tests, E2E tests, builds, and cross-platform validation
 
 set -e  # Exit on error
 
@@ -48,36 +49,9 @@ fi
 print_success "Frontend files pass biome checks"
 cd ..
 
-# 3. Run backend tests
-echo -e "\n🧪 Running backend tests..."
-if ! go test ./... -v > /tmp/go-test.log 2>&1; then
-    echo "See /tmp/go-test.log for details"
-    exit_on_error "Backend tests failed"
-fi
-print_success "Backend tests passed"
+# Note: Tests and builds are handled by CI pipeline
 
-# 4. Run frontend tests
-echo -e "\n🧪 Running frontend tests..."
-cd frontend
-# Run all tests except integration tests (which are outdated)
-if ! bun run test src/stores/ src/components/ src/utils/ > /tmp/frontend-test.log 2>&1; then
-    echo "See /tmp/frontend-test.log for details"
-    cd ..
-    exit_on_error "Frontend tests failed"
-fi
-print_success "Frontend tests passed"
-
-cd ..
-
-# 5. Build verification
-echo -e "\n🔨 Verifying build..."
-if ! wails build > /tmp/wails-build.log 2>&1; then
-    echo "See /tmp/wails-build.log for details"
-    exit_on_error "Build failed"
-fi
-print_success "Build succeeded"
-
-# 6. Check commit messages
+# 3. Check commit messages
 echo -e "\n📜 Checking commit messages..."
 LONG_SUBJECTS=$(git log origin/main..HEAD --format="%s" | while read -r subject; do
     LENGTH=$(echo -n "$subject" | wc -c | tr -d ' ')
@@ -92,37 +66,7 @@ if [ -n "$LONG_SUBJECTS" ]; then
 fi
 print_success "All commit messages follow guidelines"
 
-# 7. Run E2E tests (run last to avoid multiple runs if other checks fail)
-echo -e "\n🎭 Running E2E tests..."
-
-# Check if wails dev is running
-if ! curl -s http://localhost:34115 > /dev/null; then
-    print_info "Please start the dev server with 'wails dev' in another terminal"
-    exit_on_error "Wails dev server is not running!"
-fi
-    cd frontend
-    START_TIME=$(date +%s)
-    
-    if ! bun run test:e2e:headless > /tmp/e2e-test.log 2>&1; then
-        echo "See /tmp/e2e-test.log for details"
-        # Show last few lines of the log for quick debugging
-        echo -e "\nLast 20 lines of E2E test output:"
-        tail -20 /tmp/e2e-test.log
-        cd ..
-        exit_on_error "E2E tests failed"
-    fi
-        END_TIME=$(date +%s)
-        RUNTIME=$((END_TIME - START_TIME))
-        
-        # Count how many tests ran
-        TEST_COUNT=$(grep -E "✓|✘" /tmp/e2e-test.log | wc -l | tr -d ' ')
-        
-        if [ $RUNTIME -gt 60 ]; then
-            print_warning "E2E tests passed ($TEST_COUNT tests) but took ${RUNTIME}s (>60s threshold)"
-        else
-            print_success "E2E tests passed ($TEST_COUNT tests) in ${RUNTIME}s"
-        fi
-    cd ..
+# Note: E2E tests are handled by CI pipeline
 
 # Final summary - only shown if all checks pass
 echo -e "\n================================"

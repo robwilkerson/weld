@@ -269,7 +269,6 @@ After a PR is merged:
 
 - [ ] Verify all changes are necessary - remove any failed attempts or debugging code
 - [ ] Run formatters: `go fmt` and `npx @biomejs/biome check --write frontend/src/`
-- [ ] Run relevant unit tests for changed files
 - [ ] Check commit subject line length: `echo -n "subject line" | wc -c` (MUST be ≤50 characters)
 
 **Automated Check**: Run `./bin/pre-commit-check.sh` or enable the Git hook:
@@ -284,8 +283,9 @@ git config core.hooksPath .githooks
 The pre-commit script will:
 - Check for debugging code (console.log, fmt.Printf, TODO, etc.)
 - Run formatters on staged files only
-- Run tests for changed packages/files
 - Validate commit message length
+
+**Note**: Tests and builds are handled by CI pipeline - no need to run locally unless debugging
 
 ### Pre-PR Checklist
 
@@ -301,41 +301,22 @@ The pre-commit script will:
    - [ ] Frontend: `npx @biomejs/biome check --write frontend/src/`
    - [ ] No biome warnings or errors
 
-3. **Testing**
-   - [ ] Backend tests pass: `go test ./... -v`
-   - [ ] Frontend tests pass: `cd frontend && bun run test`
-   - [ ] Coverage is maintained or improved: `cd frontend && bun run test:coverage`
-
-4. **E2E Tests** (if UI/interaction changes)
-   - [ ] Start dev server: `wails dev` (in separate terminal)
-   - [ ] Run E2E tests: `cd frontend && bun run test:e2e`
-   - [ ] All E2E tests pass
-   - [ ] Note runtime: _______ seconds (flag if >60s)
-
-5. **Build Verification**
-   - [ ] Application builds: `wails build`
-   - [ ] No build warnings or errors
-
-6. **Manual Testing** (if applicable)
+3. **Manual Testing** (if applicable)
    - [ ] Test the specific feature/fix manually
    - [ ] Verify no regressions in related features
    - [ ] Test on both light and dark themes
 
-7. **Documentation**
+4. **Documentation**
    - [ ] Update TODO.md if completing/adding tasks
    - [ ] Update CLAUDE.md if changing workflows
    - [ ] Add code comments for complex logic
 
-**Note**: Skip E2E tests only if changes are purely backend, documentation, or non-UI refactoring. When in doubt, run them.
+**Note**: Tests, E2E tests, and builds are handled by CI pipeline. Focus on code quality, formatting, and manual testing.
 
-**Automated Check**: Run `./bin/pre-pr-check.sh` to automatically execute most of these checks. The script will:
-- Check for uncommitted changes
-- Run all formatters
-- Execute backend and frontend tests
-- Run E2E tests if frontend files changed (and wails dev is running)
-- Verify the build works
-- Check commit message lengths
-- Report total E2E runtime if >60 seconds
+**Automated Check**: Run `./bin/pre-pr-check.sh` to check:
+- Uncommitted changes
+- Code formatting
+- Commit message lengths
 
 ### End-of-Day Checklist
 
@@ -345,20 +326,13 @@ The pre-commit script will:
    - Frontend: `npx @biomejs/biome check --write frontend/src/`
    - Backend: `go fmt ./...`
 
-2. **Run tests and review quality**
-   - Frontend: `bash -c "cd frontend && bun run test"`
-   - Backend: `go test ./... -v`
-   - Review test results qualitatively:
-     - Are we testing the right behaviors?
-     - Do the tests cover critical user paths?
-     - Are there edge cases we're missing?
+2. **Review test strategy** (tests run in CI, but review quality)
+   - Are we testing the right behaviors?
+   - Do the tests cover critical user paths?
+   - Are there edge cases we're missing?
+   - Should we add new tests for today's changes?
 
-3. **Report test coverage metrics**
-   - Frontend coverage: `bash -c "cd frontend && bun run test:coverage"`
-   - Backend coverage: `go test ./... -v --cover`
-   - Note: Focus on test quality over coverage numbers
-
-4. **Code review and improvement suggestions**
+3. **Code review and improvement suggestions**
    - Review the day's changes for:
      - Components that are growing too large (>300 lines)
      - Repeated code patterns that could be extracted
@@ -369,12 +343,14 @@ The pre-commit script will:
 
 ### Testing and Validation
 
-* Run `go test ./... -v --cover` for backend unit tests with coverage
-* Run `cd frontend && bun run test:coverage` for frontend tests with coverage using the Vitest test runner
+* **CI Pipeline**: Tests, coverage, and builds run automatically on push/PR
+* **Local Testing** (when debugging):
+  * Backend: `go test ./... -v --cover`
+  * Frontend: `cd frontend && bun run test:coverage`
+  * E2E: `wails dev` then `cd frontend && bun run test:e2e`
 * **Component Testing**: Create test files for all new components (e.g., `ComponentName.test.ts`)
 * **Manual Testing**: Before committing any UI changes, ask the user to run `wails dev` and manually test the affected functionality
 * Test manually using sample files in `resources/sample-files/`
-* Verify app builds successfully with `wails build`
 
 ## Common Issues
 
