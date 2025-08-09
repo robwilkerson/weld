@@ -26,9 +26,8 @@ jobs:
           - os: windows-latest
             platform: windows
             arch: amd64
-          - os: windows-latest
-            platform: windows
-            arch: arm64
+          # Windows ARM64 cross-compilation is not well supported by Wails
+          # Users on Windows ARM64 can use x64 version with emulation
           
           # macOS builds (separate architectures instead of universal)
           - os: macos-latest
