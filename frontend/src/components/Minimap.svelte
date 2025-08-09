@@ -97,6 +97,32 @@ function handleViewportMouseDown(event: MouseEvent): void {
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
+function handleViewportKeyDown(event: KeyboardEvent): void {
+	const step = 10; // Percentage to move on each key press
+
+	switch (event.key) {
+		case "ArrowUp":
+		case "ArrowLeft":
+			event.preventDefault();
+			dispatch("viewportKeyNavigation", { direction: "up", step });
+			break;
+		case "ArrowDown":
+		case "ArrowRight":
+			event.preventDefault();
+			dispatch("viewportKeyNavigation", { direction: "down", step });
+			break;
+		case "Home":
+			event.preventDefault();
+			dispatch("viewportKeyNavigation", { direction: "home" });
+			break;
+		case "End":
+			event.preventDefault();
+			dispatch("viewportKeyNavigation", { direction: "end" });
+			break;
+	}
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleMinimapKeyDown(event: KeyboardEvent): void {
 	if (event.key === "Enter" || event.key === " ") {
 		event.preventDefault();
@@ -114,15 +140,12 @@ function handleMinimapKeyDown(event: KeyboardEvent): void {
 
 {#if show && totalLines > 0}
 	<div class="minimap-pane">
-		<!-- svelte-ignore a11y-no-static-element-interactions -->
-		<!-- svelte-ignore a11y-click-events-have-key-events -->
-		<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 		<div 
 			class="minimap" 
 			on:click={handleMinimapClick}
 			on:keydown={handleMinimapKeyDown}
-			role="navigation"
-			aria-label="Minimap navigation"
+			role="button"
+			aria-label="Minimap - click to navigate to diff locations"
 			tabindex="0"
 		>
 			{#each diffChunks as chunk, index}
@@ -140,11 +163,11 @@ function handleMinimapKeyDown(event: KeyboardEvent): void {
 				></div>
 			{/each}
 			<!-- Viewport indicator -->
-			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div
 				class="minimap-viewport"
 				style="top: {viewportTop}%; height: {viewportHeight}%;"
 				on:mousedown={handleViewportMouseDown}
+				on:keydown={handleViewportKeyDown}
 				role="slider"
 				aria-label="Viewport position"
 				aria-valuenow={Math.round((viewportTop / 100) * 100)}

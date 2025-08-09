@@ -68,6 +68,11 @@
   - [x] Remove unused 'set' variable in uiStore.ts (line 38)
   - [x] Replace 'any' type in uiStore.test.ts with proper DocumentMock interface
 - [x] Be more deliberate about handling errors - implemented flash message system
+- [x] Address accessibility warnings - Add proper ARIA labels and keyboard focus management for screen readers
+  - [x] Fixed ARIA roles and labels in QuitDialog (overlay, dialog elements)
+  - [x] Added keyboard navigation support to Minimap viewport slider
+  - [x] FlashMessage already had proper role="alert" and aria-label
+  - [x] Removed duplicate CSS selectors in QuitDialog
 
 ## Medium Priority
 
@@ -78,8 +83,6 @@
   * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
 - [ ] Enable performant syntax highlighting
 - [ ] Review backend test coverage and add quality tests to improve coverage from 58%
-- [ ] Address accessibility warnings - Add proper ARIA labels and keyboard focus management for screen readers
-- [ ] Remove unused CSS selectors flagged by biome (QuitDialog .button-group styles)
 
 ## Low Priority
 

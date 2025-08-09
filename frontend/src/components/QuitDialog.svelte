@@ -46,17 +46,12 @@ function handleOverlayClick() {
 	dispatch("cancel");
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: Used in template
-function handleKeyDown(event: KeyboardEvent) {
-	if (event.key === "Escape") {
-		dispatch("cancel");
-	}
-}
-
-// Trap focus within the dialog
+// Trap focus within the dialog and handle escape
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
 function handleDialogKeyDown(event: KeyboardEvent) {
-	if (event.key === "Tab") {
+	if (event.key === "Escape") {
+		dispatch("cancel");
+	} else if (event.key === "Tab") {
 		const focusableElements = dialogRef.querySelectorAll(
 			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
 		);
@@ -81,9 +76,7 @@ function handleDialogKeyDown(event: KeyboardEvent) {
   <div 
     class="modal-overlay" 
     on:click={handleOverlayClick}
-    on:keydown={handleKeyDown}
   >
-    <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
     <div 
       bind:this={dialogRef}
       class="quit-dialog" 
