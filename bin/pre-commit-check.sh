@@ -1,16 +1,14 @@
 #!/bin/bash
 
 # Pre-Commit Check Script
-# Run this before committing to ensure basic quality checks pass
+# Run this before committing to ensure quality checks NOT covered by CI
 #
-# Checks are run in order, stopping at the first failure:
+# Checks only items that CI doesn't validate:
 # 1. Check for debugging code (console.log, fmt.Printf, etc.)
 # 2. Run formatters (Go fmt, Biome) on staged files
-# 3. Run tests for changed packages/components
-# 4. Run E2E tests if frontend changed and dev server is running
 #
-# Note: Commit message validation happens after these checks
-# in .githooks/commit-msg (50 char subject limit)
+# CI handles: tests, E2E tests, builds, and cross-platform testing
+# Note: Commit message validation happens in .githooks/commit-msg
 
 set -e  # Exit on error
 
@@ -105,63 +103,7 @@ else
     print_info "No frontend files to check"
 fi
 
-# 3. Run tests for changed files
-echo -e "\n🧪 Running relevant tests..."
-
-# Check if we have backend changes
-if [ -n "$STAGED_GO_FILES" ]; then
-    # Find packages with changes
-    CHANGED_PACKAGES=$(echo "$STAGED_GO_FILES" | xargs -n1 dirname | sort -u | grep -v "^\\.$" || echo ".")
-    
-    print_info "Running tests for changed Go packages..."
-    for pkg in $CHANGED_PACKAGES; do
-        if ! go test "./$pkg" -v > /tmp/go-test-commit.log 2>&1; then
-            echo "See /tmp/go-test-commit.log for details"
-            exit_on_error "Tests failed in package: $pkg"
-        fi
-    done
-    
-    print_success "Backend tests passed"
-fi
-
-# Check if we have frontend changes that need testing
-if [ -n "$STAGED_FRONTEND_FILES" ]; then
-    print_info "Running all frontend tests to catch regressions..."
-    cd frontend
-    # Run all tests except integration tests (which are outdated)
-    if ! bun run test src/stores/ src/components/ src/utils/ --run > /tmp/frontend-test-commit.log 2>&1; then
-        echo "See /tmp/frontend-test-commit.log for details"
-        cd ..
-        exit_on_error "Frontend tests failed"
-    fi
-    print_success "Frontend tests passed"
-    cd ..
-fi
-
-# Note: Commit message checking moved to .githooks/commit-msg hook
-
-# 4. Run E2E tests if frontend files changed (run last to avoid multiple runs)
-if [ -n "$STAGED_FRONTEND_FILES" ]; then
-    echo -e "\n🎭 Checking if E2E tests should run..."
-    
-    # Check if wails dev server is running
-    if curl -s http://localhost:34115 > /dev/null 2>&1; then
-        print_info "Wails dev server detected. Running E2E tests..."
-        cd frontend
-        
-        # Run E2E tests in headless mode (they have their own timeout in playwright.config.ts)
-        if ! bun run test:e2e:headless > /tmp/e2e-test-commit.log 2>&1; then
-            echo "See /tmp/e2e-test-commit.log for details"
-            cd ..
-            exit_on_error "E2E tests failed or timed out (2 min limit)\nPlease ensure E2E tests pass before pushing"
-        fi
-        print_success "E2E tests passed"
-        cd ..
-    else
-        print_warning "Wails dev server not running. Skipping E2E tests."
-        print_info "Start with 'wails dev' to run E2E tests during pre-commit"
-    fi
-fi
+# Note: Tests are handled by CI pipeline
 
 # Final summary - only shown if all checks pass
 echo -e "\n================================"
