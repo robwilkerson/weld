@@ -126,6 +126,7 @@ async function setupMockedBackend(page) {
 						_canNavigateLast,
 					) => {},
 					UpdateSaveMenuItems: async () => {},
+					UpdateCopyMenuItems: async () => {},
 				},
 			},
 		};
