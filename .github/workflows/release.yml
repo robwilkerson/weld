@@ -134,5 +134,5 @@ jobs:
         files: |
           build/bin/weld-*.tar.gz
           build/bin/weld-*.zip
-        draft: true
+        draft: false
         generate_release_notes: true
