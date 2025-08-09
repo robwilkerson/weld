@@ -3,16 +3,9 @@
 ## High Priority
 
 ### Pending
-- [ ] Fix Wails/Go version mismatch issue
-  - [ ] Install Wails via `go install` instead of Nix to avoid version conflicts
-  - [ ] Document the installation method in README
-  - [ ] Consider creating a mise plugin for Wails or using direnv
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
-- [ ] Improve type safety - Replace `any` types and non-null assertions
-  - [ ] Replace 3 instances of `any` type in DiffViewer component refs
-  - [ ] Create proper TypeScript interfaces for Svelte component refs
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
@@ -23,6 +16,15 @@
   - [ ] Etc.?
 
 ### Completed
+- [x] Fix Wails/Go version mismatch issue
+  - [x] Install Wails via `go install` instead of Nix to avoid version conflicts
+  - [x] Document the installation method in README and CLAUDE.md
+  - [x] Updated mise documentation to only manage Go and Node.js versions
+- [x] Improve type safety - Replace `any` types and non-null assertions
+  - [x] Replace 3 instances of `any` type in DiffViewer component refs
+  - [x] Create proper TypeScript interfaces for Svelte component refs
+  - [x] Fix webkitAudioContext browser compatibility typing
+  - [x] Review and confirm no problematic non-null assertions
 - [x] Add Edit > Discard All Changes menu item
 - [x] Add File > Save submenu with Save Left/Right/All options
 - [x] Test new menu items and add to manual test script if needed
