@@ -1,6 +1,7 @@
 <script lang="ts">
 // Component for displaying file differences
 import { createEventDispatcher, onDestroy } from "svelte";
+import type { DiffGutterRef, DiffPaneRef } from "../types/components";
 import type {
 	DiffViewerEvents,
 	DiffViewerProps,
@@ -36,12 +37,9 @@ export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
 export let diffChunks: { startIndex: number; endIndex: number }[] = [];
 
 // Component refs for scroll synchronization
-// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
-let leftPaneComponent: any;
-// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
-let rightPaneComponent: any;
-// biome-ignore lint/suspicious/noExplicitAny: Svelte component refs
-let centerGutterComponent: any;
+let leftPaneComponent: DiffPaneRef | undefined;
+let rightPaneComponent: DiffPaneRef | undefined;
+let centerGutterComponent: DiffGutterRef | undefined;
 
 // Viewport tracking for minimap
 export let viewportTop = 0;

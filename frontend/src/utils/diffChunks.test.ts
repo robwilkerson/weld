@@ -8,8 +8,10 @@ describe("calculateDiffChunks", () => {
 	});
 
 	it("should return empty array for null input", () => {
-		// biome-ignore lint/suspicious/noExplicitAny: Testing null input
-		expect(calculateDiffChunks(null as any)).toEqual([]);
+		// Testing null input - TypeScript will catch this in production
+		expect(
+			calculateDiffChunks(null as unknown as HighlightedDiffLine[]),
+		).toEqual([]);
 	});
 
 	it("should return empty array for file with only same lines", () => {
