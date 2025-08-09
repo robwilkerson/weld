@@ -10,13 +10,13 @@ default:
 build:
     @echo "Building Weld..."
     @wails build -platform darwin/universal
-    @echo "Installing CLI script into app bundle..."
-    @cp bin/weld build/bin/Weld.app/Contents/Resources/weld
-    @chmod +x build/bin/Weld.app/Contents/Resources/weld
+    @echo "Installing CLI installer into app bundle..."
+    @cp bin/install-cli.sh build/bin/Weld.app/Contents/Resources/install-cli.sh
+    @chmod +x build/bin/Weld.app/Contents/Resources/install-cli.sh
     @echo "✅ Build complete!"
     @echo ""
     @echo "To install the CLI tool, users can run:"
-    @echo "  ln -s /Applications/Weld.app/Contents/Resources/weld /usr/local/bin/weld"
+    @echo "  /Applications/Weld.app/Contents/Resources/install-cli.sh"
 
 # Run in development mode
 dev:
@@ -26,17 +26,9 @@ dev:
 clean:
     rm -rf build/bin
 
-# Install CLI to /usr/local/bin (requires built app)
+# Install CLI to /usr/local/bin (macOS only)
 install-cli:
-    #!/usr/bin/env bash
-    if [ -f "build/bin/Weld.app/Contents/MacOS/weld" ]; then
-        echo "Installing weld CLI to /usr/local/bin..."
-        sudo ln -sf /Applications/Weld.app/Contents/MacOS/weld /usr/local/bin/weld
-        echo "✅ CLI installed!"
-    else
-        echo "Error: Build the app first with 'just build'"
-        exit 1
-    fi
+    @bash bin/install-cli.sh
 
 # Run backend tests
 test-backend:
