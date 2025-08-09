@@ -3,6 +3,7 @@
 ## High Priority
 
 ### Pending
+- [ ] Add documentation about keyboard shortcuts (Shift+H/L for Copy to Left/Right) in README
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
@@ -73,10 +74,15 @@
   - [x] Added keyboard navigation support to Minimap viewport slider
   - [x] FlashMessage already had proper role="alert" and aria-label
   - [x] Removed duplicate CSS selectors in QuitDialog
+- [x] Add Copy to Left/Right menu items with Shift+H/L keyboard shortcuts
+  - [x] Both menu items work bidirectionally for all diff types
+  - [x] Menu items are enabled whenever any diff is selected
+  - [x] Fixed E2E test failures by adding UpdateCopyMenuItems mock
 
 ## Medium Priority
 
 ### Pending
+- [ ] Add integration tests for new Copy to Left/Right menu functionality
 - [ ] Add an unsaved indicator
 - [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
@@ -94,8 +100,6 @@
 - [ ] Create a dedicated DiffOperations service/module
 - [ ] Extract file operation handlers into a separate module
 - [ ] Create a dedicated MenuBar component
-- [ ] Menu bar option: Edit > Copy Left
-- [ ] Menu bar option: Edit > Copy Right
 - [ ] Investigate tooltip display consistency issue
 - [ ] Extract syntax highlighting logic into a separate service
 - [ ] Recently compared files - Quick access to recent file pairs for faster re-comparison
