@@ -1425,21 +1425,21 @@ func TestApp_RemembersLastUsedDirectory(t *testing.T) {
 		t.Errorf("Expected empty lastUsedDirectory, got: %s", app.lastUsedDirectory)
 	}
 
-	// Simulate selecting a file
-	testPath := "/home/user/documents/test.txt"
+	// Simulate selecting a file using filepath.Join for cross-platform compatibility
+	testPath := filepath.Join("home", "user", "documents", "test.txt")
 	app.lastUsedDirectory = filepath.Dir(testPath)
 
 	// Verify the directory was saved
-	expectedDir := "/home/user/documents"
+	expectedDir := filepath.Join("home", "user", "documents")
 	if app.lastUsedDirectory != expectedDir {
 		t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedDir, app.lastUsedDirectory)
 	}
 
 	// Test with another path to ensure it updates
-	testPath2 := filepath.Join(string(filepath.Separator), "tmp", "another", "test.txt")
+	testPath2 := filepath.Join("tmp", "another", "test.txt")
 	app.lastUsedDirectory = filepath.Dir(testPath2)
 
-	expectedDir2 := filepath.Join(string(filepath.Separator), "tmp", "another")
+	expectedDir2 := filepath.Join("tmp", "another")
 	if app.lastUsedDirectory != expectedDir2 {
 		t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedDir2, app.lastUsedDirectory)
 	}
