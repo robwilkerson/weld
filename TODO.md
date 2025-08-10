@@ -3,7 +3,6 @@
 ## High Priority
 
 ### Pending
-- [ ] Add documentation about keyboard shortcuts (Shift+H/L for Copy to Left/Right) in README
 - [ ] Fix `large-*` files issues
   - [ ] Scrolling gets out of sync
   - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
@@ -78,6 +77,7 @@
   - [x] Both menu items work bidirectionally for all diff types
   - [x] Menu items are enabled whenever any diff is selected
   - [x] Fixed E2E test failures by adding UpdateCopyMenuItems mock
+  - [x] Documentation already exists in README keyboard shortcuts table
 
 ## Medium Priority
 
