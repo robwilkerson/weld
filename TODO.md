@@ -9,13 +9,23 @@
 - [ ] Enable directory comparison since file diffs are fully featured and stable
 - [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
 - [ ] App icon
-- [ ] Make available in package managers
-  - [ ] Homebrew cask
-  - [ ] Chocolatey,
+- [ ] Publish to package managers (pending org migration)
+  - [ ] Homebrew cask (formula created, not published)
+  - [ ] Chocolatey
   - [ ] Scoop
   - [ ] Etc.?
 
 ### Completed
+- [x] Cut v0.5.2-v0.5.5 releases with ARM64 builds and CI improvements
+- [x] Add keyboard shortcuts documentation (Shift+H/L) to README
+- [x] Add integration tests for copy menu functionality
+- [x] Add comprehensive tests for utils/diff.ts (coverage improved from 71.55% to 98.27%)
+- [x] Fix menu item text wrapping on Linux
+- [x] Add Ubuntu development instructions to README
+- [x] Fix copy menu items disabled on initial diff load
+- [x] Add feature to remember last used directory in file selectors
+- [x] Remove redundant File > Quit menu item on macOS
+- [x] Create Homebrew cask formula (unpublished, on feat/homebrew-package branch)
 - [x] Fix Wails/Go version mismatch issue
   - [x] Install Wails via `go install` instead of Nix to avoid version conflicts
   - [x] Document the installation method in README and CLAUDE.md
@@ -82,7 +92,7 @@
 ## Medium Priority
 
 ### Pending
-- [ ] Add integration tests for new Copy to Left/Right menu functionality
+- [ ] Fix Go menu items disabled on Linux (GTK menu refresh issue)
 - [ ] Add an unsaved indicator
 - [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
 - [ ] Upgrade Svelte and vite to the latest version (and all that entails)
