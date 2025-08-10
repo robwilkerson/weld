@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -1436,13 +1435,12 @@ func TestApp_RemembersLastUsedDirectory(t *testing.T) {
 		t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedDir, app.lastUsedDirectory)
 	}
 
-	// Test with Windows-style path
-	if strings.Contains(runtime.GOOS, "windows") {
-		windowsPath := `C:\Users\test\Documents\file.txt`
-		app.lastUsedDirectory = filepath.Dir(windowsPath)
-		expectedWinDir := `C:\Users\test\Documents`
-		if app.lastUsedDirectory != expectedWinDir {
-			t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedWinDir, app.lastUsedDirectory)
-		}
+	// Test with another path to ensure it updates
+	testPath2 := filepath.Join(string(filepath.Separator), "tmp", "another", "test.txt")
+	app.lastUsedDirectory = filepath.Dir(testPath2)
+
+	expectedDir2 := filepath.Join(string(filepath.Separator), "tmp", "another")
+	if app.lastUsedDirectory != expectedDir2 {
+		t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedDir2, app.lastUsedDirectory)
 	}
 }
