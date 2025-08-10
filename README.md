@@ -145,7 +145,7 @@ The `weld` executable can be used directly or added to your PATH.
 ## Prerequisites
 
 - **Go** 1.21 or later
-- **Node.js** 20 or later
+- **Node.js** 20 or later (see platform-specific instructions below)
 - **Bun** (latest version)
 - **Wails** 2.10+
 - **Just** (command runner) - Install with `brew install just` or see [installation options](https://github.com/casey/just#installation)
@@ -155,9 +155,41 @@ The `weld` executable can be used directly or added to your PATH.
 **macOS:**
 - Xcode Command Line Tools
 
-**Linux:**
-- `libgtk-3-dev`
-- `libwebkit2gtk-4.0-dev`
+**Linux (Ubuntu/Debian):**
+
+1. **Install Node.js 20+** (Ubuntu's apt provides Node 18, which is too old):
+   ```bash
+   # Option 1: Using NodeSource (recommended)
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   
+   # Option 2: Using mise (version manager)
+   # Install mise via curl:
+   curl https://mise.run | sh
+   # OR via apt (if you prefer):
+   sudo apt update && sudo apt install -y gpg wget curl
+   wget -qO - https://mise.jdx.dev/gpg-key.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/mise-archive-keyring.gpg 1> /dev/null
+   echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg arch=amd64] https://mise.jdx.dev/deb stable main" | sudo tee /etc/apt/sources.list.d/mise.list
+   sudo apt update && sudo apt install -y mise
+   
+   # Add to your shell (for bash):
+   echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+   source ~/.bashrc
+   
+   # Install and use Node.js 20:
+   mise use node@20
+   ```
+
+2. **Install GTK3 and WebKit2GTK development libraries:**
+   ```bash
+   # For Ubuntu 20.04 and earlier:
+   sudo apt-get update
+   sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+   
+   # For Ubuntu 22.04 and later:
+   sudo apt-get update
+   sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+   ```
 
 **Windows:**
 - Windows 10/11
@@ -185,6 +217,7 @@ The `weld` executable can be used directly or added to your PATH.
    ```bash
    wails doctor
    ```
+   **Note**: On some systems (particularly Ubuntu ARM), `wails doctor` may incorrectly report missing webkit dependencies even when they're properly installed. If you see webkit warnings but have installed the required packages, try running `wails dev` to verify your setup actually works.
 
 5. Install frontend dependencies:
    ```bash
