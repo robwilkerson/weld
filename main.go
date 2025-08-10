@@ -55,10 +55,14 @@ func BuildMenu(app *App) *menu.Menu {
 	app.SetSaveAllMenuItem(saveAllItem)
 	saveAllItem.Disabled = true
 
-	fileMenu.AddSeparator()
-	fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-		runtime.Quit(app.ctx)
-	})
+	// Only add Quit to File menu on non-macOS platforms
+	// macOS has Quit in the application menu (Weld > Quit Weld)
+	if goruntime.GOOS != "darwin" {
+		fileMenu.AddSeparator()
+		fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+			runtime.Quit(app.ctx)
+		})
+	}
 
 	// Edit menu - custom implementation to add undo
 	editMenu := appMenu.AddSubmenu("Edit")
