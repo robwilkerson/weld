@@ -64,6 +64,7 @@ export let onToggleDarkMode: () => void;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-width: 150px;
+    width: max-content;
   }
 
   .menu-item {
@@ -76,6 +77,7 @@ export let onToggleDarkMode: () => void;
     cursor: pointer;
     transition: background 0.2s ease;
     color: #4c4f69;
+    white-space: nowrap;
   }
 
   .menu-item:hover:not(:disabled) {
