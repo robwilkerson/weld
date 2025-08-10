@@ -79,6 +79,7 @@ type App struct {
 	nextDiffMenuItem  *menu.MenuItem
 	copyLeftMenuItem  *menu.MenuItem
 	copyRightMenuItem *menu.MenuItem
+	lastUsedDirectory string
 }
 
 // NewApp creates a new App application struct
@@ -111,11 +112,16 @@ func (a *App) GetInitialFiles() InitialFiles {
 // SelectFile opens a file dialog and returns the selected file path
 func (a *App) SelectFile() (string, error) {
 
-	// Default to user's home directory
-	defaultDir, err := os.UserHomeDir()
-	if err != nil {
-		// If we can't get home directory, use empty string (system default)
-		defaultDir = ""
+	// Use last used directory if available, otherwise default to home directory
+	defaultDir := a.lastUsedDirectory
+	if defaultDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			// If we can't get home directory, use empty string (system default)
+			defaultDir = ""
+		} else {
+			defaultDir = homeDir
+		}
 	}
 
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
@@ -129,6 +135,8 @@ func (a *App) SelectFile() (string, error) {
 
 	// If a file was selected, validate it's not binary
 	if err == nil && file != "" {
+		// Remember the directory for next time
+		a.lastUsedDirectory = filepath.Dir(file)
 		isBinary, checkErr := IsBinaryFile(file)
 		if checkErr != nil {
 			return "", fmt.Errorf("error checking file type: %w", checkErr)

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -1414,5 +1415,34 @@ Some content here.`
 
 	if result == nil || len(result.Lines) == 0 {
 		t.Fatal("Expected diff results for special chars comparison, got empty")
+	}
+}
+
+func TestApp_RemembersLastUsedDirectory(t *testing.T) {
+	app := NewApp()
+
+	// Initially, lastUsedDirectory should be empty
+	if app.lastUsedDirectory != "" {
+		t.Errorf("Expected empty lastUsedDirectory, got: %s", app.lastUsedDirectory)
+	}
+
+	// Simulate selecting a file
+	testPath := "/home/user/documents/test.txt"
+	app.lastUsedDirectory = filepath.Dir(testPath)
+
+	// Verify the directory was saved
+	expectedDir := "/home/user/documents"
+	if app.lastUsedDirectory != expectedDir {
+		t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedDir, app.lastUsedDirectory)
+	}
+
+	// Test with Windows-style path
+	if strings.Contains(runtime.GOOS, "windows") {
+		windowsPath := `C:\Users\test\Documents\file.txt`
+		app.lastUsedDirectory = filepath.Dir(windowsPath)
+		expectedWinDir := `C:\Users\test\Documents`
+		if app.lastUsedDirectory != expectedWinDir {
+			t.Errorf("Expected lastUsedDirectory to be %s, got: %s", expectedWinDir, app.lastUsedDirectory)
+		}
 	}
 }
