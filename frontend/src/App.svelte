@@ -470,6 +470,18 @@ async function compareBothFiles(
 				const currentIndex = get(diffStore).currentChunkIndex;
 				if (chunks.length > 0 && currentIndex === -1) {
 					diffStore.setCurrentChunkIndex(0);
+
+					// Update copy menu items for the first diff
+					const highlightedDiffResult = get(diffStore).highlightedDiff;
+					if (
+						highlightedDiffResult &&
+						highlightedDiffResult.lines[chunks[0].startIndex]
+					) {
+						UpdateCopyMenuItems(
+							highlightedDiffResult.lines[chunks[0].startIndex].type,
+						);
+					}
+
 					// Scroll to first diff after a delay
 					setTimeout(() => {
 						if (diffViewerComponent && chunks[0]) {
