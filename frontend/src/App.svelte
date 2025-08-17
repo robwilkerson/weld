@@ -1633,7 +1633,10 @@ onMount(async () => {
 	EventsOn("menu-copy-right", handleMenuCopyToRight);
 
 	// File change detection
-	EventsOn("file-changed-externally", handleFileChangedExternally);
+	const offFileChanged = EventsOn(
+		"file-changed-externally",
+		handleFileChangedExternally,
+	);
 
 	// Check for initial files from command line
 	try {
@@ -1701,6 +1704,8 @@ onMount(async () => {
 		}
 		clearTimeout(resizeTimeout);
 		resizeObserver.disconnect();
+		// Unsubscribe runtime events
+		offFileChanged();
 	};
 });
 
