@@ -67,6 +67,10 @@ export function SetSaveRightMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetUndoMenuItem(arg1:menu.MenuItem):Promise<void>;
 
+export function StartFileWatching(arg1:string,arg2:string):Promise<void>;
+
+export function StopFileWatching():Promise<void>;
+
 export function UndoLastOperation():Promise<void>;
 
 export function UpdateCopyMenuItems(arg1:string):Promise<void>;

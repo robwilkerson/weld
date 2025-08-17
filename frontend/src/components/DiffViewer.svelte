@@ -19,6 +19,8 @@ import DiffHeader from "./DiffHeader.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import DiffPane from "./DiffPane.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
+import FileChangeBanner from "./FileChangeBanner.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in template
 import Minimap from "./Minimap.svelte";
 
 // Props
@@ -35,6 +37,17 @@ export let hasCompletedComparison: DiffViewerProps["hasCompletedComparison"];
 export let lineNumberWidth: DiffViewerProps["lineNumberWidth"];
 // biome-ignore lint/style/useConst: Needs to be reassignable for reactive updates
 export let diffChunks: { startIndex: number; endIndex: number }[] = [];
+
+// File change banner props
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
+export let showLeftFileChangeBanner = false;
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
+export let showRightFileChangeBanner = false;
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
+export let leftFileChangeData: { fileName: string; path: string } | null = null;
+// biome-ignore lint/style/useConst: Svelte component props must use 'let'
+export let rightFileChangeData: { fileName: string; path: string } | null =
+	null;
 
 // Component refs for scroll synchronization
 let leftPaneComponent: DiffPaneRef | undefined;
@@ -379,19 +392,28 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 		
 		<div class="diff-content" style="--line-number-width: {lineNumberWidth}">
 			<!-- Left pane -->
-			<DiffPane
-				bind:this={leftPaneComponent}
-				lines={diffResult?.lines || []}
-				side="left"
-				{getChunkForLine}
-				{isFirstLineOfChunk}
-				{isLineHighlighted}
-				{isLineHovered}
-				on:scroll={syncLeftScroll}
-				on:chunkClick={(e) => handleChunkClick(e.detail)}
-				on:chunkMouseEnter={(e) => handleChunkMouseEnter(e.detail)}
-				on:chunkMouseLeave={handleChunkMouseLeave}
-			/>
+			<div class="pane-container">
+				<FileChangeBanner
+					visible={showLeftFileChangeBanner}
+					fileName={leftFileChangeData?.fileName || ''}
+					filePath={leftFileChangeData?.path || ''}
+					on:reload={() => dispatch('leftFileReload')}
+					on:hide={() => dispatch('leftFileHide')}
+				/>
+				<DiffPane
+					bind:this={leftPaneComponent}
+					lines={diffResult?.lines || []}
+					side="left"
+					{getChunkForLine}
+					{isFirstLineOfChunk}
+					{isLineHighlighted}
+					{isLineHovered}
+					on:scroll={syncLeftScroll}
+					on:chunkClick={(e) => handleChunkClick(e.detail)}
+					on:chunkMouseEnter={(e) => handleChunkMouseEnter(e.detail)}
+					on:chunkMouseLeave={handleChunkMouseLeave}
+				/>
+			</div>
 			
 			<!-- Center gutter -->
 			<DiffGutter
@@ -415,19 +437,28 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 			/>
 			
 			<!-- Right pane -->
-			<DiffPane
-				bind:this={rightPaneComponent}
-				lines={diffResult?.lines || []}
-				side="right"
-				{getChunkForLine}
-				{isFirstLineOfChunk}
-				{isLineHighlighted}
-				{isLineHovered}
-				on:scroll={syncRightScroll}
-				on:chunkClick={(e) => handleChunkClick(e.detail)}
-				on:chunkMouseEnter={(e) => handleChunkMouseEnter(e.detail)}
-				on:chunkMouseLeave={handleChunkMouseLeave}
-			/>
+			<div class="pane-container">
+				<FileChangeBanner
+					visible={showRightFileChangeBanner}
+					fileName={rightFileChangeData?.fileName || ''}
+					filePath={rightFileChangeData?.path || ''}
+					on:reload={() => dispatch('rightFileReload')}
+					on:hide={() => dispatch('rightFileHide')}
+				/>
+				<DiffPane
+					bind:this={rightPaneComponent}
+					lines={diffResult?.lines || []}
+					side="right"
+					{getChunkForLine}
+					{isFirstLineOfChunk}
+					{isLineHighlighted}
+					{isLineHovered}
+					on:scroll={syncRightScroll}
+					on:chunkClick={(e) => handleChunkClick(e.detail)}
+					on:chunkMouseEnter={(e) => handleChunkMouseEnter(e.detail)}
+					on:chunkMouseLeave={handleChunkMouseLeave}
+				/>
+			</div>
 			
 			<!-- Minimap -->
 			<Minimap
@@ -480,6 +511,15 @@ export function scrollToLine(lineIndex: number, chunkIndex?: number): void {
 		display: flex;
 		overflow: hidden;
 		position: relative;
+	}
+
+	/* Pane container for file change banners */
+	.pane-container {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		position: relative;
+		overflow: hidden;
 	}
 
 

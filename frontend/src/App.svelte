@@ -19,6 +19,8 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
+import FileChangeBanner from "./components/FileChangeBanner.svelte";
+// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FlashMessage from "./components/FlashMessage.svelte";
@@ -96,6 +98,16 @@ let _quitDialogFiles: string[] = [];
 
 // UndoManager component instance
 let undoManager: UndoManager;
+
+// File change banner state
+// biome-ignore lint/correctness/noUnusedVariables: Used in DiffViewer props
+let showLeftFileChangeBanner = false;
+// biome-ignore lint/correctness/noUnusedVariables: Used in DiffViewer props
+let showRightFileChangeBanner = false;
+// biome-ignore lint/correctness/noUnusedVariables: Used in DiffViewer props
+let leftFileChangeData: { fileName: string; path: string } | null = null;
+// biome-ignore lint/correctness/noUnusedVariables: Used in DiffViewer props
+let rightFileChangeData: { fileName: string; path: string } | null = null;
 
 // Create a reactive function for checking if a line is in the current chunk
 $: isLineHighlighted = (lineIndex: number) => {
@@ -327,6 +339,62 @@ function handleQuitDialog(unsavedFiles: string[]): void {
 	}
 }
 
+// File change detection functions
+function handleFileChangedExternally(data: {
+	path: string;
+	side: string;
+	fileName: string;
+}): void {
+	// Show banner for the appropriate side
+	if (data.side === "left") {
+		leftFileChangeData = { fileName: data.fileName, path: data.path };
+		showLeftFileChangeBanner = true;
+	} else if (data.side === "right") {
+		rightFileChangeData = { fileName: data.fileName, path: data.path };
+		showRightFileChangeBanner = true;
+	}
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template as event handler
+async function handleLeftFileReload(): Promise<void> {
+	// Hide banner
+	showLeftFileChangeBanner = false;
+	leftFileChangeData = null;
+
+	// Reload the comparison
+	try {
+		await compareBothFiles();
+	} catch (error) {
+		console.error("Error reloading comparison:", error);
+		uiStore.showFlash("Failed to reload comparison", "error");
+	}
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template as event handler
+async function handleRightFileReload(): Promise<void> {
+	// Hide banner
+	showRightFileChangeBanner = false;
+	rightFileChangeData = null;
+
+	// Reload the comparison
+	try {
+		await compareBothFiles();
+	} catch (error) {
+		console.error("Error reloading comparison:", error);
+		uiStore.showFlash("Failed to reload comparison", "error");
+	}
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template as event handler
+function handleLeftFileHide(): void {
+	showLeftFileChangeBanner = false;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Used in template as event handler
+function handleRightFileHide(): void {
+	showRightFileChangeBanner = false;
+}
+
 async function _handleSaveAndQuit(): Promise<void> {
 	const filesToSave = Object.entries(fileSelections)
 		.filter(([_, selected]) => selected)
@@ -473,6 +541,7 @@ async function compareBothFiles(
 
 					// Update copy menu items for the first diff
 					const highlightedDiffResult = get(diffStore).highlightedDiff;
+					// biome-ignore-start lint/complexity/useOptionalChain: Explicit null checking is clearer here
 					if (
 						highlightedDiffResult &&
 						highlightedDiffResult.lines[chunks[0].startIndex]
@@ -481,6 +550,7 @@ async function compareBothFiles(
 							highlightedDiffResult.lines[chunks[0].startIndex].type,
 						);
 					}
+					// biome-ignore-end lint/complexity/useOptionalChain: Explicit null checking is clearer here
 
 					// Scroll to first diff after a delay
 					setTimeout(() => {
@@ -1562,6 +1632,9 @@ onMount(async () => {
 	EventsOn("menu-copy-left", handleMenuCopyToLeft);
 	EventsOn("menu-copy-right", handleMenuCopyToRight);
 
+	// File change detection
+	EventsOn("file-changed-externally", handleFileChangedExternally);
+
 	// Check for initial files from command line
 	try {
 		const initialFiles = await GetInitialFiles();
@@ -1683,6 +1756,10 @@ function checkHorizontalScrollbar() {
     hasCompletedComparison={$uiStore.hasCompletedComparison}
     lineNumberWidth={$lineNumberWidth}
     diffChunks={$diffChunks}
+    showLeftFileChangeBanner={showLeftFileChangeBanner}
+    showRightFileChangeBanner={showRightFileChangeBanner}
+    leftFileChangeData={leftFileChangeData}
+    rightFileChangeData={rightFileChangeData}
     on:saveLeft={saveLeftFile}
     on:saveRight={saveRightFile}
     on:copyLineToLeft={(e) => copyLineToLeft(e.detail)}
@@ -1698,6 +1775,10 @@ function checkHorizontalScrollbar() {
     on:chunkLeave={_handleChunkMouseLeave}
     on:minimapClick={(e) => _handleMinimapClick(e.detail)}
     on:viewportMouseDown={(e) => _handleViewportMouseDown(e.detail)}
+    on:leftFileReload={handleLeftFileReload}
+    on:rightFileReload={handleRightFileReload}
+    on:leftFileHide={handleLeftFileHide}
+    on:rightFileHide={handleRightFileHide}
   />
 
   <!-- UndoManager (headless component) -->
