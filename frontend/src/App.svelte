@@ -460,6 +460,9 @@ async function handleLeftFileSelected(event: CustomEvent<{ path: string }>) {
 	await updateUnsavedChangesStatus();
 	diffStore.clear(); // Clear previous results
 	uiStore.resetComparisonState(); // Reset comparison state
+	// Clear any stale left-side change notification
+	showLeftFileChangeBanner = false;
+	leftFileChangeData = null;
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Used in template
@@ -474,6 +477,9 @@ async function handleRightFileSelected(event: CustomEvent<{ path: string }>) {
 	await updateUnsavedChangesStatus();
 	diffStore.clear(); // Clear previous results
 	uiStore.resetComparisonState(); // Reset comparison state
+	// Clear any stale right-side change notification
+	showRightFileChangeBanner = false;
+	rightFileChangeData = null;
 }
 
 async function compareBothFiles(
