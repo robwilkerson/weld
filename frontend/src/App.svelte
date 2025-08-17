@@ -19,8 +19,6 @@ import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
-import FileChangeBanner from "./components/FileChangeBanner.svelte";
-// biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FileSelector from "./components/FileSelector.svelte";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import FlashMessage from "./components/FlashMessage.svelte";

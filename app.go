@@ -1063,6 +1063,12 @@ func (a *App) stopFileWatchingInternal() {
 	}
 	a.leftWatchPath = ""
 	a.rightWatchPath = ""
+	// Clear debouncer entries to free memory
+	if a.changeDebouncer != nil {
+		for k := range a.changeDebouncer {
+			delete(a.changeDebouncer, k)
+		}
+	}
 }
 
 // watchFiles monitors file changes and emits events
@@ -1137,7 +1143,10 @@ func (a *App) handleFileChange(filePath string) {
 
 			if a.fileWatcher != nil {
 				if err := a.fileWatcher.Add(path); err != nil {
-					// Failed to re-watch file
+					// Log re-watch error for visibility
+					if a.ctx != nil {
+						runtime.LogErrorf(a.ctx, "Failed to re-watch file %q: %v", path, err)
+					}
 				}
 			}
 		}(filePath)
