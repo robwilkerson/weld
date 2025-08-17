@@ -130,6 +130,14 @@ export function SetUndoMenuItem(arg1) {
   return window['go']['main']['App']['SetUndoMenuItem'](arg1);
 }
 
+export function StartFileWatching(arg1, arg2) {
+  return window['go']['main']['App']['StartFileWatching'](arg1, arg2);
+}
+
+export function StopFileWatching() {
+  return window['go']['main']['App']['StopFileWatching']();
+}
+
 export function UndoLastOperation() {
   return window['go']['main']['App']['UndoLastOperation']();
 }
