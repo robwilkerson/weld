@@ -1078,10 +1078,11 @@ func (a *App) watchFiles() {
 				return
 			}
 
-			// Handle write, create, and rename events (many editors use atomic saves)
+			// Handle write, create, rename, and remove events (atomic saves)
 			if event.Op&fsnotify.Write == fsnotify.Write ||
 				event.Op&fsnotify.Create == fsnotify.Create ||
-				event.Op&fsnotify.Rename == fsnotify.Rename {
+				event.Op&fsnotify.Rename == fsnotify.Rename ||
+				event.Op&fsnotify.Remove == fsnotify.Remove {
 				a.handleFileChange(event.Name)
 			}
 
