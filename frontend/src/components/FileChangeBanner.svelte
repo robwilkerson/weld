@@ -27,13 +27,15 @@ function handleHide() {
 </script>
 
 {#if visible}
-	<div class="file-change-banner">
+	<div class="file-change-banner" role="status" aria-live="polite" aria-atomic="true">
 		<div class="banner-content">
 			<div class="icon">
 				{@html warningIcon}
 			</div>
 			<div class="message">
-				<div class="message-line"><strong>File {fileName} has changed on disk</strong></div>
+				<div class="message-line">
+					<strong title={filePath || fileName}>File {fileName} has changed on disk</strong>
+				</div>
 				<div class="message-line question">Do you want to reload the file?</div>
 			</div>
 			<div class="actions">
