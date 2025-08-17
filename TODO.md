@@ -1,19 +1,8 @@
 # Weld Development TODO List
 
-## High Priority
+**Note: This file has been deprecated in favor of [GitHub Issues](https://github.com/robwilkerson/weld/issues). All pending tasks have been migrated to the issue tracker.**
 
-### Pending
-- [ ] Fix `large-*` files issues
-  - [ ] Scrolling gets out of sync
-  - [ ] Line 26 is weird and the chunk is handled as 2 separate diffs; happens elsewhere in the file as well when there's a modified line adjacent to a new/deleted line, I think
-- [ ] Enable directory comparison since file diffs are fully featured and stable
-- [ ] Directory comparison should allow double click on a file in the directory to open a diff of that file
-- [ ] App icon
-- [ ] Publish to package managers (pending org migration)
-  - [ ] Homebrew cask (formula created, not published)
-  - [ ] Chocolatey
-  - [ ] Scoop
-  - [ ] Etc.?
+## High Priority
 
 ### Completed
 - [x] Cut v0.5.2-v0.5.5 releases with ARM64 builds and CI improvements
@@ -91,42 +80,7 @@
 
 ## Medium Priority
 
-### Pending
-- [ ] Fix Go menu items disabled on Linux (GTK menu refresh issue)
-- [ ] Add an unsaved indicator
-- [ ] Search/Find functionality - Add ability to search within the diff (Ctrl+F) for large files
-- [ ] Upgrade Svelte and vite to the latest version (and all that entails)
-  * Related to [PR #7](https://github.com/robwilkerson/weld/pull/7)
-- [ ] Enable performant syntax highlighting
-- [ ] Review backend test coverage and add quality tests to improve coverage from 58%
-
 ## Low Priority
-
-### Pending
-- [ ] Extract save button logic from DiffViewer into separate component
-- [ ] Review DiffViewer.svelte for further extraction opportunities (currently 706 lines)
-- [ ] Consider creating a DiffViewerToolbar component (combine save buttons and file headers)
-- [ ] Fix flicker when copying lines (diff navigation reset)
-- [ ] Create a dedicated DiffOperations service/module
-- [ ] Extract file operation handlers into a separate module
-- [ ] Create a dedicated MenuBar component
-- [ ] Investigate tooltip display consistency issue
-- [ ] Extract syntax highlighting logic into a separate service
-- [ ] Recently compared files - Quick access to recent file pairs for faster re-comparison
-- [ ] Support custom themes - Allow users to customize colors and appearance
-- [ ] Redo functionality
-- [ ] Undo multiple (up to 50, perhaps)
-- [ ] Optionally display a status bar
-  - [ ] Current file's lines added, removed, modified
-  - [ ] File charset
-  - [ ] File type (go, ruby, etc.)
-  - [ ] Load/processing times (useful for large files)
-    - [ ] time to open the files
-    - [ ] time to evaluate the diffs
-    - [ ] time to display
-    - [ ] ...
-- [ ] Make the file content editable directly
-- [ ] Implement E2E tests in CI for Linux and Windows platforms (currently macOS only)
 
 ### Completed
 - [x] Move error styles to ErrorMessage component (reduced App.svelte by 31 lines)
