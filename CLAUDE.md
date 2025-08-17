@@ -245,15 +245,18 @@ Examples:
 
 ### Task Management
 
-* **TODO.md is the canonical todo list** - keep it updated as tasks are completed or added
-* When completing a task, move it to the appropriate "Completed" section
-* When finding new bugs or needed improvements, add them to the appropriate priority section
-* Use checkbox format: `- [ ]` for pending, `- [x]` for completed
-* **Always update TODO.md** when:
-  - Starting work on a new task
-  - Completing a task
-  - Discovering new work that needs to be done
-  - Moving tasks between priority levels
+* **GitHub Issues are the canonical task list** - all work is tracked as issues
+* **Creating GitHub Issues**:
+  - Every issue MUST have one of these labels: `BUG 🐛`, `FEATURE ✨`, or `TASK 🧹`
+  - Add additional labels for categorization (e.g., `🐧 linux`, `🎨 ui/design`, `🏗️ refactor`)
+  - Use priority labels when appropriate: `🚨 priority: high`, `🤷 priority: low`
+  - Include detailed descriptions with context, examples, and acceptance criteria
+  - Use `gh issue create` command for consistency
+* **Issue Management**:
+  - Check for existing issues before creating new ones: `gh issue list --search "keywords"`
+  - Reference issue numbers in commits and PRs (e.g., "fixes #123")
+  - Close issues automatically via PR descriptions using keywords like "Closes #123"
+* **TODO.md** has been deprecated - see note at top of file
 
 ### Post-Merge Cleanup
 
