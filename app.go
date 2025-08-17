@@ -1029,6 +1029,11 @@ func (a *App) StartFileWatching(leftPath, rightPath string) {
 	a.leftWatchPath = leftPath
 	a.rightWatchPath = rightPath
 
+	// Initialize debouncer if not already done
+	if a.changeDebouncer == nil {
+		a.changeDebouncer = make(map[string]time.Time)
+	}
+
 	// Start watching in a goroutine
 	go a.watchFiles()
 
@@ -1139,10 +1144,12 @@ func (a *App) handleFileChange(filePath string) {
 
 	a.watcherMutex.Unlock()
 
-	// Emit event to frontend
-	runtime.EventsEmit(a.ctx, "file-changed-externally", map[string]string{
-		"path":     filePath,
-		"side":     side,
-		"fileName": fileName,
-	})
+	// Emit event to frontend (only if we have a valid context)
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "file-changed-externally", map[string]string{
+			"path":     filePath,
+			"side":     side,
+			"fileName": fileName,
+		})
+	}
 }
