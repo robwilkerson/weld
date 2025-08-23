@@ -783,8 +783,8 @@ func (a *App) StartFileWatching(leftPath, rightPath string) {
 		a.changeDebouncer = make(map[string]time.Time)
 	}
 
-	// Start watching in a goroutine
-	go a.watchFiles()
+	// Start watching in a goroutine with the watcher passed as parameter
+	go a.watchFiles(watcher)
 
 	// Add paths to watcher
 	if err := watcher.Add(leftPath); err != nil {
@@ -821,16 +821,7 @@ func (a *App) stopFileWatchingInternal() {
 }
 
 // watchFiles monitors file changes and emits events
-func (a *App) watchFiles() {
-	// Get a local reference to the watcher under lock
-	a.watcherMutex.Lock()
-	watcher := a.fileWatcher
-	a.watcherMutex.Unlock()
-	
-	if watcher == nil {
-		return
-	}
-
+func (a *App) watchFiles(watcher *fsnotify.Watcher) {
 	for {
 		select {
 		case event, ok := <-watcher.Events:
