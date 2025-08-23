@@ -228,6 +228,12 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 
 	var lines []string
 	scanner := bufio.NewScanner(file)
+	// Increase buffer size to handle long lines (e.g., minified files)
+	// Default is 64KB, we set to 1MB to handle most practical cases
+	const maxScanTokenSize = 1024 * 1024 // 1MB
+	buf := make([]byte, 0, 64*1024)      // Initial buffer size 64KB
+	scanner.Buffer(buf, maxScanTokenSize)
+	
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
