@@ -109,6 +109,8 @@ func TestApp_CompareFiles(t *testing.T) {
 	app := &App{
 		diffAlgorithm: diff.NewLCSDefault(),
 	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 
 	// Create temporary files
 	tempDir := t.TempDir()
@@ -655,6 +657,8 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 	app := &App{
 		diffAlgorithm: diff.NewLCSDefault(),
 	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 
 	t.Run("error reading right file", func(t *testing.T) {
 		// Create left file but not right file
@@ -887,6 +891,8 @@ func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
 	app := &App{
 		diffAlgorithm: diff.NewLCSDefault(),
 	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	testDir := t.TempDir()
 
 	// Create a binary file
@@ -937,6 +943,8 @@ func TestApp_EndToEndDiffWorkflow(t *testing.T) {
 	app := &App{
 		diffAlgorithm: diff.NewLCSDefault(),
 	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	tempDir := t.TempDir()
 
 	// Create test files with realistic diff scenario
@@ -1022,6 +1030,8 @@ func TestApp_CompareFiles_TextAndHTML(t *testing.T) {
 	app := &App{
 		diffAlgorithm: diff.NewLCSDefault(),
 	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	tempDir := t.TempDir()
 
 	// Create a plain text file
