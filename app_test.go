@@ -27,7 +27,9 @@ func TestApp_ReadFileContent(t *testing.T) {
 
 	// Test reading non-existent file
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := app.ReadFileContent("/path/to/nonexistent/file.txt")
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		_, err := app.ReadFileContent(nonExistentFile)
 		if err == nil {
 			t.Error("ReadFileContent should return error for non-existent file")
 		}
@@ -200,7 +202,10 @@ func TestApp_CompareFiles(t *testing.T) {
 
 	// Test non-existent file
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := app.CompareFiles("/nonexistent/file1.txt", "/nonexistent/file2.txt")
+		tempDir := t.TempDir()
+		nonExistentFile1 := filepath.Join(tempDir, "nonexistent", "file1.txt")
+		nonExistentFile2 := filepath.Join(tempDir, "nonexistent", "file2.txt")
+		_, err := app.CompareFiles(nonExistentFile1, nonExistentFile2)
 		if err == nil {
 			t.Error("CompareFiles should return error for non-existent files")
 		}
@@ -292,7 +297,9 @@ func TestApp_CopyToFile(t *testing.T) {
 
 	// Test copying to non-existent file
 	t.Run("copy to non-existent file", func(t *testing.T) {
-		err := app.CopyToFile(sourceFile, "/nonexistent/target.txt", 1, "test")
+		tempDir := t.TempDir()
+		nonExistentTarget := filepath.Join(tempDir, "nonexistent", "target.txt")
+		err := app.CopyToFile(sourceFile, nonExistentTarget, 1, "test")
 		if err == nil {
 			t.Error("CopyToFile should return error for non-existent target file")
 		}
@@ -387,7 +394,9 @@ func TestApp_RemoveLineFromFile(t *testing.T) {
 
 	// Test removing from non-existent file
 	t.Run("remove from non-existent file", func(t *testing.T) {
-		err := app.RemoveLineFromFile("/nonexistent/file.txt", 1)
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		err := app.RemoveLineFromFile(nonExistentFile, 1)
 		if err == nil {
 			t.Error("RemoveLineFromFile should return error for non-existent file")
 		}
@@ -451,7 +460,8 @@ func TestApp_SaveChanges(t *testing.T) {
 
 	// Test saving to non-existent directory
 	t.Run("save to non-existent directory", func(t *testing.T) {
-		nonExistentFile := "/nonexistent/directory/file.txt"
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "directory", "file.txt")
 		err := app.storeFileInMemory(nonExistentFile, []string{"test"})
 		if err != nil {
 			t.Errorf("storeFileInMemory returned error: %v", err)
@@ -669,7 +679,7 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create left file: %v", err)
 		}
 
-		nonExistentRight := "/nonexistent/right.txt"
+		nonExistentRight := filepath.Join(tempDir, "nonexistent", "right.txt")
 
 		_, err = app.CompareFiles(leftFile, nonExistentRight)
 		if err == nil {
@@ -697,7 +707,7 @@ func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
 		}
 
 		// Try to copy to non-existent directory
-		nonExistentTarget := "/nonexistent/directory/target.txt"
+		nonExistentTarget := filepath.Join(tempDir, "nonexistent", "directory", "target.txt")
 
 		err = app.CopyToFile(sourceFile, nonExistentTarget, 1, "test content")
 		if err == nil {
@@ -735,8 +745,9 @@ func TestApp_SaveChanges_ErrorHandling(t *testing.T) {
 	}
 
 	t.Run("save to non-existent directory", func(t *testing.T) {
+		tempDir := t.TempDir()
 		// Add content to cache for non-existent directory
-		nonExistentFile := "/nonexistent/directory/file.txt"
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "directory", "file.txt")
 		fileCache = make(map[string][]string)
 		fileCache[nonExistentFile] = []string{"content"}
 
@@ -766,7 +777,9 @@ func TestApp_RemoveLineFromFile_ErrorHandling(t *testing.T) {
 	}
 
 	t.Run("remove from non-existent file", func(t *testing.T) {
-		err := app.RemoveLineFromFile("/nonexistent/file.txt", 1)
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		err := app.RemoveLineFromFile(nonExistentFile, 1)
 		if err == nil {
 			t.Error("RemoveLineFromFile should return error for non-existent file")
 		}
