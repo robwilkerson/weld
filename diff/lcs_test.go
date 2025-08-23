@@ -522,6 +522,146 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
+// TestIssue54_AdjacentChanges tests the scenario from issue #54 where
+// adjacent modified/new/deleted lines should be grouped together
+func TestIssue54_AdjacentChanges(t *testing.T) {
+	lcs := NewLCSDefault()
+
+	t.Run("modified line adjacent to deleted line", func(t *testing.T) {
+		// Simulating the scenario where we have:
+		// - A line that's removed
+		// - A line that's modified (removed+added that are similar)
+		// These should ideally be grouped as one chunk
+		left := []string{
+			"function test() {",
+			"  const a = 1;",
+			"  const b = 2;",
+			"  return a + b;",
+			"}",
+		}
+		right := []string{
+			"function test() {",
+			"  const a = 10;", // modified
+			// const b = 2 is deleted
+			"  return a;", // modified
+			"}",
+		}
+
+		result := lcs.ComputeDiff(left, right)
+		
+		// Count the different types of changes
+		var changeGroups [][]DiffLine
+		var currentGroup []DiffLine
+		
+		for _, line := range result.Lines {
+			if line.Type != "same" {
+				currentGroup = append(currentGroup, line)
+			} else if len(currentGroup) > 0 {
+				changeGroups = append(changeGroups, currentGroup)
+				currentGroup = nil
+			}
+		}
+		if len(currentGroup) > 0 {
+			changeGroups = append(changeGroups, currentGroup)
+		}
+
+		// Currently this creates multiple groups, but ideally should be one
+		// This test documents the current behavior
+		if len(changeGroups) < 1 {
+			t.Error("Expected at least one change group")
+		}
+
+		// Log the actual behavior for visibility
+		t.Logf("Found %d change groups (issue #54 suggests these should be grouped as 1)", len(changeGroups))
+		for i, group := range changeGroups {
+			t.Logf("Group %d:", i+1)
+			for _, line := range group {
+				t.Logf("  Type: %s, Left: %q, Right: %q", line.Type, line.LeftLine, line.RightLine)
+			}
+		}
+	})
+
+	t.Run("modified line adjacent to added line", func(t *testing.T) {
+		left := []string{
+			"const config = {",
+			"  name: 'test',",
+			"  version: '1.0.0'",
+			"};",
+		}
+		right := []string{
+			"const config = {",
+			"  name: 'test-modified',", // modified
+			"  description: 'A test',",  // added
+			"  version: '2.0.0'",        // modified
+			"};",
+		}
+
+		result := lcs.ComputeDiff(left, right)
+
+		// Find sequences of non-same lines
+		inChangeBlock := false
+		changeBlockCount := 0
+		
+		for _, line := range result.Lines {
+			if line.Type != "same" {
+				if !inChangeBlock {
+					changeBlockCount++
+					inChangeBlock = true
+				}
+			} else {
+				inChangeBlock = false
+			}
+		}
+
+		// This documents that adjacent changes are currently split
+		t.Logf("Adjacent modified/added lines create %d change block(s)", changeBlockCount)
+		
+		// Once issue #54 is fixed, this should be:
+		// if changeBlockCount != 1 {
+		//     t.Errorf("Expected 1 change block for adjacent changes, got %d", changeBlockCount)
+		// }
+	})
+
+	t.Run("multiple adjacent modifications", func(t *testing.T) {
+		// This is the exact scenario mentioned in issue #54
+		left := []string{
+			"line 24",
+			"line 25",
+			"line 26", // will be modified
+			"line 27", // will be deleted
+			"line 28",
+		}
+		right := []string{
+			"line 24",
+			"line 25",
+			"line 26 modified", // modified
+			// line 27 deleted
+			"line 27.5 new", // added
+			"line 28",
+		}
+
+		result := lcs.ComputeDiff(left, right)
+
+		// Check how the diff algorithm handles this
+		var diffSequence []string
+		for _, line := range result.Lines {
+			if line.Type != "same" {
+				diffSequence = append(diffSequence, line.Type)
+			}
+		}
+
+		t.Logf("Diff sequence for adjacent changes: %v", diffSequence)
+		// Currently might produce: [removed, removed, added, added]
+		// After fix should produce a single chunk with proper modification detection
+		
+		// TODO: When we fix issue #54, uncomment this assertion:
+		// expectedSequence := []string{"modified", "removed", "added"}
+		// if !reflect.DeepEqual(diffSequence, expectedSequence) {
+		//     t.Errorf("Expected sequence %v, got %v", expectedSequence, diffSequence)
+		// }
+	})
+}
+
 func TestLCS_EdgeCases(t *testing.T) {
 	lcs := NewLCSDefault()
 
