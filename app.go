@@ -179,6 +179,11 @@ func IsBinaryFile(filepath string) (bool, error) {
 		return false, err
 	}
 
+	// Empty files are considered text
+	if n == 0 {
+		return false, nil
+	}
+
 	// Check for null bytes, which are a strong indicator of binary content
 	for i := 0; i < n; i++ {
 		if buf[i] == 0 {
