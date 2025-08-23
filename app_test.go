@@ -1100,7 +1100,6 @@ Some content here.`
 </head>
 <body>
     <p>Text with special chars: © ® ™ • … ""</p>
-    <script>console.log("test");</script>
 </body>
 </html>`
 

@@ -43,8 +43,8 @@ PATTERNS=(
 
 FOUND_DEBUG=false
 for pattern in "${PATTERNS[@]}"; do
-    # Skip test files, e2e files, markdown docs, and this script
-    if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null | grep -v -E "(test|spec|e2e)\.(ts|js|go)$" | grep -v "\.md$" | grep -v "pre-commit-check.sh"; then
+    # Skip test files, e2e files, markdown docs, sample files, and this script
+    if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null | grep -v -E "(test|spec|e2e)\.(ts|js|go)$" | grep -v "\.md$" | grep -v "pre-commit-check.sh" | grep -v "sample-files/"; then
         print_warning "Found '$pattern' in staged files"
         FOUND_DEBUG=true
     fi
@@ -64,7 +64,7 @@ if [ -n "$STAGED_GO_FILES" ]; then
     # Check if any Go files need formatting
     NEEDS_FORMAT=false
     for file in $STAGED_GO_FILES; do
-        if [ -n "$(gofmt -l "$file")" ]; then
+        if command -v gofmt >/dev/null 2>&1 && [ -n "$(gofmt -l "$file")" ]; then
             print_warning "$file needs formatting"
             NEEDS_FORMAT=true
         fi

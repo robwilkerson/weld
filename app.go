@@ -238,7 +238,7 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 	const maxScanTokenSize = 1024 * 1024 // 1MB
 	buf := make([]byte, 0, 64*1024)      // Initial buffer size 64KB
 	scanner.Buffer(buf, maxScanTokenSize)
-	
+
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
