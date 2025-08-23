@@ -84,7 +84,7 @@ jobs:
     # Install Wails (Linux/macOS)
     - name: Install Wails (Linux/macOS)
       if: matrix.os != 'windows-latest'
-      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
     
     # Install Wails (Windows)
     - name: Install Wails (Windows)
@@ -93,7 +93,7 @@ jobs:
       run: |
         Write-Host "Installing Wails on Windows..."
         try {
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
           Write-Host "Wails installation completed"
           
           # Verify installation

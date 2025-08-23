@@ -364,3 +364,11 @@ The pre-commit script will:
   * **Bun**: See [installation instructions](https://bun.sh/docs/installation) (e.g., `brew install oven-sh/bun/bun` on macOS)
   * **Just**: See [installation options](https://github.com/casey/just#installation) (e.g., `brew install just` on macOS)
 * Run `wails doctor` after setup to verify environment
+
+## Claude AI Environment Note
+
+If Claude cannot run `go`, `node`, or other mise-managed tools directly:
+- User should run `mise reshim` in their terminal 
+- This makes the tools available in Claude's environment
+- Claude running `mise reshim` itself doesn't fix the PATH issue
+- Once fixed, tools can be used directly without `mise exec` wrapper
