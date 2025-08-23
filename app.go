@@ -822,13 +822,18 @@ func (a *App) stopFileWatchingInternal() {
 
 // watchFiles monitors file changes and emits events
 func (a *App) watchFiles() {
-	if a.fileWatcher == nil {
+	// Get a local reference to the watcher under lock
+	a.watcherMutex.Lock()
+	watcher := a.fileWatcher
+	a.watcherMutex.Unlock()
+	
+	if watcher == nil {
 		return
 	}
 
 	for {
 		select {
-		case event, ok := <-a.fileWatcher.Events:
+		case event, ok := <-watcher.Events:
 			if !ok {
 				return
 			}
@@ -841,7 +846,7 @@ func (a *App) watchFiles() {
 				a.handleFileChange(event.Name)
 			}
 
-		case _, ok := <-a.fileWatcher.Errors:
+		case _, ok := <-watcher.Errors:
 			if !ok {
 				return
 			}
