@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// LCS implements the Longest Common Subsequence diff algorithm
+// LCS implements the Longest Common Subsequence diff algorithm.
 type LCS struct {
 	config Config
 }
