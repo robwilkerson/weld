@@ -1,23 +1,4 @@
-export namespace keys {
-	
-	export class Accelerator {
-	    Key: string;
-	    Modifiers: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new Accelerator(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Key = source["Key"];
-	        this.Modifiers = source["Modifiers"];
-	    }
-	}
-
-}
-
-export namespace main {
+export namespace diff {
 	
 	export class DiffLine {
 	    leftLine: string;
@@ -69,6 +50,30 @@ export namespace main {
 		    return a;
 		}
 	}
+
+}
+
+export namespace keys {
+	
+	export class Accelerator {
+	    Key: string;
+	    Modifiers: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Accelerator(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Key = source["Key"];
+	        this.Modifiers = source["Modifiers"];
+	    }
+	}
+
+}
+
+export namespace main {
+	
 	export class InitialFiles {
 	    leftFile: string;
 	    rightFile: string;

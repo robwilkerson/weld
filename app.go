@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,19 +14,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"weld/diff"
 )
 
-type DiffLine struct {
-	LeftLine    string `json:"leftLine"`
-	RightLine   string `json:"rightLine"`
-	LeftNumber  int    `json:"leftNumber"`
-	RightNumber int    `json:"rightNumber"`
-	Type        string `json:"type"` // "same", "added", "removed", "modified"
-}
+// DiffLine is now imported from the diff package
+type DiffLine = diff.DiffLine
 
-type DiffResult struct {
-	Lines []DiffLine `json:"lines"`
-}
+// DiffResult is now imported from the diff package
+type DiffResult = diff.DiffResult
 
 // Undo operation types
 type OperationType string
@@ -89,6 +83,9 @@ type App struct {
 	leftWatchPath   string
 	rightWatchPath  string
 	changeDebouncer map[string]time.Time
+
+	// Diff algorithm
+	diffAlgorithm diff.Algorithm
 }
 
 // NewApp creates a new App application struct
@@ -96,6 +93,7 @@ func NewApp() *App {
 	return &App{
 		changeDebouncer: make(map[string]time.Time),
 		minimapVisible:  true, // Default to showing minimap
+		diffAlgorithm:   diff.NewLCSDefault(),
 	}
 }
 
@@ -277,267 +275,12 @@ func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 		return nil, fmt.Errorf("file too large for comparison (max %d lines)", maxLines)
 	}
 
-	result := a.computeDiff(leftLines, rightLines)
+	result := a.diffAlgorithm.ComputeDiff(leftLines, rightLines)
 
 	// Start watching these files for changes
 	a.StartFileWatching(leftPath, rightPath)
 
 	return result, nil
-}
-
-func (a *App) computeDiff(leftLines, rightLines []string) *DiffResult {
-
-	// Compute the LCS table
-	m, n := len(leftLines), len(rightLines)
-	lcs := make([][]int, m+1)
-	for i := range lcs {
-		lcs[i] = make([]int, n+1)
-	}
-
-	// Fill the LCS table
-	for i := 1; i <= m; i++ {
-		for j := 1; j <= n; j++ {
-			if leftLines[i-1] == rightLines[j-1] {
-				lcs[i][j] = lcs[i-1][j-1] + 1
-			} else {
-				if lcs[i-1][j] > lcs[i][j-1] {
-					lcs[i][j] = lcs[i-1][j]
-				} else {
-					lcs[i][j] = lcs[i][j-1]
-				}
-			}
-		}
-	}
-
-	// Backtrack to build the diff
-	result := &DiffResult{Lines: []DiffLine{}}
-	i, j := m, n
-	var diffLines []DiffLine
-
-	for i > 0 || j > 0 {
-		if i > 0 && j > 0 && leftLines[i-1] == rightLines[j-1] {
-			// Lines match
-			diffLines = append(diffLines, DiffLine{
-				LeftLine:    leftLines[i-1],
-				RightLine:   rightLines[j-1],
-				LeftNumber:  i,
-				RightNumber: j,
-				Type:        "same",
-			})
-			i--
-			j--
-		} else if j > 0 && (i == 0 || lcs[i][j-1] >= lcs[i-1][j]) {
-			// Line added in right
-			diffLines = append(diffLines, DiffLine{
-				LeftLine:    "",
-				RightLine:   rightLines[j-1],
-				LeftNumber:  0,
-				RightNumber: j,
-				Type:        "added",
-			})
-			j--
-		} else if i > 0 {
-			// Line removed from left
-			diffLines = append(diffLines, DiffLine{
-				LeftLine:    leftLines[i-1],
-				RightLine:   "",
-				LeftNumber:  i,
-				RightNumber: 0,
-				Type:        "removed",
-			})
-			i--
-		}
-	}
-
-	// Reverse the diff lines (we built them backwards)
-	for i := len(diffLines) - 1; i >= 0; i-- {
-		result.Lines = append(result.Lines, diffLines[i])
-	}
-
-	// Post-process to detect modifications (removed followed by added)
-	result = a.detectModifications(result)
-
-	return result
-}
-
-// detectModifications post-processes diff results to find removed+added pairs that should be modifications
-func (a *App) detectModifications(result *DiffResult) *DiffResult {
-	newLines := []DiffLine{}
-	i := 0
-
-	for i < len(result.Lines) {
-		// Look for sequences of removed lines that might be followed by added lines
-		if i < len(result.Lines) && result.Lines[i].Type == "removed" {
-			// Count consecutive removed lines
-			var removedLines []DiffLine
-			for i < len(result.Lines) && result.Lines[i].Type == "removed" {
-				removedLines = append(removedLines, result.Lines[i])
-				i++
-			}
-
-			// Check if we have the same number of added lines following
-			if i < len(result.Lines) && result.Lines[i].Type == "added" {
-				addedStart := i
-				var addedLines []DiffLine
-				for i < len(result.Lines) && result.Lines[i].Type == "added" && len(addedLines) < len(removedLines) {
-					addedLines = append(addedLines, result.Lines[i])
-					i++
-				}
-
-				// If we have matching counts and all are similar, treat as modifications
-				if len(removedLines) == len(addedLines) {
-					allSimilar := true
-					for j := 0; j < len(removedLines); j++ {
-						if !a.areSimilarLines(removedLines[j].LeftLine, addedLines[j].RightLine) {
-							allSimilar = false
-							break
-						}
-					}
-
-					if allSimilar {
-						// Create modified lines with matching line numbers
-						for j := 0; j < len(removedLines); j++ {
-							newLines = append(newLines, DiffLine{
-								LeftLine:    removedLines[j].LeftLine,
-								RightLine:   addedLines[j].RightLine,
-								LeftNumber:  removedLines[j].LeftNumber,
-								RightNumber: addedLines[j].RightNumber, // Use the actual right line number
-								Type:        "modified",
-							})
-						}
-						continue
-					}
-				}
-
-				// Not all modifications - add removed lines and rewind to handle added lines
-				for _, line := range removedLines {
-					newLines = append(newLines, line)
-				}
-				i = addedStart
-				continue
-			}
-
-			// Just removed lines with no added lines following
-			for _, line := range removedLines {
-				newLines = append(newLines, line)
-			}
-			continue
-		}
-
-		// Handle all other lines
-		newLines = append(newLines, result.Lines[i])
-		i++
-	}
-
-	result.Lines = newLines
-	return result
-}
-
-// areSimilarLines checks if two lines are similar enough to be considered a modification
-func (a *App) areSimilarLines(left, right string) bool {
-	// If either is empty (including both empty), they're not similar
-	if left == "" || right == "" {
-		return false
-	}
-
-	// For whitespace-only differences, trim and compare
-	leftTrimmed := strings.TrimSpace(left)
-	rightTrimmed := strings.TrimSpace(right)
-	if leftTrimmed == rightTrimmed {
-		return true
-	}
-
-	// Calculate similarity using Levenshtein distance ratio
-	distance := a.levenshteinDistance(left, right)
-
-	// Use rune length for proper Unicode handling
-	leftLen := len([]rune(left))
-	rightLen := len([]rune(right))
-	maxLen := leftLen
-	if rightLen > maxLen {
-		maxLen = rightLen
-	}
-
-	// If lines are very short, require exact match
-	if maxLen < 4 {
-		return left == right
-	}
-
-	// Calculate similarity ratio (1.0 = identical, 0.0 = completely different)
-	similarity := 1.0 - float64(distance)/float64(maxLen)
-
-	// Consider lines similar if they're at least 50% similar
-	return similarity >= 0.50
-}
-
-// levenshteinDistance calculates the edit distance between two strings
-func (a *App) levenshteinDistance(s1, s2 string) int {
-	// Convert strings to rune slices for proper Unicode handling
-	r1 := []rune(s1)
-	r2 := []rune(s2)
-
-	if len(r1) == 0 {
-		return len(r2)
-	}
-	if len(r2) == 0 {
-		return len(r1)
-	}
-
-	// Create a 2D slice for dynamic programming
-	d := make([][]int, len(r1)+1)
-	for i := range d {
-		d[i] = make([]int, len(r2)+1)
-	}
-
-	// Initialize first column and row
-	for i := 0; i <= len(r1); i++ {
-		d[i][0] = i
-	}
-	for j := 0; j <= len(r2); j++ {
-		d[0][j] = j
-	}
-
-	// Fill the matrix
-	for i := 1; i <= len(r1); i++ {
-		for j := 1; j <= len(r2); j++ {
-			cost := 0
-			if r1[i-1] != r2[j-1] {
-				cost = 1
-			}
-
-			d[i][j] = min(
-				d[i-1][j]+1,      // deletion
-				d[i][j-1]+1,      // insertion
-				d[i-1][j-1]+cost, // substitution
-			)
-		}
-	}
-
-	return d[len(r1)][len(r2)]
-}
-
-// min returns the minimum of three integers
-func min(a, b, c int) int {
-	if a < b {
-		if a < c {
-			return a
-		}
-		return c
-	}
-	if b < c {
-		return b
-	}
-	return c
-}
-
-func (a *App) findNextMatch(lines []string, startIdx int, target string) int {
-	// Look ahead up to 50 lines to find a match (increased from 10 to handle larger insertions)
-	for i := startIdx; i < len(lines) && i < startIdx+50; i++ {
-		if strings.TrimSpace(lines[i]) == strings.TrimSpace(target) {
-			return i
-		}
-	}
-	return -1
 }
 
 // CopyToFile copies a line from one file to another in memory
