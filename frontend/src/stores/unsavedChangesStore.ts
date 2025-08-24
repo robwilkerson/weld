@@ -20,23 +20,27 @@ function createUnsavedChangesStore() {
 	// Update unsaved changes status for both files
 	async function updateStatus(): Promise<void> {
 		const { leftFilePath, rightFilePath } = get(fileStore);
-		let hasUnsavedLeft = false;
-		let hasUnsavedRight = false;
+		try {
+			const [hasUnsavedLeft, hasUnsavedRight] = await Promise.all([
+				leftFilePath ? HasUnsavedChanges(leftFilePath) : Promise.resolve(false),
+				rightFilePath
+					? HasUnsavedChanges(rightFilePath)
+					: Promise.resolve(false),
+			]);
 
-		if (leftFilePath) {
-			hasUnsavedLeft = await HasUnsavedChanges(leftFilePath);
+			set({
+				hasUnsavedLeftChanges: hasUnsavedLeft,
+				hasUnsavedRightChanges: hasUnsavedRight,
+			});
+
+			await UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight);
+		} catch (e) {
+			// Fail safe to a known state and keep the menu consistent
+			set({ hasUnsavedLeftChanges: false, hasUnsavedRightChanges: false });
+			await UpdateSaveMenuItems(false, false);
+			// Optional: surface via a UI store if desired instead of console
+			console.error("Failed to update unsaved changes status:", e);
 		}
-		if (rightFilePath) {
-			hasUnsavedRight = await HasUnsavedChanges(rightFilePath);
-		}
-
-		set({
-			hasUnsavedLeftChanges: hasUnsavedLeft,
-			hasUnsavedRightChanges: hasUnsavedRight,
-		});
-
-		// Update the menu items
-		await UpdateSaveMenuItems(hasUnsavedLeft, hasUnsavedRight);
 	}
 
 	// Save the left file
@@ -62,13 +66,14 @@ function createUnsavedChangesStore() {
 		const state = get({ subscribe });
 		const { leftFilePath, rightFilePath } = get(fileStore);
 
+		const ops: Array<Promise<unknown>> = [];
 		if (state.hasUnsavedLeftChanges && leftFilePath) {
-			await SaveChanges(leftFilePath);
+			ops.push(SaveChanges(leftFilePath));
 		}
 		if (state.hasUnsavedRightChanges && rightFilePath) {
-			await SaveChanges(rightFilePath);
+			ops.push(SaveChanges(rightFilePath));
 		}
-
+		await Promise.allSettled(ops);
 		await updateStatus();
 	}
 

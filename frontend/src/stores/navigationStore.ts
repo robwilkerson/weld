@@ -223,7 +223,7 @@ export const navigationState = derived(
 
 // Auto-update menu items when navigation state changes
 navigationState.subscribe(($navState) => {
-	UpdateDiffNavigationMenuItems(
+	void UpdateDiffNavigationMenuItems(
 		$navState.canNavigatePrev,
 		$navState.canNavigateNext,
 		$navState.canNavigateFirst,
