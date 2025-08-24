@@ -4,6 +4,7 @@ import {
 	SaveChanges,
 	UpdateSaveMenuItems,
 } from "../../wailsjs/go/backend/App.js";
+import { logError } from "../utils/log";
 import { fileStore } from "./fileStore";
 
 interface UnsavedChangesState {
@@ -38,8 +39,8 @@ function createUnsavedChangesStore() {
 			// Fail safe to a known state and keep the menu consistent
 			set({ hasUnsavedLeftChanges: false, hasUnsavedRightChanges: false });
 			await UpdateSaveMenuItems(false, false);
-			// Optional: surface via a UI store if desired instead of console
-			console.error("Failed to update unsaved changes status:", e);
+			// Optional: surface via a UI store if desired
+			logError("Failed to update unsaved changes status:", e);
 		}
 	}
 
