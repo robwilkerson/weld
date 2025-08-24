@@ -196,17 +196,6 @@ Test files - primarily used for manual testing - are located in `resources/sampl
   * Components imported but only used in templates (marked as unused imports)
   * Type imports that Biome suggests converting to `import type` but are actually used as components
 
-### Manual Testing Notification
-
-When manual testing or user approval is needed, notify the user with:
-```bash
-terminal-notifier -title "ClaudeAI | Weld" -group WELD -message "[Brief description of what needs testing/approval]" -sound default
-```
-
-Examples:
-- `terminal-notifier -title "ClaudeAI | Weld" -group WELD -message "Ready to test: Menu component extraction" -sound default`
-- `terminal-notifier -title "ClaudeAI | Weld" -group WELD -message "Please review: CSS moved to DiffViewer" -sound default`
-- `terminal-notifier -title "ClaudeAI | Weld" -group WELD -message "Manual test needed: File comparison banners" -sound default`
 
 ### Component Architecture
 
