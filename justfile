@@ -18,13 +18,9 @@ build:
     @echo "To install the CLI tool, users can run:"
     @echo "  /Applications/Weld.app/Contents/Resources/install-cli.sh"
 
-# Run in development mode (normal output - works around v2.10.1 bug)
+# Run in development mode
 dev:
-    wails dev -loglevel Info
-
-# Run in debug mode (verbose output with DEB and TRA messages)
-debug:
-    wails dev -loglevel Debug
+    wails dev
 
 # Stop all running wails dev servers
 stop:
