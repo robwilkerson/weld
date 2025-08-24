@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import FileSelector from "./FileSelector.svelte";
 
 // Mock the Wails API
-vi.mock("../../wailsjs/go/main/App.js", () => ({
+vi.mock("../../wailsjs/go/backend/App.js", () => ({
 	SelectFile: vi.fn(),
 }));
 
@@ -18,7 +18,7 @@ vi.mock("../utils/fileIcons.js", () => ({
 	}),
 }));
 
-import { SelectFile } from "../../wailsjs/go/main/App.js";
+import { SelectFile } from "../../wailsjs/go/backend/App.js";
 
 describe("FileSelector", () => {
 	beforeEach(() => {

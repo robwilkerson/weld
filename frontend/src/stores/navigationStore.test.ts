@@ -5,7 +5,7 @@ import { diffChunks, diffStore } from "./diffStore";
 import { navigationState, navigationStore } from "./navigationStore";
 
 // Mock the Wails API
-vi.mock("../../wailsjs/go/main/App.js", () => ({
+vi.mock("../../wailsjs/go/backend/App.js", () => ({
 	UpdateDiffNavigationMenuItems: vi.fn(),
 }));
 
@@ -533,7 +533,7 @@ describe("navigationStore", () => {
 
 		it("should update menu items when state changes", async () => {
 			const { UpdateDiffNavigationMenuItems } = await import(
-				"../../wailsjs/go/main/App.js"
+				"../../wailsjs/go/backend/App.js"
 			);
 
 			// Clear previous calls

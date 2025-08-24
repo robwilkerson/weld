@@ -1,5 +1,5 @@
 import { derived, get } from "svelte/store";
-import { UpdateDiffNavigationMenuItems } from "../../wailsjs/go/main/App.js";
+import { UpdateDiffNavigationMenuItems } from "../../wailsjs/go/backend/App.js";
 import { diffChunks, diffStore } from "./diffStore";
 
 interface NavigationCallbacks {

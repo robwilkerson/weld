@@ -4,7 +4,7 @@ import {
 	CanUndo,
 	GetLastOperationDescription,
 	UndoLastOperation,
-} from "../../wailsjs/go/main/App";
+} from "../../wailsjs/go/backend/App";
 import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 
 export interface UndoManagerEvents {

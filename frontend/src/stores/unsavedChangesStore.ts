@@ -3,7 +3,7 @@ import {
 	HasUnsavedChanges,
 	SaveChanges,
 	UpdateSaveMenuItems,
-} from "../../wailsjs/go/main/App.js";
+} from "../../wailsjs/go/backend/App.js";
 import { fileStore } from "./fileStore";
 
 interface UnsavedChangesState {

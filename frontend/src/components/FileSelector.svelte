@@ -1,6 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import { SelectFile } from "../../wailsjs/go/main/App.js";
+import { SelectFile } from "../../wailsjs/go/backend/App.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getFileIcon, getFileTypeName } from "../utils/fileIcons.js";
 

@@ -15,7 +15,7 @@ vi.mock("../../wailsjs/runtime/runtime", () => ({
 }));
 
 // Mock the App functions
-vi.mock("../../wailsjs/go/main/App", () => ({
+vi.mock("../../wailsjs/go/backend/App", () => ({
 	UndoLastOperation: vi.fn(),
 	CanUndo: vi.fn(),
 	GetLastOperationDescription: vi.fn(),
@@ -25,7 +25,7 @@ import {
 	CanUndo,
 	GetLastOperationDescription,
 	UndoLastOperation,
-} from "../../wailsjs/go/main/App";
+} from "../../wailsjs/go/backend/App";
 
 describe("UndoManager", () => {
 	beforeEach(() => {

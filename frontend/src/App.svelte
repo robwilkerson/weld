@@ -14,7 +14,7 @@ import {
 	RollbackOperationGroup,
 	SaveSelectedFilesAndQuit,
 	UpdateCopyMenuItems,
-} from "../wailsjs/go/main/App.js";
+} from "../wailsjs/go/backend/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";

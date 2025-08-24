@@ -3,11 +3,11 @@
  */
 
 // Re-export base types from Wails
-export type { DiffLine, DiffResult } from "../../../wailsjs/go/main/App";
+export type { DiffLine, DiffResult } from "../../../wailsjs/go/backend/App";
 
 // Extended type for highlighted diff lines
 export type HighlightedDiffLine =
-	import("../../../wailsjs/go/main/App").DiffLine & {
+	import("../../../wailsjs/go/backend/App").DiffLine & {
 		leftLineHighlighted?: string;
 		rightLineHighlighted?: string;
 	};
