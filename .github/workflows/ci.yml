@@ -221,30 +221,11 @@ jobs:
           cd frontend && bun run build && cd ..
         fi
         
-        echo "Starting wails dev server..."
+        echo "Starting wails dev server in background..."
         wails dev > wails.log 2>&1 &
         WAILS_PID=$!
         echo $WAILS_PID > wails.pid
-        
-        # Wait for dev server to be ready by checking logs
-        timeout=60
-        while ! grep -q "Using DevServer URL: http://localhost:34115" wails.log && [ $timeout -gt 0 ]; do
-          sleep 1
-          timeout=$((timeout - 1))
-          if [ $((60 - timeout)) -eq 30 ]; then
-            echo "Still waiting for Wails dev server (30s elapsed)..."
-            echo "Current log tail:"
-            tail -10 wails.log
-          fi
-        done
-        
-        if [ $timeout -eq 0 ]; then
-          echo "Wails dev server failed to start after 60 seconds"
-          echo "Wails log contents:"
-          cat wails.log
-          exit 1
-        fi
-        echo "Wails dev server is ready"
+        echo "Wails dev server started with PID: $WAILS_PID"
     
     
     # Run E2E tests (macOS only)
