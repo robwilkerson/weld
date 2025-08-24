@@ -226,6 +226,12 @@ jobs:
         WAILS_PID=$!
         echo $WAILS_PID > wails.pid
         echo "Wails dev server started with PID: $WAILS_PID"
+        
+        # Give the server a moment to start up and bind to the port
+        # This is simpler than checking logs and handles the startup delay
+        echo "Waiting for server to initialize..."
+        sleep 10
+        echo "Proceeding with E2E tests"
     
     
     # Run E2E tests (macOS only)
