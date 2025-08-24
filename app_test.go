@@ -6,10 +6,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"weld/diff"
 )
 
 func TestApp_ReadFileContent(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Test reading empty file path
 	t.Run("empty file path", func(t *testing.T) {
@@ -24,7 +27,9 @@ func TestApp_ReadFileContent(t *testing.T) {
 
 	// Test reading non-existent file
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := app.ReadFileContent("/path/to/nonexistent/file.txt")
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		_, err := app.ReadFileContent(nonExistentFile)
 		if err == nil {
 			t.Error("ReadFileContent should return error for non-existent file")
 		}
@@ -55,7 +60,9 @@ func TestApp_ReadFileContent(t *testing.T) {
 }
 
 func TestApp_ReadFileContentWithCache(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Create a temporary file
 	tempDir := t.TempDir()
@@ -101,7 +108,11 @@ func TestApp_ReadFileContentWithCache(t *testing.T) {
 }
 
 func TestApp_CompareFiles(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 
 	// Create temporary files
 	tempDir := t.TempDir()
@@ -191,7 +202,10 @@ func TestApp_CompareFiles(t *testing.T) {
 
 	// Test non-existent file
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := app.CompareFiles("/nonexistent/file1.txt", "/nonexistent/file2.txt")
+		tempDir := t.TempDir()
+		nonExistentFile1 := filepath.Join(tempDir, "nonexistent", "file1.txt")
+		nonExistentFile2 := filepath.Join(tempDir, "nonexistent", "file2.txt")
+		_, err := app.CompareFiles(nonExistentFile1, nonExistentFile2)
 		if err == nil {
 			t.Error("CompareFiles should return error for non-existent files")
 		}
@@ -199,7 +213,9 @@ func TestApp_CompareFiles(t *testing.T) {
 }
 
 func TestApp_CopyToFile(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Create temporary files
 	tempDir := t.TempDir()
@@ -281,7 +297,9 @@ func TestApp_CopyToFile(t *testing.T) {
 
 	// Test copying to non-existent file
 	t.Run("copy to non-existent file", func(t *testing.T) {
-		err := app.CopyToFile(sourceFile, "/nonexistent/target.txt", 1, "test")
+		tempDir := t.TempDir()
+		nonExistentTarget := filepath.Join(tempDir, "nonexistent", "target.txt")
+		err := app.CopyToFile(sourceFile, nonExistentTarget, 1, "test")
 		if err == nil {
 			t.Error("CopyToFile should return error for non-existent target file")
 		}
@@ -289,7 +307,9 @@ func TestApp_CopyToFile(t *testing.T) {
 }
 
 func TestApp_RemoveLineFromFile(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Create temporary file
 	tempDir := t.TempDir()
@@ -374,7 +394,9 @@ func TestApp_RemoveLineFromFile(t *testing.T) {
 
 	// Test removing from non-existent file
 	t.Run("remove from non-existent file", func(t *testing.T) {
-		err := app.RemoveLineFromFile("/nonexistent/file.txt", 1)
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		err := app.RemoveLineFromFile(nonExistentFile, 1)
 		if err == nil {
 			t.Error("RemoveLineFromFile should return error for non-existent file")
 		}
@@ -382,7 +404,9 @@ func TestApp_RemoveLineFromFile(t *testing.T) {
 }
 
 func TestApp_SaveChanges(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Create temporary file
 	tempDir := t.TempDir()
@@ -436,7 +460,8 @@ func TestApp_SaveChanges(t *testing.T) {
 
 	// Test saving to non-existent directory
 	t.Run("save to non-existent directory", func(t *testing.T) {
-		nonExistentFile := "/nonexistent/directory/file.txt"
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "directory", "file.txt")
 		err := app.storeFileInMemory(nonExistentFile, []string{"test"})
 		if err != nil {
 			t.Errorf("storeFileInMemory returned error: %v", err)
@@ -450,7 +475,9 @@ func TestApp_SaveChanges(t *testing.T) {
 }
 
 func TestApp_storeFileInMemory(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	testFile := "/test/file.txt"
 	testContent := []string{"line1", "line2", "line3"}
@@ -487,340 +514,10 @@ func TestApp_storeFileInMemory(t *testing.T) {
 	})
 }
 
-func TestApp_computeDiff(t *testing.T) {
-	app := &App{}
-
-	// Test identical content
-	t.Run("identical content", func(t *testing.T) {
-		left := []string{"line1", "line2", "line3"}
-		right := []string{"line1", "line2", "line3"}
-
-		result := app.computeDiff(left, right)
-		if result == nil {
-			t.Error("computeDiff returned nil")
-			return
-		}
-
-		if len(result.Lines) != 3 {
-			t.Errorf("computeDiff returned %d lines, expected 3", len(result.Lines))
-		}
-
-		for i, line := range result.Lines {
-			if line.Type != "same" {
-				t.Errorf("Line %d type is %s, expected 'same'", i, line.Type)
-			}
-		}
-	})
-
-	// Test addition
-	t.Run("addition", func(t *testing.T) {
-		left := []string{"line1", "line2"}
-		right := []string{"line1", "line2", "line3"}
-
-		result := app.computeDiff(left, right)
-		if result == nil {
-			t.Error("computeDiff returned nil")
-			return
-		}
-
-		if len(result.Lines) != 3 {
-			t.Errorf("computeDiff returned %d lines, expected 3", len(result.Lines))
-		}
-
-		// Check types
-		expectedTypes := []string{"same", "same", "added"}
-		for i, line := range result.Lines {
-			if line.Type != expectedTypes[i] {
-				t.Errorf("Line %d type is %s, expected %s", i, line.Type, expectedTypes[i])
-			}
-		}
-	})
-
-	// Test removal
-	t.Run("removal", func(t *testing.T) {
-		left := []string{"line1", "line2", "line3"}
-		right := []string{"line1", "line3"}
-
-		result := app.computeDiff(left, right)
-		if result == nil {
-			t.Error("computeDiff returned nil")
-			return
-		}
-
-		if len(result.Lines) != 3 {
-			t.Errorf("computeDiff returned %d lines, expected 3", len(result.Lines))
-		}
-
-		// Should have same, removed, same
-		expectedTypes := []string{"same", "removed", "same"}
-		for i, line := range result.Lines {
-			if line.Type != expectedTypes[i] {
-				t.Errorf("Line %d type is %s, expected %s", i, line.Type, expectedTypes[i])
-			}
-		}
-	})
-
-	// Test empty files
-	t.Run("empty files", func(t *testing.T) {
-		left := []string{}
-		right := []string{}
-
-		result := app.computeDiff(left, right)
-		if result == nil {
-			t.Error("computeDiff returned nil")
-			return
-		}
-
-		if len(result.Lines) != 0 {
-			t.Errorf("computeDiff returned %d lines, expected 0", len(result.Lines))
-		}
-	})
-}
-
-func TestApp_findNextMatch(t *testing.T) {
-	app := &App{}
-
-	lines := []string{"line1", "line2", "line3", "line2", "line4"}
-
-	// Test finding existing match
-	t.Run("find existing match", func(t *testing.T) {
-		index := app.findNextMatch(lines, 2, "line2")
-		if index != 3 {
-			t.Errorf("findNextMatch returned %d, expected 3", index)
-		}
-	})
-
-	// Test finding non-existent match
-	t.Run("find non-existent match", func(t *testing.T) {
-		index := app.findNextMatch(lines, 0, "nonexistent")
-		if index != -1 {
-			t.Errorf("findNextMatch returned %d, expected -1", index)
-		}
-	})
-
-	// Test finding match at start index
-	t.Run("find match at start", func(t *testing.T) {
-		index := app.findNextMatch(lines, 1, "line2")
-		if index != 1 {
-			t.Errorf("findNextMatch returned %d, expected 1", index)
-		}
-	})
-
-	// Test out of bounds start index
-	t.Run("out of bounds start", func(t *testing.T) {
-		index := app.findNextMatch(lines, 10, "line1")
-		if index != -1 {
-			t.Errorf("findNextMatch returned %d, expected -1", index)
-		}
-	})
-}
-
-func TestApp_levenshteinDistance(t *testing.T) {
-	app := &App{}
-
-	tests := []struct {
-		name     string
-		s1       string
-		s2       string
-		expected int
-	}{
-		{"both empty", "", "", 0},
-		{"first empty", "", "abc", 3},
-		{"second empty", "abc", "", 3},
-		{"identical", "abc", "abc", 0},
-		{"single char diff", "abc", "abd", 1},
-		{"classic example", "kitten", "sitting", 3},
-		{"case sensitive", "Hello", "hello", 1},
-		{"completely different", "abc", "xyz", 3},
-		{"one longer", "test", "testing", 3},
-		{"unicode", "café", "cafe", 1},
-		{"numbers", "123", "124", 1},
-		{"special chars", "a-b", "a_b", 1},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := app.levenshteinDistance(tt.s1, tt.s2)
-			if result != tt.expected {
-				t.Errorf("levenshteinDistance(%q, %q) = %d, want %d",
-					tt.s1, tt.s2, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestApp_areSimilarLines(t *testing.T) {
-	app := &App{}
-
-	tests := []struct {
-		name     string
-		left     string
-		right    string
-		expected bool
-	}{
-		// Short lines - require exact match
-		{"short identical", "hi", "hi", true},
-		{"short different", "hi", "bye", false},
-		{"short one char diff", "abc", "abd", false},
-		{"short empty vs non-empty", "", "hi", false},
-		{"short non-empty vs empty", "hi", "", false},
-		{"short both empty", "", "", false},
-
-		// Longer lines - use similarity threshold
-		{"identical long", "hello world test", "hello world test", true},
-		{"high similarity", "const value = 42", "const value = 43", true},
-		{"medium similarity", "hello world test", "hello world best", true},
-		{"low similarity", "hello world", "goodbye mars", false},
-		{"completely different", "function abc()", "let x = 5", false},
-		{"variable rename", "let myVariable = 42", "let myVar = 42", true},
-		{"function signature", "function test(a, b)", "function test(a, b, c)", true},
-		{"comment vs code", "// This is a comment", "let x = 5", false},
-		{"whitespace change", "    let x = 5", "let x = 5", true},
-		{"case change", "Hello World", "hello world", true},
-
-		// Edge cases
-		{"one empty long vs content", "", "this is a long line with content", false},
-		{"content vs empty long", "this is a long line with content", "", false},
-		{"very similar", "abcdefghijklmnop", "abcdefghijklmnpq", true},
-		{"barely similar", "abcdefghij", "abcdefXYZj", true},        // 70% similar
-		{"just under threshold", "abcdefghij", "abcXYZWVUj", false}, // ~60% similar
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := app.areSimilarLines(tt.left, tt.right)
-			if result != tt.expected {
-				t.Errorf("areSimilarLines(%q, %q) = %v, want %v",
-					tt.left, tt.right, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestApp_detectModifications(t *testing.T) {
-	app := &App{}
-
-	t.Run("detect simple modification", func(t *testing.T) {
-		input := &DiffResult{
-			Lines: []DiffLine{
-				{Type: "same", LeftLine: "line1", RightLine: "line1", LeftNumber: 1, RightNumber: 1},
-				{Type: "removed", LeftLine: "const value = 42", LeftNumber: 2},
-				{Type: "added", RightLine: "const value = 43", RightNumber: 2},
-				{Type: "same", LeftLine: "line3", RightLine: "line3", LeftNumber: 3, RightNumber: 3},
-			},
-		}
-
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 3 {
-			t.Errorf("Expected 3 lines, got %d", len(result.Lines))
-		}
-
-		// Check that removed+added became modified
-		if result.Lines[1].Type != "modified" {
-			t.Errorf("Expected 'modified', got %s", result.Lines[1].Type)
-		}
-		if result.Lines[1].LeftLine != "const value = 42" {
-			t.Errorf("Expected left line 'const value = 42', got %s", result.Lines[1].LeftLine)
-		}
-		if result.Lines[1].RightLine != "const value = 43" {
-			t.Errorf("Expected right line 'const value = 43', got %s", result.Lines[1].RightLine)
-		}
-	})
-
-	t.Run("non-similar lines remain separate", func(t *testing.T) {
-		input := &DiffResult{
-			Lines: []DiffLine{
-				{Type: "removed", LeftLine: "completely different", LeftNumber: 1},
-				{Type: "added", RightLine: "nothing alike", RightNumber: 1},
-			},
-		}
-
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 2 {
-			t.Errorf("Expected 2 lines, got %d", len(result.Lines))
-		}
-		if result.Lines[0].Type != "removed" {
-			t.Errorf("Expected first line to remain 'removed', got %s", result.Lines[0].Type)
-		}
-		if result.Lines[1].Type != "added" {
-			t.Errorf("Expected second line to remain 'added', got %s", result.Lines[1].Type)
-		}
-	})
-
-	t.Run("multiple modifications", func(t *testing.T) {
-		input := &DiffResult{
-			Lines: []DiffLine{
-				{Type: "removed", LeftLine: "let x = 1", LeftNumber: 1},
-				{Type: "added", RightLine: "let x = 2", RightNumber: 1},
-				{Type: "same", LeftLine: "// comment", RightLine: "// comment", LeftNumber: 2, RightNumber: 2},
-				{Type: "removed", LeftLine: "function test()", LeftNumber: 3},
-				{Type: "added", RightLine: "function test(a)", RightNumber: 3},
-			},
-		}
-
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 3 {
-			t.Errorf("Expected 3 lines, got %d", len(result.Lines))
-		}
-		if result.Lines[0].Type != "modified" {
-			t.Errorf("Expected first modification, got %s", result.Lines[0].Type)
-		}
-		if result.Lines[2].Type != "modified" {
-			t.Errorf("Expected second modification, got %s", result.Lines[2].Type)
-		}
-	})
-
-	t.Run("removed at end", func(t *testing.T) {
-		input := &DiffResult{
-			Lines: []DiffLine{
-				{Type: "same", LeftLine: "line1", RightLine: "line1", LeftNumber: 1, RightNumber: 1},
-				{Type: "removed", LeftLine: "line2", LeftNumber: 2},
-			},
-		}
-
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 2 {
-			t.Errorf("Expected 2 lines, got %d", len(result.Lines))
-		}
-		if result.Lines[1].Type != "removed" {
-			t.Errorf("Expected 'removed', got %s", result.Lines[1].Type)
-		}
-	})
-
-	t.Run("added at end", func(t *testing.T) {
-		input := &DiffResult{
-			Lines: []DiffLine{
-				{Type: "same", LeftLine: "line1", RightLine: "line1", LeftNumber: 1, RightNumber: 1},
-				{Type: "added", RightLine: "line2", RightNumber: 2},
-			},
-		}
-
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 2 {
-			t.Errorf("Expected 2 lines, got %d", len(result.Lines))
-		}
-		if result.Lines[1].Type != "added" {
-			t.Errorf("Expected 'added', got %s", result.Lines[1].Type)
-		}
-	})
-
-	t.Run("empty input", func(t *testing.T) {
-		input := &DiffResult{Lines: []DiffLine{}}
-		result := app.detectModifications(input)
-
-		if len(result.Lines) != 0 {
-			t.Errorf("Expected 0 lines, got %d", len(result.Lines))
-		}
-	})
-}
-
 func TestApp_HasUnsavedChanges(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	// Clear cache first to ensure clean state
 	fileCache = make(map[string][]string)
@@ -851,7 +548,9 @@ func TestApp_HasUnsavedChanges(t *testing.T) {
 }
 
 func TestApp_GetUnsavedFilesList(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	t.Run("empty list when no cache", func(t *testing.T) {
 		// Clear cache
@@ -896,7 +595,9 @@ func TestApp_GetUnsavedFilesList(t *testing.T) {
 }
 
 func TestApp_DiscardAllChanges(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	t.Run("discard with cached files", func(t *testing.T) {
 		// Add files to cache
@@ -962,33 +663,12 @@ func TestApp_GetInitialFiles(t *testing.T) {
 	}
 }
 
-func TestApp_min(t *testing.T) {
-	tests := []struct {
-		name     string
-		a, b, c  int
-		expected int
-	}{
-		{"a is minimum", 1, 2, 3, 1},
-		{"b is minimum", 3, 1, 2, 1},
-		{"c is minimum", 3, 2, 1, 1},
-		{"all equal", 2, 2, 2, 2},
-		{"negative numbers", -1, -2, -3, -3},
-		{"mixed signs", -1, 0, 1, -1},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := min(tt.a, tt.b, tt.c)
-			if result != tt.expected {
-				t.Errorf("min(%d, %d, %d) = %d, want %d",
-					tt.a, tt.b, tt.c, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 
 	t.Run("error reading right file", func(t *testing.T) {
 		// Create left file but not right file
@@ -999,7 +679,7 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create left file: %v", err)
 		}
 
-		nonExistentRight := "/nonexistent/right.txt"
+		nonExistentRight := filepath.Join(tempDir, "nonexistent", "right.txt")
 
 		_, err = app.CompareFiles(leftFile, nonExistentRight)
 		if err == nil {
@@ -1013,7 +693,9 @@ func TestApp_CompareFiles_ErrorHandling(t *testing.T) {
 }
 
 func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	t.Run("copy to non-existent directory", func(t *testing.T) {
 		// Create source file
@@ -1025,7 +707,7 @@ func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
 		}
 
 		// Try to copy to non-existent directory
-		nonExistentTarget := "/nonexistent/directory/target.txt"
+		nonExistentTarget := filepath.Join(tempDir, "nonexistent", "directory", "target.txt")
 
 		err = app.CopyToFile(sourceFile, nonExistentTarget, 1, "test content")
 		if err == nil {
@@ -1058,11 +740,14 @@ func TestApp_CopyToFile_ErrorHandling(t *testing.T) {
 }
 
 func TestApp_SaveChanges_ErrorHandling(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	t.Run("save to non-existent directory", func(t *testing.T) {
+		tempDir := t.TempDir()
 		// Add content to cache for non-existent directory
-		nonExistentFile := "/nonexistent/directory/file.txt"
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "directory", "file.txt")
 		fileCache = make(map[string][]string)
 		fileCache[nonExistentFile] = []string{"content"}
 
@@ -1087,10 +772,14 @@ func TestApp_SaveChanges_ErrorHandling(t *testing.T) {
 }
 
 func TestApp_RemoveLineFromFile_ErrorHandling(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 
 	t.Run("remove from non-existent file", func(t *testing.T) {
-		err := app.RemoveLineFromFile("/nonexistent/file.txt", 1)
+		tempDir := t.TempDir()
+		nonExistentFile := filepath.Join(tempDir, "nonexistent", "file.txt")
+		err := app.RemoveLineFromFile(nonExistentFile, 1)
 		if err == nil {
 			t.Error("RemoveLineFromFile should return error for non-existent file")
 		}
@@ -1171,7 +860,9 @@ func TestIsBinaryFile(t *testing.T) {
 }
 
 func TestApp_ReadFileContent_BinaryRejection(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
 	testDir := t.TempDir()
 
 	// Create a binary file
@@ -1210,7 +901,11 @@ func TestApp_ReadFileContent_BinaryRejection(t *testing.T) {
 }
 
 func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	testDir := t.TempDir()
 
 	// Create a binary file
@@ -1258,7 +953,11 @@ func TestApp_CompareFiles_BinaryRejection(t *testing.T) {
 }
 
 func TestApp_EndToEndDiffWorkflow(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	tempDir := t.TempDir()
 
 	// Create test files with realistic diff scenario
@@ -1341,7 +1040,11 @@ func main() {
 }
 
 func TestApp_CompareFiles_TextAndHTML(t *testing.T) {
-	app := &App{}
+	app := &App{
+		diffAlgorithm: diff.NewLCSDefault(),
+	}
+	// Ensure file watchers are stopped to prevent memory leaks
+	t.Cleanup(func() { app.StopFileWatching() })
 	tempDir := t.TempDir()
 
 	// Create a plain text file
@@ -1397,7 +1100,6 @@ Some content here.`
 </head>
 <body>
     <p>Text with special chars: © ® ™ • … ""</p>
-    <script>console.log("test");</script>
 </body>
 </html>`
 

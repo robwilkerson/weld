@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.21']
+        go-version: ['1.24']
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: 1
@@ -82,6 +82,9 @@ jobs:
         echo "Set CGO_ENABLED=1 and PKG_CONFIG_PATH for webkit"
     
     # Install Wails (Linux/macOS)
+    # IMPORTANT: Must use v2.10.1 - v2.10.2 depends on fsnotify v1.9.0 which has a known issue
+    # that causes wails dev to crash on macOS in GitHub Actions after starting file watching.
+    # See: https://github.com/fsnotify/fsnotify/issues/689
     - name: Install Wails (Linux/macOS)
       if: matrix.os != 'windows-latest'
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
@@ -218,28 +221,37 @@ jobs:
           cd frontend && bun run build && cd ..
         fi
         
-        echo "Starting wails dev server..."
+        echo "Starting wails dev server in background..."
         wails dev > wails.log 2>&1 &
         WAILS_PID=$!
         echo $WAILS_PID > wails.pid
+        echo "Wails dev server started with PID: $WAILS_PID"
         
-        # Wait for dev server to be ready by checking logs
+        # Wait for port 34115 to be listening
+        echo "Waiting for Wails dev server to bind to port 34115..."
         timeout=60
-        while ! grep -q "Serving DevServer at http://localhost:34115" wails.log && [ $timeout -gt 0 ]; do
+        while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
           sleep 1
           timeout=$((timeout - 1))
           if [ $((60 - timeout)) -eq 30 ]; then
-            echo "Still waiting for Wails dev server (30s elapsed)..."
+            echo "Still waiting for port 34115 (30s elapsed)..."
+            # Check if the process is still running
+            if ! kill -0 $WAILS_PID 2>/dev/null; then
+              echo "Wails process died! Last log output:"
+              tail -20 wails.log
+              exit 1
+            fi
           fi
         done
         
         if [ $timeout -eq 0 ]; then
-          echo "Wails dev server failed to start after 60 seconds"
+          echo "Port 34115 not listening after 60 seconds"
           echo "Wails log contents:"
           cat wails.log
           exit 1
         fi
-        echo "Wails dev server is ready"
+        
+        echo "Port 34115 is now listening, proceeding with E2E tests"
     
     
     # Run E2E tests (macOS only)
