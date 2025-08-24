@@ -82,6 +82,9 @@ jobs:
         echo "Set CGO_ENABLED=1 and PKG_CONFIG_PATH for webkit"
     
     # Install Wails (Linux/macOS)
+    # IMPORTANT: Must use v2.10.1 - v2.10.2 depends on fsnotify v1.9.0 which has a known issue
+    # that causes wails dev to crash on macOS in GitHub Actions after starting file watching.
+    # See: https://github.com/fsnotify/fsnotify/issues/689
     - name: Install Wails (Linux/macOS)
       if: matrix.os != 'windows-latest'
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1

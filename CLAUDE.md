@@ -7,7 +7,7 @@ This is a visual diff tool. It's built using AI (Claude Code, specifically) and 
 ## Pre-Requesites
 
 * Go 1.24+
-* Wails 2.10+
+* Wails 2.10.1 (IMPORTANT: v2.10.2 crashes in GitHub Actions due to fsnotify v1.9.0 compatibility issues on macOS)
 * [Bun](https://bun.sh/)
 * [Biome](https://biomejs.dev/)
 * [Just](https://github.com/casey/just) (command runner)

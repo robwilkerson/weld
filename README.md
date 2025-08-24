@@ -144,10 +144,10 @@ The `weld` executable can be used directly or added to your PATH.
 
 ## Prerequisites
 
-- **Go** 1.21 or later
+- **Go** 1.24 or later
 - **Node.js** 20 or later (see platform-specific instructions below)
 - **Bun** (latest version)
-- **Wails** 2.10+
+- **Wails** 2.10.1 (**Important:** We specifically use v2.10.1. Version 2.10.2 has a dependency on fsnotify v1.9.0 which causes crashes in GitHub Actions on macOS. See [fsnotify issue #689](https://github.com/fsnotify/fsnotify/issues/689))
 - **Just** (command runner) - Install with `brew install just` or see [installation options](https://github.com/casey/just#installation)
 
 ### Platform-specific Requirements
