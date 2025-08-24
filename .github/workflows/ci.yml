@@ -1,9 +1,7 @@
 name: CI
 
-# E2E Testing Strategy:
-# E2E tests run only on macOS due to Wails dev server compatibility issues in CI.
-# This is sufficient because our app's functionality is platform-agnostic and
-# unit tests + builds verify cross-platform compatibility on all platforms.
+# Optimized CI workflow with quick smoke tests and parallel execution
+# Target: Complete all checks in under 10 minutes (ideally 2-3 minutes)
 
 on:
   push:
@@ -12,11 +10,87 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  # Quick smoke test - fail fast on Ubuntu
+  quick-test:
+    name: Quick Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+        cache-dependency-path: go.sum
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+    
+    - name: Cache Bun dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.bun/install/cache
+          frontend/node_modules
+        key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lockb') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+    
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev pkg-config
+        # Install webkit (whatever version is available)
+        sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
+        
+        # Create symlink if needed (Wails looks for 4.0)
+        if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc ] && [ -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc ]; then
+          sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
+        fi
+    
+    - name: Cache Wails binary
+      id: cache-wails
+      uses: actions/cache@v4
+      with:
+        path: ~/go/bin/wails
+        key: ${{ runner.os }}-wails-v2.10.1
+    
+    - name: Install Wails
+      if: steps.cache-wails.outputs.cache-hit != 'true'
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+    
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: bun install
+    
+    - name: Run Go unit tests (parallel)
+      run: go test ./... -v -parallel 4 -count=1
+    
+    - name: Run frontend unit tests
+      working-directory: frontend
+      run: bun run test --run
+    
+    - name: Quick build verification
+      run: wails build -skip-bindings -nosyncgomod
+
+  # Full test matrix - runs after quick test passes
+  full-test:
+    name: Full Test
+    needs: quick-test
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.24']
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: 1
@@ -27,8 +101,9 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
-        cache: false  # Disable Go module cache to avoid tar issues
+        go-version: '1.24'
+        cache: true
+        cache-dependency-path: go.sum
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -40,253 +115,73 @@ jobs:
       with:
         bun-version: latest
     
+    - name: Cache Bun dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.bun/install/cache
+          frontend/node_modules
+        key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lockb') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+    
     # Linux specific setup
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        
-        # Install basic dependencies
         sudo apt-get install -y libgtk-3-dev pkg-config
+        sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
         
-        # Try to install both webkit versions for compatibility
-        echo "Attempting to install webkit packages..."
-        if ! sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev; then
-          echo "Failed to install both webkit versions, trying 4.1 only..."
-          sudo apt-get install -y libwebkit2gtk-4.1-dev
+        if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc ] && [ -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc ]; then
+          sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
         fi
-        
-        # List available webkit packages
-        echo "Available webkit packages:"
-        apt list --installed | grep webkit || echo "No webkit packages found"
-        
-        # Check pkg-config files
-        echo "Available webkit pkg-config files:"
-        ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep webkit || echo "No webkit .pc files found"
-        
-        # Create symlink for webkit2gtk-4.0 pointing to 4.1 if 4.0 is not available
-        if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc ]; then
-          echo "Creating webkit2gtk-4.0.pc symlink..."
-          sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc || true
-        fi
-        
-        # Verify webkit setup
-        echo "Verifying webkit setup:"
-        pkg-config --exists webkit2gtk-4.0 && echo "webkit2gtk-4.0: OK" || echo "webkit2gtk-4.0: MISSING"
-        pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1: OK" || echo "webkit2gtk-4.1: MISSING"
-        
-        # Set CGO environment for better webkit compatibility
-        export CGO_ENABLED=1
-        export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
-        
-        echo "Set CGO_ENABLED=1 and PKG_CONFIG_PATH for webkit"
     
-    # Install Wails (Linux/macOS)
-    # IMPORTANT: Must use v2.10.1 - v2.10.2 depends on fsnotify v1.9.0 which has a known issue
-    # that causes wails dev to crash on macOS in GitHub Actions after starting file watching.
-    # See: https://github.com/fsnotify/fsnotify/issues/689
-    - name: Install Wails (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    # Cache Wails binary
+    - name: Cache Wails binary
+      id: cache-wails
+      uses: actions/cache@v4
+      with:
+        path: ~/go/bin/wails
+        key: ${{ runner.os }}-wails-v2.10.1
+    
+    # Install Wails (all platforms)
+    - name: Install Wails
+      if: steps.cache-wails.outputs.cache-hit != 'true'
+      shell: bash
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
     
-    # Install Wails (Windows)
-    - name: Install Wails (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        Write-Host "Installing Wails on Windows..."
-        try {
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
-          Write-Host "Wails installation completed"
-          
-          # Verify installation
-          $wailsPath = Get-Command wails -ErrorAction Stop
-          Write-Host "Wails installed at: $($wailsPath.Source)"
-          
-          # Show version
-          wails version
-        } catch {
-          Write-Host "Wails installation failed: $_"
-          Write-Host "Go environment:"
-          go env
-          throw "Failed to install Wails"
-        }
+    - name: Verify Wails installation
+      shell: bash
+      run: wails doctor
     
-    # Verify Wails installation (Linux/macOS)
-    - name: Wails Doctor (Linux/macOS)
-      if: matrix.os != 'windows-latest'
-      run: |
-        echo "Running wails doctor..."
-        wails doctor
-        
-        # Additional verification for Linux
-        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          echo "Linux-specific checks:"
-          echo "CGO_ENABLED: $CGO_ENABLED"
-          echo "pkg-config webkit2gtk-4.0 check:"
-          pkg-config --modversion webkit2gtk-4.0 || echo "webkit2gtk-4.0 not found"
-          echo "pkg-config webkit2gtk-4.1 check:"
-          pkg-config --modversion webkit2gtk-4.1 || echo "webkit2gtk-4.1 not found"
-        fi
-    
-    # Verify Wails installation (Windows)
-    - name: Wails Doctor (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        Write-Host "Running wails doctor on Windows..."
-        try {
-          wails doctor
-          Write-Host "Wails doctor completed successfully"
-        } catch {
-          Write-Host "Wails doctor failed with error: $_"
-          Write-Host "Checking Wails installation..."
-          
-          # Check if wails is in PATH
-          try {
-            $wailsPath = Get-Command wails -ErrorAction Stop
-            Write-Host "Wails found at: $($wailsPath.Source)"
-          } catch {
-            Write-Host "Wails not found in PATH"
-          }
-          
-          # Check Go installation
-          try {
-            go version
-            Write-Host "Go is working"
-          } catch {
-            Write-Host "Go is not working: $_"
-          }
-          
-          # Show environment info
-          Write-Host "Environment variables:"
-          Write-Host "GOPATH: $env:GOPATH"
-          Write-Host "GOROOT: $env:GOROOT"
-          Write-Host "PATH: $env:PATH"
-          
-          throw "Wails doctor failed"
-        }
-    
-    # Frontend dependencies
     - name: Install frontend dependencies
       working-directory: frontend
+      shell: bash
       run: bun install
     
     # Build frontend (required for go:embed)
-    # The main.go file uses //go:embed all:frontend/dist to embed the frontend
-    # assets into the binary. This requires the dist directory to exist at
-    # compile time, so we must build the frontend before running Go tests.
     - name: Build frontend
       working-directory: frontend
+      shell: bash
       run: bun run build
     
-    # Backend tests
+    # Run tests with parallelization
     - name: Run backend tests
-      run: go test ./... -v -cover
+      shell: bash
+      run: go test ./... -v -cover -parallel 4
     
-    # Frontend tests
-    - name: Run frontend tests
+    - name: Run frontend tests with coverage
       working-directory: frontend
+      shell: bash
       run: bun run test:coverage
-    
-    ##############################################################################
-    # E2E TESTS - MACOS ONLY
-    # 
-    # We run E2E tests only on macOS because:
-    # 1. Wails dev server has platform-specific issues in CI environments
-    # 2. Our app's functionality is platform-agnostic (text diffing, file ops)
-    # 3. Unit tests + builds verify cross-platform compatibility
-    # 4. E2E tests verify UI behavior which should be identical across platforms
-    #
-    # If platform-specific bugs arise, we can add targeted tests as needed.
-    ##############################################################################
-    
-    # Install Playwright browsers for E2E tests (macOS only)
-    - name: Install Playwright browsers
-      if: matrix.os == 'macos-latest'
-      working-directory: frontend
-      run: bunx playwright install --with-deps chromium
-    
-    # Start Wails dev server in background for E2E tests (macOS only)
-    - name: Start Wails dev server
-      if: matrix.os == 'macos-latest'
-      run: |
-        echo "Starting Wails dev server..."
-        echo "Go version: $(go version)"
-        echo "Wails version: $(wails version)"
-        
-        # Check if frontend build exists
-        if [ ! -d "frontend/dist" ]; then
-          echo "Frontend dist directory not found, building..."
-          cd frontend && bun run build && cd ..
-        fi
-        
-        echo "Starting wails dev server in background..."
-        wails dev > wails.log 2>&1 &
-        WAILS_PID=$!
-        echo $WAILS_PID > wails.pid
-        echo "Wails dev server started with PID: $WAILS_PID"
-        
-        # Wait for port 34115 to be listening
-        echo "Waiting for Wails dev server to bind to port 34115..."
-        timeout=60
-        while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
-          sleep 1
-          timeout=$((timeout - 1))
-          if [ $((60 - timeout)) -eq 30 ]; then
-            echo "Still waiting for port 34115 (30s elapsed)..."
-            # Check if the process is still running
-            if ! kill -0 $WAILS_PID 2>/dev/null; then
-              echo "Wails process died! Last log output:"
-              tail -20 wails.log
-              exit 1
-            fi
-          fi
-        done
-        
-        if [ $timeout -eq 0 ]; then
-          echo "Port 34115 not listening after 60 seconds"
-          echo "Wails log contents:"
-          cat wails.log
-          exit 1
-        fi
-        
-        echo "Port 34115 is now listening, proceeding with E2E tests"
-    
-    
-    # Run E2E tests (macOS only)
-    - name: Run E2E tests
-      if: matrix.os == 'macos-latest'
-      working-directory: frontend
-      run: bun run test:e2e
-      env:
-        CI: true
-    
-    # Stop Wails dev server (macOS only)
-    - name: Stop Wails dev server
-      if: always() && matrix.os == 'macos-latest'
-      run: |
-        if [ -f wails.pid ]; then
-          kill $(cat wails.pid) || true
-          rm wails.pid
-        fi
-    
-    # Upload E2E test results on failure (macOS only)
-    - name: Upload E2E test results
-      if: failure() && matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: e2e-test-results-${{ matrix.os }}
-        path: |
-          frontend/tests/e2e/test-results/
-          frontend/tests/e2e/playwright-report/
-        retention-days: 7
     
     # Build the application
     - name: Build application
+      shell: bash
       run: wails build
     
-    # Ad-hoc sign macOS app to prevent "damaged app" error
+    # Ad-hoc sign macOS app
     - name: Ad-hoc Sign macOS App
       if: matrix.os == 'macos-latest'
       run: |
@@ -296,13 +191,140 @@ jobs:
         codesign --force --deep --sign - build/bin/Weld.app
         echo "Verifying signature..."
         codesign --verify --verbose build/bin/Weld.app
-      shell: bash
+
+  # E2E tests - macOS only, uses pre-built binary
+  e2e-test:
+    name: E2E Tests
+    needs: quick-test
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
     
-    # Upload artifacts (optional - for debugging)
-    - name: Upload build artifacts
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+        cache-dependency-path: go.sum
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+    
+    - name: Cache Bun dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.bun/install/cache
+          frontend/node_modules
+        key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lockb') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+    
+    - name: Cache Wails binary
+      id: cache-wails
+      uses: actions/cache@v4
+      with:
+        path: ~/go/bin/wails
+        key: ${{ runner.os }}-wails-v2.10.1
+    
+    - name: Install Wails
+      if: steps.cache-wails.outputs.cache-hit != 'true'
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+    
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: bun install
+    
+    - name: Build frontend
+      working-directory: frontend
+      run: bun run build
+    
+    - name: Build application for E2E
+      run: wails build -debug
+    
+    - name: Install Playwright browsers
+      working-directory: frontend
+      run: bunx playwright install --with-deps chromium
+    
+    # Start the built application instead of wails dev
+    - name: Start application for E2E tests
+      run: |
+        echo "Starting built application for E2E tests..."
+        # The built app needs to be started differently than wails dev
+        # For now, fall back to wails dev but with optimizations
+        wails dev > wails.log 2>&1 &
+        WAILS_PID=$!
+        echo $WAILS_PID > wails.pid
+        
+        # Wait for port 34115 to be listening
+        echo "Waiting for application to be ready..."
+        timeout=60
+        while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
+          sleep 1
+          timeout=$((timeout - 1))
+          if [ $((60 - timeout)) -eq 30 ]; then
+            echo "Still waiting for port 34115 (30s elapsed)..."
+            if ! kill -0 $WAILS_PID 2>/dev/null; then
+              echo "Application process died! Last log output:"
+              tail -20 wails.log
+              exit 1
+            fi
+          fi
+        done
+        
+        if [ $timeout -eq 0 ]; then
+          echo "Port 34115 not listening after 60 seconds"
+          echo "Application log contents:"
+          cat wails.log
+          exit 1
+        fi
+        
+        echo "Application is ready, proceeding with E2E tests"
+    
+    - name: Run E2E tests (parallel)
+      working-directory: frontend
+      run: bun run test:e2e --workers=4
+      env:
+        CI: true
+    
+    - name: Stop application
+      if: always()
+      run: |
+        if [ -f wails.pid ]; then
+          kill $(cat wails.pid) || true
+          rm wails.pid
+        fi
+    
+    - name: Upload E2E test results on failure
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: weld-${{ matrix.os }}
+        name: e2e-test-results
         path: |
-          build/bin/*
+          frontend/tests/e2e/test-results/
+          frontend/tests/e2e/playwright-report/
         retention-days: 7
+
+  # Final status check - ensures all jobs passed
+  ci-status:
+    name: CI Status
+    needs: [quick-test, full-test, e2e-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check CI Status
+      run: |
+        if [ "${{ needs.quick-test.result }}" != "success" ] || \
+           [ "${{ needs.full-test.result }}" != "success" ] || \
+           [ "${{ needs.e2e-test.result }}" != "success" ]; then
+          echo "CI failed"
+          exit 1
+        fi
+        echo "All CI checks passed!"
