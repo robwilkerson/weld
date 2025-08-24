@@ -227,11 +227,31 @@ jobs:
         echo $WAILS_PID > wails.pid
         echo "Wails dev server started with PID: $WAILS_PID"
         
-        # Give the server a moment to start up and bind to the port
-        # This is simpler than checking logs and handles the startup delay
-        echo "Waiting for server to initialize..."
-        sleep 10
-        echo "Proceeding with E2E tests"
+        # Wait for port 34115 to be listening
+        echo "Waiting for Wails dev server to bind to port 34115..."
+        timeout=60
+        while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
+          sleep 1
+          timeout=$((timeout - 1))
+          if [ $((60 - timeout)) -eq 30 ]; then
+            echo "Still waiting for port 34115 (30s elapsed)..."
+            # Check if the process is still running
+            if ! kill -0 $WAILS_PID 2>/dev/null; then
+              echo "Wails process died! Last log output:"
+              tail -20 wails.log
+              exit 1
+            fi
+          fi
+        done
+        
+        if [ $timeout -eq 0 ]; then
+          echo "Port 34115 not listening after 60 seconds"
+          echo "Wails log contents:"
+          cat wails.log
+          exit 1
+        fi
+        
+        echo "Port 34115 is now listening, proceeding with E2E tests"
     
     
     # Run E2E tests (macOS only)
