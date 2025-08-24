@@ -6,12 +6,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// In-memory storage for unsaved file changes
-var fileCache = make(map[string][]string)
+// In-memory storage for unsaved file changes with thread safety
+var (
+	fileCache      = make(map[string][]string)
+	fileCacheMutex sync.RWMutex
+)
 
 // SelectFile opens a file dialog and returns the selected file path
 func (a *App) SelectFile() (string, error) {
@@ -139,7 +143,11 @@ func (a *App) ReadFileContent(filepath string) ([]string, error) {
 // ReadFileContentWithCache checks memory cache first before reading from disk
 func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 	// Check memory cache first
-	if cachedLines, exists := fileCache[filepath]; exists {
+	fileCacheMutex.RLock()
+	cachedLines, exists := fileCache[filepath]
+	fileCacheMutex.RUnlock()
+
+	if exists {
 		return cachedLines, nil
 	}
 
@@ -149,7 +157,9 @@ func (a *App) ReadFileContentWithCache(filepath string) ([]string, error) {
 
 // storeFileInMemory stores file lines in the memory cache
 func (a *App) storeFileInMemory(filepath string, lines []string) error {
+	fileCacheMutex.Lock()
 	fileCache[filepath] = lines
+	fileCacheMutex.Unlock()
 	return nil
 }
 
@@ -288,21 +298,58 @@ func (a *App) CompareFiles(leftPath, rightPath string) (*DiffResult, error) {
 // DiscardAllChanges clears all cached file changes
 func (a *App) DiscardAllChanges() error {
 	// Clear the entire cache
+	fileCacheMutex.Lock()
 	fileCache = make(map[string][]string)
+	fileCacheMutex.Unlock()
 	return nil
 }
 
 // HasUnsavedChanges checks if a file has unsaved changes in the cache
 func (a *App) HasUnsavedChanges(filepath string) bool {
+	fileCacheMutex.RLock()
 	_, exists := fileCache[filepath]
+	fileCacheMutex.RUnlock()
 	return exists
 }
 
 // GetUnsavedFilesList returns a list of files with unsaved changes
 func (a *App) GetUnsavedFilesList() []string {
+	fileCacheMutex.RLock()
 	files := make([]string, 0, len(fileCache))
 	for filepath := range fileCache {
 		files = append(files, filepath)
 	}
+	fileCacheMutex.RUnlock()
 	return files
+}
+
+// Test helpers - only for use in tests
+
+// TestResetFileCache clears the file cache - FOR TESTING ONLY
+func TestResetFileCache() {
+	fileCacheMutex.Lock()
+	fileCache = make(map[string][]string)
+	fileCacheMutex.Unlock()
+}
+
+// TestSetFileCache sets a file in the cache - FOR TESTING ONLY
+func TestSetFileCache(filepath string, lines []string) {
+	fileCacheMutex.Lock()
+	fileCache[filepath] = lines
+	fileCacheMutex.Unlock()
+}
+
+// TestGetFileCache gets a file from the cache - FOR TESTING ONLY
+func TestGetFileCache(filepath string) ([]string, bool) {
+	fileCacheMutex.RLock()
+	lines, exists := fileCache[filepath]
+	fileCacheMutex.RUnlock()
+	return lines, exists
+}
+
+// TestDeleteFromCache removes a file from the cache - FOR TESTING ONLY
+func TestDeleteFromCache(filepath string) {
+	fileCacheMutex.Lock()
+	delete(fileCache, filepath)
+	fileCacheMutex.Unlock()
 }
