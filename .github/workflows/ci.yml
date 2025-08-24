@@ -223,9 +223,9 @@ jobs:
         WAILS_PID=$!
         echo $WAILS_PID > wails.pid
         
-        # Wait for dev server to be ready
+        # Wait for dev server to be ready by checking logs
         timeout=60
-        while ! curl -s http://localhost:34115 > /dev/null && [ $timeout -gt 0 ]; do
+        while ! grep -q "Serving DevServer at http://localhost:34115" wails.log && [ $timeout -gt 0 ]; do
           sleep 1
           timeout=$((timeout - 1))
           if [ $((60 - timeout)) -eq 30 ]; then
