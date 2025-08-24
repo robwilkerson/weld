@@ -360,7 +360,7 @@ The pre-commit script will:
   * Install the latest version of Go and make it the default version for the project directory only by running `mise use go@latest`
   * Install the latest version of Node.js and make it the default version for the project directory only by running `mise use node@latest`
 * Install other tools using their recommended methods:
-  * **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+  * **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1`
   * **Bun**: See [installation instructions](https://bun.sh/docs/installation) (e.g., `brew install oven-sh/bun/bun` on macOS)
   * **Just**: See [installation options](https://github.com/casey/just#installation) (e.g., `brew install just` on macOS)
 * Run `wails doctor` after setup to verify environment

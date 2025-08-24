@@ -210,7 +210,7 @@ The `weld` executable can be used directly or added to your PATH.
 
 3. Install Wails CLI:
    ```bash
-   go install github.com/wailsapp/wails/v2/cmd/wails@latest
+   go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
    ```
 
 4. Verify your environment:
