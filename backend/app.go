@@ -1,4 +1,4 @@
-package main
+package backend
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"weld/diff"
+	"weld/backend/diff"
 )
 
 // DiffLine is now imported from the diff package
@@ -60,16 +60,21 @@ func NewApp() *App {
 	}
 }
 
-// startup is called when the app starts. The context is saved
+// Startup is called when the app starts. The context is saved
 // so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
+func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// shutdown is called when the app is shutting down
-func (a *App) shutdown(ctx context.Context) {
+// Shutdown is called when the app is shutting down
+func (a *App) Shutdown(ctx context.Context) {
 	// Stop file watching
 	a.StopFileWatching()
+}
+
+// GetContext returns the app's context
+func (a *App) GetContext() context.Context {
+	return a.ctx
 }
 
 // InitialFiles represents the initial file paths for comparison

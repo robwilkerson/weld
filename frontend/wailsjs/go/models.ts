@@ -1,3 +1,22 @@
+export namespace backend {
+	
+	export class InitialFiles {
+	    leftFile: string;
+	    rightFile: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InitialFiles(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.leftFile = source["leftFile"];
+	        this.rightFile = source["rightFile"];
+	    }
+	}
+
+}
+
 export namespace diff {
 	
 	export class DiffLine {
@@ -67,25 +86,6 @@ export namespace keys {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Key = source["Key"];
 	        this.Modifiers = source["Modifiers"];
-	    }
-	}
-
-}
-
-export namespace main {
-	
-	export class InitialFiles {
-	    leftFile: string;
-	    rightFile: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new InitialFiles(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.leftFile = source["leftFile"];
-	        this.rightFile = source["rightFile"];
 	    }
 	}
 

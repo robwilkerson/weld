@@ -14,13 +14,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"weld/backend"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 // BuildMenu creates the application menu
-func BuildMenu(app *App) *menu.Menu {
+func BuildMenu(app *backend.App) *menu.Menu {
 	appMenu := menu.NewMenu()
 
 	// On macOS, add the app menu first
@@ -36,21 +37,21 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Save Left Pane
 	saveLeftItem := saveMenu.AddText("Save Left Pane", nil, func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-save-left")
+		runtime.EventsEmit(app.GetContext(), "menu-save-left")
 	})
 	app.SetSaveLeftMenuItem(saveLeftItem)
 	saveLeftItem.Disabled = true
 
 	// Save Right Pane
 	saveRightItem := saveMenu.AddText("Save Right Pane", nil, func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-save-right")
+		runtime.EventsEmit(app.GetContext(), "menu-save-right")
 	})
 	app.SetSaveRightMenuItem(saveRightItem)
 	saveRightItem.Disabled = true
 
 	// Save All
 	saveAllItem := saveMenu.AddText("Save All", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-save-all")
+		runtime.EventsEmit(app.GetContext(), "menu-save-all")
 	})
 	app.SetSaveAllMenuItem(saveAllItem)
 	saveAllItem.Disabled = true
@@ -60,7 +61,7 @@ func BuildMenu(app *App) *menu.Menu {
 	if goruntime.GOOS != "darwin" {
 		fileMenu.AddSeparator()
 		fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-			runtime.Quit(app.ctx)
+			runtime.Quit(app.GetContext())
 		})
 	}
 
@@ -74,7 +75,7 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Undo menu item
 	undoItem := editMenu.AddText("Undo", keys.CmdOrCtrl("z"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-undo")
+		runtime.EventsEmit(app.GetContext(), "menu-undo")
 	})
 
 	// Store reference to undo menu item
@@ -85,7 +86,7 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Discard All Changes menu item
 	discardItem := editMenu.AddText("Discard All Changes", nil, func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-discard-all")
+		runtime.EventsEmit(app.GetContext(), "menu-discard-all")
 	})
 	app.SetDiscardMenuItem(discardItem)
 	discardItem.Disabled = true
@@ -94,14 +95,14 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Copy to Left menu item
 	copyLeftItem := editMenu.AddText("Copy to Left", keys.Shift("h"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-copy-left")
+		runtime.EventsEmit(app.GetContext(), "menu-copy-left")
 	})
 	app.SetCopyLeftMenuItem(copyLeftItem)
 	copyLeftItem.Disabled = true
 
 	// Copy to Right menu item
 	copyRightItem := editMenu.AddText("Copy to Right", keys.Shift("l"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-copy-right")
+		runtime.EventsEmit(app.GetContext(), "menu-copy-right")
 	})
 	app.SetCopyRightMenuItem(copyRightItem)
 	copyRightItem.Disabled = true
@@ -111,7 +112,7 @@ func BuildMenu(app *App) *menu.Menu {
 	minimapItem := viewMenu.AddText("Show Minimap", keys.CmdOrCtrl("m"), func(cd *menu.CallbackData) {
 		// Toggle minimap visibility
 		app.SetMinimapVisible(!app.GetMinimapVisible())
-		runtime.EventsEmit(app.ctx, "toggle-minimap", app.GetMinimapVisible())
+		runtime.EventsEmit(app.GetContext(), "toggle-minimap", app.GetMinimapVisible())
 	})
 
 	// Store reference to menu item for dynamic updates
@@ -127,14 +128,14 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// First Diff
 	firstDiffItem := goMenu.AddText("First Diff", keys.Key("g"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-first-diff")
+		runtime.EventsEmit(app.GetContext(), "menu-first-diff")
 	})
 	app.SetFirstDiffMenuItem(firstDiffItem)
 	firstDiffItem.Disabled = true
 
 	// Last Diff
 	lastDiffItem := goMenu.AddText("Last Diff", keys.Shift("G"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-last-diff")
+		runtime.EventsEmit(app.GetContext(), "menu-last-diff")
 	})
 	app.SetLastDiffMenuItem(lastDiffItem)
 	lastDiffItem.Disabled = true
@@ -143,14 +144,14 @@ func BuildMenu(app *App) *menu.Menu {
 
 	// Previous Diff
 	prevDiffItem := goMenu.AddText("Previous Diff", keys.Key("k"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-prev-diff")
+		runtime.EventsEmit(app.GetContext(), "menu-prev-diff")
 	})
 	app.SetPrevDiffMenuItem(prevDiffItem)
 	prevDiffItem.Disabled = true
 
 	// Next Diff
 	nextDiffItem := goMenu.AddText("Next Diff", keys.Key("j"), func(_ *menu.CallbackData) {
-		runtime.EventsEmit(app.ctx, "menu-next-diff")
+		runtime.EventsEmit(app.GetContext(), "menu-next-diff")
 	})
 	app.SetNextDiffMenuItem(nextDiffItem)
 	nextDiffItem.Disabled = true
@@ -193,7 +194,7 @@ func main() {
 		}
 
 		// Check if files are binary
-		isBinaryLeft, err := IsBinaryFile(leftFile)
+		isBinaryLeft, err := backend.IsBinaryFile(leftFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error checking left file: %v\n", err)
 			os.Exit(1)
@@ -203,7 +204,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		isBinaryRight, err := IsBinaryFile(rightFile)
+		isBinaryRight, err := backend.IsBinaryFile(rightFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error checking right file: %v\n", err)
 			os.Exit(1)
@@ -217,7 +218,7 @@ func main() {
 	}
 
 	// Create an instance of the app structure
-	app := NewApp()
+	app := backend.NewApp()
 	app.InitialLeftFile = leftFile
 	app.InitialRightFile = rightFile
 
@@ -230,8 +231,8 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		OnStartup:        app.Startup,
+		OnShutdown:       app.Shutdown,
 		OnBeforeClose:    app.OnBeforeClose,
 		Menu:             BuildMenu(app),
 		Bind: []interface{}{

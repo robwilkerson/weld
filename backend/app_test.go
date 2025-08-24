@@ -1,4 +1,4 @@
-package main
+package backend
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"weld/diff"
+	"weld/backend/diff"
 )
 
 func TestApp_ReadFileContent(t *testing.T) {
@@ -964,7 +964,7 @@ func TestApp_EndToEndDiffWorkflow(t *testing.T) {
 	file1 := filepath.Join(tempDir, "file1.txt")
 	file2 := filepath.Join(tempDir, "file2.txt")
 
-	content1 := `package main
+	content1 := `package backend
 
 import "fmt"
 
@@ -974,7 +974,7 @@ func main() {
 	fmt.Println(x)
 }`
 
-	content2 := `package main
+	content2 := `package backend
 
 import "fmt"
 
