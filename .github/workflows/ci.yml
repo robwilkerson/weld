@@ -170,7 +170,11 @@ jobs:
     # Frontend dependencies
     - name: Install frontend dependencies
       working-directory: frontend
-      run: bun install
+      run: |
+        bun install
+        # Ensure esbuild binary is properly installed for CI
+        # This fixes "The service was stopped" error when vite tries to load config
+        bunx esbuild --version
     
     # Build frontend (required for go:embed)
     # The main.go file uses //go:embed all:frontend/dist to embed the frontend
