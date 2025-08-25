@@ -11,7 +11,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker for desktop app testing
-  maxFailures: process.env.CI ? 1 : undefined, // Stop after first failure in CI
+  maxFailures: 1, // Always stop after first failure for faster feedback
   reporter: process.env.CI 
     ? [['list'], ['html', { 
         outputFolder: './tests/e2e/playwright-report',
@@ -27,7 +27,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'on' : 'retain-on-failure', // Always record in CI
-    headless: process.env.CI ? true : false, // Run headless in CI
+    headless: true, // Always run headless by default (use --headed flag to override)
   },
 
   projects: [
