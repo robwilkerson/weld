@@ -30,7 +30,7 @@ global.KeyboardEvent = class KeyboardEvent extends Event {
 };
 
 // Mock the Wails bindings
-vi.mock("../wailsjs/go/main/App.js", () => ({
+vi.mock("../wailsjs/go/backend/App.js", () => ({
 	SelectFile: vi.fn(),
 	CompareFiles: vi.fn(),
 	CopyToFile: vi.fn(),

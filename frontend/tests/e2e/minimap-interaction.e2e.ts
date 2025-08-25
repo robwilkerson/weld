@@ -11,7 +11,7 @@ async function setupMockedBackend(page) {
 
 		// Mock the Wails go object
 		window.go = {
-			main: {
+			backend: {
 				App: {
 					SelectFile: async () => {
 						// Return different files for left/right
@@ -361,7 +361,9 @@ test.describe("Minimap Interaction", () => {
 		// Move highlight to second chunk
 		await page.evaluate(() => {
 			const chunks = document.querySelectorAll(".minimap-chunk");
-			chunks.forEach((c) => c.classList.remove("minimap-current"));
+			chunks.forEach((c) => {
+				c.classList.remove("minimap-current");
+			});
 			if (chunks.length > 1) {
 				chunks[1].classList.add("minimap-current");
 			}
@@ -389,7 +391,7 @@ test.describe("Minimap Interaction", () => {
 
 		// Toggle visibility off
 		await page.evaluate(async () => {
-			await window.go.main.App.SetMinimapVisible(false);
+			await window.go.backend.App.SetMinimapVisible(false);
 			// Hide the minimap in the DOM
 			const minimapPane = document.querySelector(
 				".minimap-pane",
@@ -404,7 +406,7 @@ test.describe("Minimap Interaction", () => {
 
 		// Check if visibility state was updated in backend
 		const isVisible = await page.evaluate(() =>
-			window.go.main.App.GetMinimapVisible(),
+			window.go.backend.App.GetMinimapVisible(),
 		);
 		expect(isVisible).toBe(false);
 
@@ -467,9 +469,9 @@ test.describe("Minimap Interaction", () => {
 				const minimapPane = document.querySelector(".minimap-pane .minimap");
 				if (minimapPane) {
 					// Remove existing chunks
-					minimapPane
-						.querySelectorAll(".minimap-chunk")
-						.forEach((c) => c.remove());
+					minimapPane.querySelectorAll(".minimap-chunk").forEach((c) => {
+						c.remove();
+					});
 
 					// Add many chunks for large file
 					for (let i = 0; i < 10; i++) {

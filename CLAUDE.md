@@ -236,9 +236,10 @@ Test files - primarily used for manual testing - are located in `resources/sampl
 
 * **GitHub Issues are the canonical task list** - all work is tracked as issues
 * **Creating GitHub Issues**:
-  - Every issue MUST have one of these labels: `BUG 🐛`, `FEATURE ✨`, or `TASK 🧹`
+  - **REQUIRED LABELS** - Every issue MUST have:
+    - One type label: `BUG 🐛`, `FEATURE ✨`, or `TASK 🧹`
+    - One priority label: `🚨 priority: high`, `priority: medium` (default), or `🤷 priority: low`
   - Add additional labels for categorization (e.g., `🐧 linux`, `🎨 ui/design`, `🏗️ refactor`)
-  - Use priority labels when appropriate: `🚨 priority: high`, `🤷 priority: low`
   - Include detailed descriptions with context, examples, and acceptance criteria
   - Use `gh issue create` command for consistency
 * **Issue Management**:

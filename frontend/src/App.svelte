@@ -14,7 +14,7 @@ import {
 	RollbackOperationGroup,
 	SaveSelectedFilesAndQuit,
 	UpdateCopyMenuItems,
-} from "../wailsjs/go/main/App.js";
+} from "../wailsjs/go/backend/App.js";
 import { EventsOn } from "../wailsjs/runtime/runtime.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in Svelte template
 import DiffViewer from "./components/DiffViewer.svelte";
@@ -66,6 +66,7 @@ import * as diffOps from "./utils/diffOperations.js";
 import { handleKeydown as handleKeyboardShortcut } from "./utils/keyboard.js";
 import { getLanguageFromExtension } from "./utils/language.js";
 import { detectLineChunks } from "./utils/lineChunks.js";
+import { logError, logWarn } from "./utils/log";
 import { createScrollSynchronizer } from "./utils/scrollSync.js";
 
 // Shiki highlighter instance
@@ -248,7 +249,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 
 	try {
 		// For now, disable syntax highlighting to avoid lockups
-		// TODO: Implement with web workers or lazy loading
+		// Note: Implement with web workers or lazy loading for performance
 		setHighlightedDiffWithChunks({
 			lines: result.lines.map((line) => processLineHighlighting(line)),
 		});
@@ -256,7 +257,7 @@ async function processHighlighting(result: DiffResult): Promise<void> {
 		// After highlighting is done, set initial diff chunk
 		// Auto-scroll is now handled by DiffViewer component
 	} catch (error) {
-		console.error("Error processing highlighting:", error);
+		logError("Error processing highlighting:", error);
 		// Fallback to non-highlighted version
 		setHighlightedDiffWithChunks({
 			lines: result.lines.map((line) => processLineHighlighting(line)),
@@ -363,7 +364,7 @@ async function handleLeftFileReload(): Promise<void> {
 	try {
 		await compareBothFiles();
 	} catch (error) {
-		console.error("Error reloading comparison:", error);
+		logError("Error reloading comparison:", error);
 		uiStore.showFlash("Failed to reload comparison", "error");
 	}
 }
@@ -378,7 +379,7 @@ async function handleRightFileReload(): Promise<void> {
 	try {
 		await compareBothFiles();
 	} catch (error) {
-		console.error("Error reloading comparison:", error);
+		logError("Error reloading comparison:", error);
 		uiStore.showFlash("Failed to reload comparison", "error");
 	}
 }
@@ -401,7 +402,7 @@ async function _handleSaveAndQuit(): Promise<void> {
 	try {
 		await SaveSelectedFilesAndQuit(filesToSave);
 	} catch (error) {
-		console.error("Error saving files:", error);
+		logError("Error saving files:", error);
 		uiStore.showFlash(`Error saving files: ${error}`, "error");
 	}
 }
@@ -410,7 +411,7 @@ async function _handleQuitWithoutSaving(): Promise<void> {
 	try {
 		await QuitWithoutSaving();
 	} catch (error) {
-		console.error("Error quitting:", error);
+		logError("Error quitting:", error);
 	}
 }
 
@@ -571,7 +572,7 @@ async function compareBothFiles(
 			checkHorizontalScrollbar();
 		}, 100);
 	} catch (error) {
-		console.error("Comparison error:", error);
+		logError("Comparison error:", error);
 		uiStore.showFlash(`Error comparing files: ${error}`, "error");
 		diffStore.clear();
 	} finally {
@@ -590,7 +591,7 @@ function _handleMinimapClick(eventData: {
 	diffChunkIndex?: number;
 	clickPercentage?: number;
 }): void {
-	// TODO: This functionality needs to be moved to DiffViewer component
+	// Note: This functionality should be moved to DiffViewer component
 	// For now, just update the chunk index based on click position
 	if (!$diffStore.highlightedDiff) return;
 
@@ -661,7 +662,7 @@ async function _handleDiscardChanges(): Promise<void> {
 		uiStore.showFlash("All changes discarded", "info");
 		uiStore.setMenuVisible(false);
 	} catch (error) {
-		console.error("Error discarding changes:", error);
+		logError("Error discarding changes:", error);
 		uiStore.showFlash(`Error discarding changes: ${error}`, "error");
 	}
 }
@@ -676,7 +677,7 @@ async function copyLineToRight(lineIndex: number): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyLineToRight(lineIndex, context);
 	} catch (error) {
-		console.error("Error copying line to right:", error);
+		logError("Error copying line to right:", error);
 		uiStore.showFlash(`Error copying line: ${error}`, "error");
 	}
 }
@@ -691,7 +692,7 @@ async function copyLineToLeft(lineIndex: number): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyLineToLeft(lineIndex, context);
 	} catch (error) {
-		console.error("Error copying line to left:", error);
+		logError("Error copying line to left:", error);
 		uiStore.showFlash(`Error copying line: ${error}`, "error");
 	}
 }
@@ -728,7 +729,7 @@ async function _copyChunkToRight(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyChunkToRight(chunk, context);
 	} catch (error) {
-		console.error("Error copying chunk to right:", error);
+		logError("Error copying chunk to right:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -740,7 +741,7 @@ async function _copyChunkToLeft(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyChunkToLeft(chunk, context);
 	} catch (error) {
-		console.error("Error copying chunk to left:", error);
+		logError("Error copying chunk to left:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -752,7 +753,7 @@ async function _copyModifiedChunkToRight(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyModifiedChunkToRight(chunk, context);
 	} catch (error) {
-		console.error("Error copying modified chunk to right:", error);
+		logError("Error copying modified chunk to right:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -764,7 +765,7 @@ async function _copyModifiedChunkToLeft(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.copyModifiedChunkToLeft(chunk, context);
 	} catch (error) {
-		console.error("Error copying modified chunk to left:", error);
+		logError("Error copying modified chunk to left:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -776,7 +777,7 @@ async function _deleteChunkFromRight(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.deleteChunkFromRight(chunk, context);
 	} catch (error) {
-		console.error("Error deleting chunk from right:", error);
+		logError("Error deleting chunk from right:", error);
 		uiStore.showFlash(`Error deleting chunk: ${error}`, "error");
 	}
 }
@@ -788,7 +789,7 @@ async function _deleteChunkFromLeft(chunk: LineChunk): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.deleteChunkFromLeft(chunk, context);
 	} catch (error) {
-		console.error("Error deleting chunk from left:", error);
+		logError("Error deleting chunk from left:", error);
 		uiStore.showFlash(`Error deleting chunk: ${error}`, "error");
 	}
 }
@@ -890,7 +891,7 @@ async function _copyMixedChunkLeftToRight(chunk: LineChunk): Promise<void> {
 			throw error;
 		}
 	} catch (error) {
-		console.error("Error copying mixed chunk:", error);
+		logError("Error copying mixed chunk:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -980,7 +981,7 @@ async function _copyMixedChunkRightToLeft(chunk: LineChunk): Promise<void> {
 			throw error;
 		}
 	} catch (error) {
-		console.error("Error copying mixed chunk:", error);
+		logError("Error copying mixed chunk:", error);
 		uiStore.showFlash(`Error copying chunk: ${error}`, "error");
 	}
 }
@@ -995,7 +996,7 @@ async function _deleteLineFromRight(lineIndex: number): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.deleteLineFromRight(lineIndex, context);
 	} catch (error) {
-		console.error("Error deleting line from right:", error);
+		logError("Error deleting line from right:", error);
 		uiStore.showFlash(`Error deleting line: ${error}`, "error");
 	}
 }
@@ -1010,7 +1011,7 @@ async function _deleteLineFromLeft(lineIndex: number): Promise<void> {
 		const context = getDiffOperationContext();
 		await diffOps.deleteLineFromLeft(lineIndex, context);
 	} catch (error) {
-		console.error("Error deleting line from left:", error);
+		logError("Error deleting line from left:", error);
 		uiStore.showFlash(`Error deleting line: ${error}`, "error");
 	}
 }
@@ -1020,7 +1021,7 @@ async function saveLeftFile(): Promise<void> {
 		await unsavedChangesStore.saveLeft();
 		uiStore.showFlash("Left file saved successfully", "info");
 	} catch (error) {
-		console.error("Error saving left file:", error);
+		logError("Error saving left file:", error);
 		uiStore.showFlash(`Error saving left file: ${error}`, "error");
 	}
 }
@@ -1030,7 +1031,7 @@ async function saveRightFile(): Promise<void> {
 		await unsavedChangesStore.saveRight();
 		uiStore.showFlash("Right file saved successfully", "info");
 	} catch (error) {
-		console.error("Error saving right file:", error);
+		logError("Error saving right file:", error);
 		uiStore.showFlash(`Error saving right file: ${error}`, "error");
 	}
 }
@@ -1098,7 +1099,7 @@ async function _highlightFileContent(
 
 		return content.split("\n").map(escapeHtml);
 	} catch (error) {
-		console.warn("Error highlighting content:", error);
+		logWarn("Error highlighting content:", error);
 		return content.split("\n").map(escapeHtml);
 	}
 }
@@ -1133,12 +1134,7 @@ async function _getHighlightedLine(
 		);
 		return match ? match[1] : highlighted;
 	} catch (error) {
-		console.warn(
-			"Error highlighting line:",
-			error,
-			"Line:",
-			line.substring(0, 50),
-		);
+		logWarn("Error highlighting line:", error, "Line:", line.substring(0, 50));
 		return escapeHtml(line);
 	}
 }
@@ -1271,18 +1267,18 @@ function navigateAfterCopy(
 // ===========================================
 
 function _handleViewportMouseDown(event: MouseEvent): void {
-	// TODO: This functionality needs to be moved to DiffViewer component
+	// Note: This functionality should be moved to DiffViewer component
 	// For now, just prevent default behavior
 	event.preventDefault();
 }
 
 function _handleViewportDrag(event: MouseEvent): void {
-	// TODO: This functionality needs to be moved to DiffViewer component
+	// Note: This functionality should be moved to DiffViewer component
 	event.preventDefault();
 }
 
 function _handleViewportMouseUp(): void {
-	// TODO: This functionality needs to be moved to DiffViewer component
+	// Note: This functionality should be moved to DiffViewer component
 	uiStore.setDraggingViewport(false);
 }
 
@@ -1654,11 +1650,11 @@ onMount(async () => {
 			await updateUnsavedChangesStatus();
 		}
 	} catch (error) {
-		console.error("Error getting initial files:", error);
+		logError("Error getting initial files:", error);
 	}
 
 	// Syntax highlighting disabled for performance
-	// TODO: Re-enable when we can make it performant (web workers, etc.)
+	// Note: Re-enable when performance is improved with web workers
 	highlighter = null;
 
 	// Set up ResizeObserver to detect scrollbar changes with debouncing
@@ -1670,7 +1666,7 @@ onMount(async () => {
 		}, 100);
 	});
 
-	// TODO: ResizeObserver functionality needs to be moved to DiffViewer component
+	// Note: ResizeObserver functionality should be moved to DiffViewer component
 	// For now, just call checkHorizontalScrollbar
 	setTimeout(() => {
 		checkHorizontalScrollbar();
@@ -1714,7 +1710,7 @@ onMount(async () => {
 });
 
 function checkHorizontalScrollbar() {
-	// TODO: This functionality needs to be moved to DiffViewer component
+	// Note: This functionality should be moved to DiffViewer component
 	// For now, just set to false
 	uiStore.setHorizontalScrollbar(false);
 }

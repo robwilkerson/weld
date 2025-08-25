@@ -1,5 +1,5 @@
 import { derived, get } from "svelte/store";
-import { UpdateDiffNavigationMenuItems } from "../../wailsjs/go/main/App.js";
+import { UpdateDiffNavigationMenuItems } from "../../wailsjs/go/backend/App.js";
 import { diffChunks, diffStore } from "./diffStore";
 
 interface NavigationCallbacks {
@@ -223,7 +223,7 @@ export const navigationState = derived(
 
 // Auto-update menu items when navigation state changes
 navigationState.subscribe(($navState) => {
-	UpdateDiffNavigationMenuItems(
+	void UpdateDiffNavigationMenuItems(
 		$navState.canNavigatePrev,
 		$navState.canNavigateNext,
 		$navState.canNavigateFirst,

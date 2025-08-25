@@ -63,7 +63,7 @@ async function setupMockedBackend(page) {
 
 		// Mock the Wails go object
 		window.go = {
-			main: {
+			backend: {
 				App: {
 					SelectFile: async () => {
 						selectFileCallCount++;
@@ -376,7 +376,7 @@ test.describe("Save Operations", () => {
 
 		// Mock SaveChanges to throw error
 		await page.evaluate(() => {
-			window.go.main.App.SaveChanges = async () => {
+			window.go.backend.App.SaveChanges = async () => {
 				throw new Error("Permission denied");
 			};
 		});

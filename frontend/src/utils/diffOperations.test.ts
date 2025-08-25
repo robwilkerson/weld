@@ -5,12 +5,12 @@ import {
 	CopyToFile,
 	RemoveLineFromFile,
 	RollbackOperationGroup,
-} from "../../wailsjs/go/main/App.js";
+} from "../../wailsjs/go/backend/App.js";
 import type { DiffResult, LineChunk } from "../types/diff";
 import * as diffOps from "./diffOperations";
 
 // Mock the Wails API
-vi.mock("../../wailsjs/go/main/App.js", () => ({
+vi.mock("../../wailsjs/go/backend/App.js", () => ({
 	CopyToFile: vi.fn(),
 	RemoveLineFromFile: vi.fn(),
 	BeginOperationGroup: vi.fn(),

@@ -22,6 +22,39 @@ build:
 dev:
     wails dev
 
+# Stop all running wails dev servers
+stop:
+    @echo "🛑 Stopping all wails dev servers..."
+    @# Kill wails dev process first
+    @pkill -f "wails dev" 2>/dev/null || true
+    @# Kill vite dev server
+    @pkill -f "vite" 2>/dev/null || true
+    @# Kill bun run dev
+    @pkill -f "bun run dev" 2>/dev/null || true
+    @# Kill any Weld.app processes
+    @pkill -f "Weld.app/Contents/MacOS/Weld" 2>/dev/null || true
+    @# Kill any process listening on port 34115 (wails dev port)
+    @if lsof -ti:34115 > /dev/null 2>&1; then \
+        lsof -ti:34115 | xargs kill -9 2>/dev/null || true; \
+    fi
+    @# Kill any process listening on port 5173 (vite dev port)
+    @if lsof -ti:5173 > /dev/null 2>&1; then \
+        lsof -ti:5173 | xargs kill -9 2>/dev/null || true; \
+    fi
+    @# Clean up any pid files if they exist
+    @rm -f wails.pid 2>/dev/null || true
+    @# Give processes a moment to terminate
+    @sleep 1
+    @# Check if any processes are still running
+    @if ps aux | grep -E "(wails dev|vite|bun run dev|Weld.app)" | grep -v grep > /dev/null 2>&1; then \
+        echo "⚠️  Some processes may still be running. Attempting force kill..."; \
+        pkill -9 -f "wails dev" 2>/dev/null || true; \
+        pkill -9 -f "vite" 2>/dev/null || true; \
+        pkill -9 -f "bun run dev" 2>/dev/null || true; \
+        pkill -9 -f "Weld.app" 2>/dev/null || true; \
+    fi
+    @echo "✅ All wails processes stopped"
+
 # Clean build artifacts
 clean:
     rm -rf build/bin

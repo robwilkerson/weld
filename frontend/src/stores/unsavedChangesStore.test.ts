@@ -9,7 +9,7 @@ import {
 } from "./unsavedChangesStore.js";
 
 // Mock the Wails functions
-vi.mock("../../wailsjs/go/main/App.js", () => ({
+vi.mock("../../wailsjs/go/backend/App.js", () => ({
 	HasUnsavedChanges: vi.fn(),
 	SaveChanges: vi.fn(),
 	UpdateSaveMenuItems: vi.fn(),
@@ -19,7 +19,7 @@ import {
 	HasUnsavedChanges,
 	SaveChanges,
 	UpdateSaveMenuItems,
-} from "../../wailsjs/go/main/App.js";
+} from "../../wailsjs/go/backend/App.js";
 
 describe("unsavedChangesStore", () => {
 	beforeEach(() => {

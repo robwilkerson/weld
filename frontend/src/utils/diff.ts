@@ -2,7 +2,7 @@
  * Diff-related utility functions
  */
 
-import type { DiffLine, DiffResult } from "../../wailsjs/go/main/App";
+import type { DiffLine, DiffResult } from "../../wailsjs/go/backend/App";
 
 /**
  * Gets CSS class name for diff line type

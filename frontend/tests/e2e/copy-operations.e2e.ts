@@ -8,14 +8,13 @@ async function setupMockedBackend(page) {
 		let hasUnsavedRight = false;
 		let selectFileCallCount = 0;
 
-		// Make state accessible for tests
-		window.go.main.App._mockHasUnsavedLeft = false;
-		window.go.main.App._mockHasUnsavedRight = false;
-
 		// Mock the Wails go object
 		window.go = {
-			main: {
+			backend: {
 				App: {
+					// Make state accessible for tests
+					_mockHasUnsavedLeft: false,
+					_mockHasUnsavedRight: false,
 					SelectFile: async () => {
 						// Return different files for left/right
 						selectFileCallCount++;
@@ -171,26 +170,26 @@ async function setupMockedBackend(page) {
 						// Simulate copy operation
 						if (direction === "left") {
 							hasUnsavedLeft = true;
-							window.go.main.App._mockHasUnsavedLeft = true;
+							window.go.backend.App._mockHasUnsavedLeft = true;
 							// Copy from right to left
 							// In real app, this would modify the file content
 						} else {
 							hasUnsavedRight = true;
-							window.go.main.App._mockHasUnsavedRight = true;
+							window.go.backend.App._mockHasUnsavedRight = true;
 							// Copy from left to right
 						}
 
 						// Return updated diff after copy
 						// For testing, we'll return a simplified version
 						return {
-							lines: window.go.main.App._mockDiffAfterCopy || [],
+							lines: window.go.backend.App._mockDiffAfterCopy || [],
 						};
 					},
 					HasUnsavedChanges: async () => ({
 						hasUnsavedLeft:
-							window.go.main.App._mockHasUnsavedLeft || hasUnsavedLeft,
+							window.go.backend.App._mockHasUnsavedLeft || hasUnsavedLeft,
 						hasUnsavedRight:
-							window.go.main.App._mockHasUnsavedRight || hasUnsavedRight,
+							window.go.backend.App._mockHasUnsavedRight || hasUnsavedRight,
 					}),
 					SaveChanges: async (side) => {
 						if (side === "left") {
@@ -210,7 +209,7 @@ async function setupMockedBackend(page) {
 							hasUnsavedRight = false;
 						}
 						// Return to original diff
-						return window.go.main.App.CompareFiles();
+						return window.go.backend.App.CompareFiles();
 					},
 					GetMinimapVisible: async () => true,
 					GetInitialFiles: async () => ["", ""],
@@ -230,12 +229,12 @@ async function setupMockedBackend(page) {
 					CommitOperationGroup: async () => {
 						// Successfully commit the transaction
 						// Mark as having unsaved changes based on what operations were done
-						if (window.go.main.App._currentOperation === "right") {
+						if (window.go.backend.App._currentOperation === "right") {
 							hasUnsavedRight = true;
-							window.go.main.App._mockHasUnsavedRight = true;
-						} else if (window.go.main.App._currentOperation === "left") {
+							window.go.backend.App._mockHasUnsavedRight = true;
+						} else if (window.go.backend.App._currentOperation === "left") {
 							hasUnsavedLeft = true;
-							window.go.main.App._mockHasUnsavedLeft = true;
+							window.go.backend.App._mockHasUnsavedLeft = true;
 						}
 						return Promise.resolve();
 					},
@@ -247,12 +246,12 @@ async function setupMockedBackend(page) {
 						// Mock removing a line from file
 						if (filePath.includes("1.js")) {
 							hasUnsavedLeft = true;
-							window.go.main.App._mockHasUnsavedLeft = true;
-							window.go.main.App._currentOperation = "left";
+							window.go.backend.App._mockHasUnsavedLeft = true;
+							window.go.backend.App._currentOperation = "left";
 						} else {
 							hasUnsavedRight = true;
-							window.go.main.App._mockHasUnsavedRight = true;
-							window.go.main.App._currentOperation = "right";
+							window.go.backend.App._mockHasUnsavedRight = true;
+							window.go.backend.App._currentOperation = "right";
 						}
 						return Promise.resolve();
 					},
@@ -268,12 +267,12 @@ async function setupMockedBackend(page) {
 						// Reset all unsaved changes
 						hasUnsavedLeft = false;
 						hasUnsavedRight = false;
-						window.go.main.App._mockHasUnsavedLeft = false;
-						window.go.main.App._mockHasUnsavedRight = false;
+						window.go.backend.App._mockHasUnsavedLeft = false;
+						window.go.backend.App._mockHasUnsavedRight = false;
 						// Update save menu items to reflect the change
-						await window.go.main.App.UpdateSaveMenuItems();
+						await window.go.backend.App.UpdateSaveMenuItems();
 						// Return to original diff
-						return window.go.main.App.CompareFiles();
+						return window.go.backend.App.CompareFiles();
 					},
 				},
 			},
@@ -335,7 +334,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify the copy operation was called
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 	});
@@ -365,7 +364,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify the copy operation was called
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(true);
 	});
@@ -384,26 +383,26 @@ test.describe("Copy Operations", () => {
 		// Mock the necessary functions to track copy operation
 		await page.evaluate(() => {
 			// Track if operation was called
-			window.go.main.App._copyOperationCalled = false;
-			window.go.main.App._removeLineCalled = false;
+			window.go.backend.App._copyOperationCalled = false;
+			window.go.backend.App._removeLineCalled = false;
 
 			// Override BeginOperationGroup to mark that operation started
-			const originalBegin = window.go.main.App.BeginOperationGroup;
-			window.go.main.App.BeginOperationGroup = async (desc) => {
+			const originalBegin = window.go.backend.App.BeginOperationGroup;
+			window.go.backend.App.BeginOperationGroup = async (desc) => {
 				if (desc.includes("Replace modified chunk")) {
-					window.go.main.App._copyOperationCalled = true;
+					window.go.backend.App._copyOperationCalled = true;
 					// Mark right side as having changes
-					window.go.main.App._mockHasUnsavedRight = true;
+					window.go.backend.App._mockHasUnsavedRight = true;
 				}
 				return originalBegin(desc);
 			};
 
 			// Also override RemoveLineFromFile to track it
-			const originalRemove = window.go.main.App.RemoveLineFromFile;
-			window.go.main.App.RemoveLineFromFile = async (filePath, lineNum) => {
-				window.go.main.App._removeLineCalled = true;
+			const originalRemove = window.go.backend.App.RemoveLineFromFile;
+			window.go.backend.App.RemoveLineFromFile = async (filePath, lineNum) => {
+				window.go.backend.App._removeLineCalled = true;
 				if (filePath.includes("2.js")) {
-					window.go.main.App._mockHasUnsavedRight = true;
+					window.go.backend.App._mockHasUnsavedRight = true;
 				}
 				return originalRemove(filePath, lineNum);
 			};
@@ -433,8 +432,8 @@ test.describe("Copy Operations", () => {
 
 		// Check if any operation was called
 		const { operationCalled, removeLineCalled } = await page.evaluate(() => ({
-			operationCalled: window.go.main.App._copyOperationCalled,
-			removeLineCalled: window.go.main.App._removeLineCalled,
+			operationCalled: window.go.backend.App._copyOperationCalled,
+			removeLineCalled: window.go.backend.App._removeLineCalled,
 		}));
 
 		// Either operation being called indicates the copy worked
@@ -442,7 +441,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify right file has unsaved changes
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 
@@ -477,7 +476,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify copy worked
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(true);
 
@@ -532,7 +531,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify copy happened
 		let hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 
@@ -542,14 +541,14 @@ test.describe("Copy Operations", () => {
 
 		// Set up mock to ensure undo clears unsaved state
 		await page.evaluate(() => {
-			const originalUndo = window.go.main.App.UndoLastOperation;
-			window.go.main.App.UndoLastOperation = async () => {
+			const originalUndo = window.go.backend.App.UndoLastOperation;
+			window.go.backend.App.UndoLastOperation = async () => {
 				// Call original undo
 				await originalUndo();
 				// Reset unsaved state
-				window.go.main.App._mockHasUnsavedRight = false;
+				window.go.backend.App._mockHasUnsavedRight = false;
 				// Return the original diff
-				return window.go.main.App.CompareFiles();
+				return window.go.backend.App.CompareFiles();
 			};
 		});
 
@@ -560,7 +559,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify undo happened
 		hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(false);
 
@@ -580,27 +579,27 @@ test.describe("Copy Operations", () => {
 		// Set up mock to simulate the app's keyboard handling
 		await page.evaluate(() => {
 			// Track if copy function was called
-			window.go.main.App._copyLeftToRightCalled = false;
-			window.go.main.App._beginOperationGroupCalled = false;
+			window.go.backend.App._copyLeftToRightCalled = false;
+			window.go.backend.App._beginOperationGroupCalled = false;
 
 			// Override BeginOperationGroup to track operation
-			const originalBegin = window.go.main.App.BeginOperationGroup;
-			window.go.main.App.BeginOperationGroup = async (desc) => {
-				window.go.main.App._beginOperationGroupCalled = true;
+			const originalBegin = window.go.backend.App.BeginOperationGroup;
+			window.go.backend.App.BeginOperationGroup = async (desc) => {
+				window.go.backend.App._beginOperationGroupCalled = true;
 				if (
 					desc.includes("Copy chunk to right") ||
 					desc.includes("Delete chunk from right")
 				) {
-					window.go.main.App._copyLeftToRightCalled = true;
+					window.go.backend.App._copyLeftToRightCalled = true;
 					// Mark right side as having changes
-					window.go.main.App._mockHasUnsavedRight = true;
+					window.go.backend.App._mockHasUnsavedRight = true;
 				}
 				return originalBegin(desc);
 			};
 
 			// Override CopyToFile to track operation
-			const originalCopyToFile = window.go.main.App.CopyToFile;
-			window.go.main.App.CopyToFile = async (
+			const originalCopyToFile = window.go.backend.App.CopyToFile;
+			window.go.backend.App.CopyToFile = async (
 				from,
 				to,
 				lineNum,
@@ -608,8 +607,8 @@ test.describe("Copy Operations", () => {
 			) => {
 				// If copying to right file, mark as having unsaved changes
 				if (to.includes("2.js")) {
-					window.go.main.App._mockHasUnsavedRight = true;
-					window.go.main.App._currentOperation = "right";
+					window.go.backend.App._mockHasUnsavedRight = true;
+					window.go.backend.App._currentOperation = "right";
 				}
 				return originalCopyToFile(from, to, lineNum, lineContent);
 			};
@@ -630,13 +629,13 @@ test.describe("Copy Operations", () => {
 
 		// Verify the operation was triggered
 		const beginCalled = await page.evaluate(
-			() => window.go.main.App._beginOperationGroupCalled,
+			() => window.go.backend.App._beginOperationGroupCalled,
 		);
 		expect(beginCalled).toBe(true);
 
 		// Verify unsaved changes
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 	});
@@ -667,27 +666,27 @@ test.describe("Copy Operations", () => {
 		// Set up mock to simulate the app's keyboard handling
 		await page.evaluate(() => {
 			// Track if copy function was called
-			window.go.main.App._copyRightToLeftCalled = false;
-			window.go.main.App._beginOperationGroupCalled = false;
+			window.go.backend.App._copyRightToLeftCalled = false;
+			window.go.backend.App._beginOperationGroupCalled = false;
 
 			// Override BeginOperationGroup to track operation
-			const originalBegin = window.go.main.App.BeginOperationGroup;
-			window.go.main.App.BeginOperationGroup = async (desc) => {
-				window.go.main.App._beginOperationGroupCalled = true;
+			const originalBegin = window.go.backend.App.BeginOperationGroup;
+			window.go.backend.App.BeginOperationGroup = async (desc) => {
+				window.go.backend.App._beginOperationGroupCalled = true;
 				if (
 					desc.includes("Copy chunk to left") ||
 					desc.includes("Delete chunk from left")
 				) {
-					window.go.main.App._copyRightToLeftCalled = true;
+					window.go.backend.App._copyRightToLeftCalled = true;
 					// Mark left side as having changes
-					window.go.main.App._mockHasUnsavedLeft = true;
+					window.go.backend.App._mockHasUnsavedLeft = true;
 				}
 				return originalBegin(desc);
 			};
 
 			// Override CopyToFile to track operation
-			const originalCopyToFile = window.go.main.App.CopyToFile;
-			window.go.main.App.CopyToFile = async (
+			const originalCopyToFile = window.go.backend.App.CopyToFile;
+			window.go.backend.App.CopyToFile = async (
 				from,
 				to,
 				lineNum,
@@ -695,8 +694,8 @@ test.describe("Copy Operations", () => {
 			) => {
 				// If copying to left file, mark as having unsaved changes
 				if (to.includes("1.js")) {
-					window.go.main.App._mockHasUnsavedLeft = true;
-					window.go.main.App._currentOperation = "left";
+					window.go.backend.App._mockHasUnsavedLeft = true;
+					window.go.backend.App._currentOperation = "left";
 				}
 				return originalCopyToFile(from, to, lineNum, lineContent);
 			};
@@ -716,13 +715,13 @@ test.describe("Copy Operations", () => {
 
 		// Verify the operation was triggered
 		const beginCalled = await page.evaluate(
-			() => window.go.main.App._beginOperationGroupCalled,
+			() => window.go.backend.App._beginOperationGroupCalled,
 		);
 		expect(beginCalled).toBe(true);
 
 		// Verify unsaved changes
 		const hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(true);
 
@@ -747,18 +746,18 @@ test.describe("Copy Operations", () => {
 		// Mock the necessary functions
 		await page.evaluate(() => {
 			// Track operations
-			window.go.main.App._leftToRightCalled = false;
-			window.go.main.App._rightToLeftCalled = false;
+			window.go.backend.App._leftToRightCalled = false;
+			window.go.backend.App._rightToLeftCalled = false;
 
 			// Override BeginOperationGroup
-			const originalBegin = window.go.main.App.BeginOperationGroup;
-			window.go.main.App.BeginOperationGroup = async (desc) => {
+			const originalBegin = window.go.backend.App.BeginOperationGroup;
+			window.go.backend.App.BeginOperationGroup = async (desc) => {
 				if (desc.includes("right")) {
-					window.go.main.App._leftToRightCalled = true;
-					window.go.main.App._mockHasUnsavedRight = true;
+					window.go.backend.App._leftToRightCalled = true;
+					window.go.backend.App._mockHasUnsavedRight = true;
 				} else if (desc.includes("left")) {
-					window.go.main.App._rightToLeftCalled = true;
-					window.go.main.App._mockHasUnsavedLeft = true;
+					window.go.backend.App._rightToLeftCalled = true;
+					window.go.backend.App._mockHasUnsavedLeft = true;
 				}
 				return originalBegin(desc);
 			};
@@ -778,13 +777,13 @@ test.describe("Copy Operations", () => {
 
 		// Verify operation was called
 		let operationCalled = await page.evaluate(
-			() => window.go.main.App._leftToRightCalled,
+			() => window.go.backend.App._leftToRightCalled,
 		);
 		expect(operationCalled).toBe(true);
 
 		// Verify right side was updated
 		let hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
 
@@ -795,8 +794,8 @@ test.describe("Copy Operations", () => {
 
 		// Reset operation tracking
 		await page.evaluate(() => {
-			window.go.main.App._leftToRightCalled = false;
-			window.go.main.App._rightToLeftCalled = false;
+			window.go.backend.App._leftToRightCalled = false;
+			window.go.backend.App._rightToLeftCalled = false;
 		});
 
 		// Test copying right to left (simulating Shift+H)
@@ -813,13 +812,13 @@ test.describe("Copy Operations", () => {
 
 		// Verify operation was called
 		operationCalled = await page.evaluate(
-			() => window.go.main.App._rightToLeftCalled,
+			() => window.go.backend.App._rightToLeftCalled,
 		);
 		expect(operationCalled).toBe(true);
 
 		// Verify left side was updated
 		hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(true);
 	});
@@ -848,7 +847,7 @@ test.describe("Copy Operations", () => {
 
 		// Verify both files have unsaved changes
 		let hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(true);
 		expect(hasUnsaved.hasUnsavedRight).toBe(true);
@@ -866,13 +865,13 @@ test.describe("Copy Operations", () => {
 
 		// Discard all changes by calling the function directly
 		await page.evaluate(() => {
-			window.go.main.App.DiscardAllChanges();
+			window.go.backend.App.DiscardAllChanges();
 		});
 		await page.waitForTimeout(500);
 
 		// Verify all unsaved changes are cleared
 		hasUnsaved = await page.evaluate(() =>
-			window.go.main.App.HasUnsavedChanges(),
+			window.go.backend.App.HasUnsavedChanges(),
 		);
 		expect(hasUnsaved.hasUnsavedLeft).toBe(false);
 		expect(hasUnsaved.hasUnsavedRight).toBe(false);

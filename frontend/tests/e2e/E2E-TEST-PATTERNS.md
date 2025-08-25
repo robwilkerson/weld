@@ -15,7 +15,7 @@ async function setupMockedBackend(page) {
     
     // Mock the Wails go object
     window.go = {
-      main: {
+      backend: {
         App: {
           // Mock functions go here
         },
@@ -146,7 +146,7 @@ await arrow.click();
 
 // Verify state change
 const hasUnsaved = await page.evaluate(() =>
-  window.go.main.App.HasUnsavedChanges()
+  window.go.backend.App.HasUnsavedChanges()
 );
 expect(hasUnsaved.hasUnsavedRight).toBe(true);
 ```

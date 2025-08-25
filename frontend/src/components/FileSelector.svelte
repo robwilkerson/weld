@@ -1,6 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
-import { SelectFile } from "../../wailsjs/go/main/App.js";
+import { SelectFile } from "../../wailsjs/go/backend/App.js";
 // biome-ignore lint/correctness/noUnusedImports: Used in template
 import { getFileIcon, getFileTypeName } from "../utils/fileIcons.js";
 
@@ -24,7 +24,8 @@ async function selectLeftFile(): Promise<void> {
 			dispatch("leftFileSelected", { path });
 		}
 	} catch (error) {
-		dispatch("error", { message: `Error selecting left file: ${error}` });
+		const msg = error instanceof Error ? error.message : String(error);
+		dispatch("error", { message: `Error selecting left file: ${msg}` });
 	}
 }
 
@@ -36,7 +37,8 @@ async function selectRightFile(): Promise<void> {
 			dispatch("rightFileSelected", { path });
 		}
 	} catch (error) {
-		dispatch("error", { message: `Error selecting right file: ${error}` });
+		const msg = error instanceof Error ? error.message : String(error);
+		dispatch("error", { message: `Error selecting right file: ${msg}` });
 	}
 }
 
