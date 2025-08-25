@@ -11,14 +11,21 @@ import (
 // StartFileWatching starts monitoring the given files for changes
 func (a *App) StartFileWatching(leftPath, rightPath string) {
 	a.watcherMutex.Lock()
-	defer a.watcherMutex.Unlock()
 
-	// Stop any existing watcher
+	// Get reference to old watcher before clearing
+	oldWatcher := a.fileWatcher
+
+	// Stop any existing watcher (just clears references)
 	a.stopFileWatchingInternal()
 
 	// Create new watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
+		a.watcherMutex.Unlock()
+		// Close old watcher if exists (after releasing mutex)
+		if oldWatcher != nil {
+			oldWatcher.Close()
+		}
 		// Log error but don't fail the comparison
 		return
 	}
@@ -30,6 +37,13 @@ func (a *App) StartFileWatching(leftPath, rightPath string) {
 	// Initialize debouncer if not already done
 	if a.changeDebouncer == nil {
 		a.changeDebouncer = make(map[string]time.Time)
+	}
+
+	a.watcherMutex.Unlock()
+
+	// Close old watcher after releasing mutex to avoid deadlock
+	if oldWatcher != nil {
+		oldWatcher.Close()
 	}
 
 	// Start watching in a goroutine with the watcher passed as parameter
@@ -48,15 +62,29 @@ func (a *App) StartFileWatching(leftPath, rightPath string) {
 // StopFileWatching stops monitoring files for changes
 func (a *App) StopFileWatching() {
 	a.watcherMutex.Lock()
-	defer a.watcherMutex.Unlock()
+	watcher := a.fileWatcher
+	a.fileWatcher = nil
+	a.leftWatchPath = ""
+	a.rightWatchPath = ""
+	// Clear debouncer entries to free memory
+	if a.changeDebouncer != nil {
+		for k := range a.changeDebouncer {
+			delete(a.changeDebouncer, k)
+		}
+	}
+	a.watcherMutex.Unlock()
 
-	a.stopFileWatchingInternal()
+	// Close watcher after releasing the mutex to avoid deadlock
+	if watcher != nil {
+		watcher.Close()
+	}
 }
 
 // stopFileWatchingInternal stops the watcher without locking (must be called with mutex held)
 func (a *App) stopFileWatchingInternal() {
 	if a.fileWatcher != nil {
-		a.fileWatcher.Close()
+		// Note: We can't safely close the watcher here while holding the mutex
+		// Instead, just clear the reference and let the caller handle closing
 		a.fileWatcher = nil
 	}
 	a.leftWatchPath = ""
@@ -124,9 +152,13 @@ func (a *App) handleFileChange(filePath string) {
 	}
 
 	// Re-add the file to watcher in case it was recreated
-	if a.fileWatcher != nil {
+	watcher := a.fileWatcher
+	a.watcherMutex.Unlock()
+
+	if watcher != nil {
 		// Remove and re-add to handle atomic saves
-		a.fileWatcher.Remove(filePath)
+		// Note: We do this after unlocking to avoid deadlock on Windows
+		watcher.Remove(filePath)
 
 		// For atomic saves, the file might not exist immediately after rename
 		// Try to re-add with a small delay
@@ -145,8 +177,6 @@ func (a *App) handleFileChange(filePath string) {
 			}
 		}(filePath)
 	}
-
-	a.watcherMutex.Unlock()
 
 	// Emit event to frontend (only if we have a valid context)
 	if a.ctx != nil {
