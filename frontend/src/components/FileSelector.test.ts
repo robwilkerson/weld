@@ -150,7 +150,7 @@ describe("FileSelector", () => {
 
 		expect(errorHandler).toHaveBeenCalledWith(
 			expect.objectContaining({
-				detail: { message: `Error selecting left file: ${mockError}` },
+				detail: { message: `Error selecting left file: ${mockError.message}` },
 			}),
 		);
 	});
@@ -169,7 +169,7 @@ describe("FileSelector", () => {
 
 		expect(errorHandler).toHaveBeenCalledWith(
 			expect.objectContaining({
-				detail: { message: `Error selecting right file: ${mockError}` },
+				detail: { message: `Error selecting right file: ${mockError.message}` },
 			}),
 		);
 	});
