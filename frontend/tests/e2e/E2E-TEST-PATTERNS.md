@@ -15,7 +15,7 @@ async function setupMockedBackend(page) {
     
     // Mock the Wails go object
     window.go = {
-      main: {
+      backend: {
         App: {
           // Mock functions go here
         },

@@ -14,7 +14,7 @@ async function setupMockedBackend(page) {
 
 		// Mock the Wails go object
 		window.go = {
-			main: {
+			backend: {
 				App: {
 					SelectFile: async () => {
 						// Cycle through test files
