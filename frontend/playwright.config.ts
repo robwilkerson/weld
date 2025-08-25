@@ -11,6 +11,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker for desktop app testing
+  maxFailures: process.env.CI ? 1 : undefined, // Stop after first failure in CI
   reporter: process.env.CI 
     ? [['list'], ['html', { 
         outputFolder: './tests/e2e/playwright-report',
