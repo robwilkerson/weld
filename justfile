@@ -5,6 +5,34 @@
 default:
     @just --list
 
+# Install dependencies and set up development environment (first-time setup)
+install:
+    @echo "🚀 Initializing Weld development environment..."
+    @echo ""
+    @echo "📦 Installing Wails CLI v2.10.1..."
+    @go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+    @echo "✅ Wails CLI installed"
+    @echo ""
+    @echo "📥 Downloading Go dependencies..."
+    @go mod download
+    @echo "✅ Go dependencies downloaded"
+    @echo ""
+    @echo "📥 Installing frontend dependencies..."
+    @cd frontend && bun install
+    @echo "✅ Frontend dependencies installed"
+    @echo ""
+    @echo "🔍 Verifying environment..."
+    @wails doctor || echo "⚠️  Some checks failed, but you may still be able to develop"
+    @echo ""
+    @echo "🏗️  Running initial build to generate TypeScript bindings..."
+    @wails build
+    @echo "✅ Initial build complete"
+    @echo ""
+    @echo "✨ Setup complete! You can now run:"
+    @echo "   just dev    - Start development server"
+    @echo "   just test   - Run all tests"
+    @echo "   just build  - Build the application"
+
 # Build the application and install CLI script
 # Builds a universal binary for macOS (supports both Intel and Apple Silicon)
 build:

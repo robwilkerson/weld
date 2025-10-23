@@ -203,28 +203,14 @@ The `weld` executable can be used directly or added to your PATH.
    cd weld
    ```
 
-2. Install Go dependencies:
+2. Install dependencies and set up the development environment:
    ```bash
-   go mod download
+   just install
    ```
 
-3. Install Wails CLI:
-   ```bash
-   go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
-   ```
+   This command will install Wails CLI, download dependencies, verify your environment, and generate TypeScript bindings.
 
-4. Verify your environment:
-   ```bash
-   wails doctor
-   ```
-   **Note**: On some systems (particularly Ubuntu ARM), `wails doctor` may incorrectly report missing webkit dependencies even when they're properly installed. If you see webkit warnings but have installed the required packages, try running `wails dev` to verify your setup actually works.
-
-5. Install frontend dependencies:
-   ```bash
-   cd frontend
-   bun install
-   cd ..
-   ```
+   **Note**: On some systems (particularly Ubuntu ARM), `wails doctor` may incorrectly report missing webkit dependencies even when they're properly installed. If you see webkit warnings, the setup will continue and you can verify everything works by running `just dev`.
 
 ## Development Workflow
 
