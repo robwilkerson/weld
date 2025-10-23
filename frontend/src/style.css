@@ -1,3 +1,35 @@
+:root {
+	/* FileChangeBanner CSS variables - Light mode (Catppuccin Latte) */
+	--banner-bg: #f9e2af;
+	--banner-border: #f5c99b;
+	--banner-icon-color: #df8e1d;
+	--banner-text-color: #40310a;
+	--banner-text-secondary: #5c4813;
+	--banner-btn-primary-bg: #df8e1d;
+	--banner-btn-primary-bg-hover: #c77c0a;
+	--banner-btn-primary-color: white;
+	--banner-btn-secondary-bg: transparent;
+	--banner-btn-secondary-bg-hover: #f5c99b;
+	--banner-btn-secondary-color: #5c4813;
+	--banner-btn-secondary-border: #f5c99b;
+}
+
+[data-theme="dark"] {
+	/* FileChangeBanner CSS variables - Dark mode (Catppuccin Macchiato) */
+	--banner-bg: #665c54;
+	--banner-border: #504945;
+	--banner-icon-color: #fabd2f;
+	--banner-text-color: #fbf1c7;
+	--banner-text-secondary: #ebdbb2;
+	--banner-btn-primary-bg: #fabd2f;
+	--banner-btn-primary-bg-hover: #f9b915;
+	--banner-btn-primary-color: #282828;
+	--banner-btn-secondary-bg: transparent;
+	--banner-btn-secondary-bg-hover: #504945;
+	--banner-btn-secondary-color: #ebdbb2;
+	--banner-btn-secondary-border: #504945;
+}
+
 html {
 	background-color: rgba(27, 38, 54, 1);
 	text-align: center;
