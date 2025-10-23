@@ -1,9 +1,6 @@
 name: CI
 
-# E2E Testing Strategy:
-# E2E tests run only on macOS due to Wails dev server compatibility issues in CI.
-# This is sufficient because our app's functionality is platform-agnostic and
-# unit tests + builds verify cross-platform compatibility on all platforms.
+# E2E tests have been temporarily disabled - see issue #101
 
 on:
   push:
@@ -192,99 +189,97 @@ jobs:
     - name: Run frontend tests
       working-directory: frontend
       run: bun run test:coverage
-    
+
     ##############################################################################
-    # E2E TESTS - MACOS ONLY
-    # 
-    # We run E2E tests only on macOS because:
-    # 1. Wails dev server has platform-specific issues in CI environments
-    # 2. Our app's functionality is platform-agnostic (text diffing, file ops)
-    # 3. Unit tests + builds verify cross-platform compatibility
-    # 4. E2E tests verify UI behavior which should be identical across platforms
+    # E2E TESTS - TEMPORARILY DISABLED
     #
-    # If platform-specific bugs arise, we can add targeted tests as needed.
+    # E2E tests have been temporarily disabled due to flakiness in CI.
+    # See issue #101 for the refactoring plan to move E2E tests to a separate
+    # workflow that runs post-merge on main and selectively on high-risk PRs.
+    #
+    # The commented code below will be removed when implementing #101.
     ##############################################################################
+
+    # # Install Playwright browsers for E2E tests (macOS only)
+    # - name: Install Playwright browsers
+    #   if: matrix.os == 'macos-latest'
+    #   working-directory: frontend
+    #   run: bunx playwright install --with-deps chromium
     
-    # Install Playwright browsers for E2E tests (macOS only)
-    - name: Install Playwright browsers
-      if: matrix.os == 'macos-latest'
-      working-directory: frontend
-      run: bunx playwright install --with-deps chromium
-    
-    # Start Wails dev server in background for E2E tests (macOS only)
-    - name: Start Wails dev server
-      if: matrix.os == 'macos-latest'
-      run: |
-        echo "Starting Wails dev server..."
-        echo "Go version: $(go version)"
-        echo "Wails version: $(wails version)"
-        
-        # Check if frontend build exists
-        if [ ! -d "frontend/dist" ]; then
-          echo "Frontend dist directory not found, building..."
-          cd frontend && bun run build && cd ..
-        fi
-        
-        echo "Starting wails dev server in background..."
-        wails dev > wails.log 2>&1 &
-        WAILS_PID=$!
-        echo $WAILS_PID > wails.pid
-        echo "Wails dev server started with PID: $WAILS_PID"
-        
-        # Wait for port 34115 to be listening
-        echo "Waiting for Wails dev server to bind to port 34115..."
-        timeout=60
-        while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
-          sleep 1
-          timeout=$((timeout - 1))
-          if [ $((60 - timeout)) -eq 30 ]; then
-            echo "Still waiting for port 34115 (30s elapsed)..."
-            # Check if the process is still running
-            if ! kill -0 $WAILS_PID 2>/dev/null; then
-              echo "Wails process died! Last log output:"
-              tail -20 wails.log
-              exit 1
-            fi
-          fi
-        done
-        
-        if [ $timeout -eq 0 ]; then
-          echo "Port 34115 not listening after 60 seconds"
-          echo "Wails log contents:"
-          cat wails.log
-          exit 1
-        fi
-        
-        echo "Port 34115 is now listening, proceeding with E2E tests"
-    
-    
-    # Run E2E tests (macOS only)
-    - name: Run E2E tests
-      if: matrix.os == 'macos-latest'
-      working-directory: frontend
-      run: bun run test:e2e
-      env:
-        CI: true
-    
-    # Stop Wails dev server (macOS only)
-    - name: Stop Wails dev server
-      if: always() && matrix.os == 'macos-latest'
-      run: |
-        if [ -f wails.pid ]; then
-          kill $(cat wails.pid) || true
-          rm wails.pid
-        fi
-    
-    # Upload E2E test results on failure (macOS only)
-    - name: Upload E2E test results
-      if: failure() && matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: e2e-test-results-${{ matrix.os }}
-        path: |
-          frontend/tests/e2e/test-results/
-          frontend/tests/e2e/playwright-report/
-        retention-days: 7
+    # # Start Wails dev server in background for E2E tests (macOS only)
+    # - name: Start Wails dev server
+    #   if: matrix.os == 'macos-latest'
+    #   run: |
+    #     echo "Starting Wails dev server..."
+    #     echo "Go version: $(go version)"
+    #     echo "Wails version: $(wails version)"
+    #
+    #     # Check if frontend build exists
+    #     if [ ! -d "frontend/dist" ]; then
+    #       echo "Frontend dist directory not found, building..."
+    #       cd frontend && bun run build && cd ..
+    #     fi
+    #
+    #     echo "Starting wails dev server in background..."
+    #     wails dev > wails.log 2>&1 &
+    #     WAILS_PID=$!
+    #     echo $WAILS_PID > wails.pid
+    #     echo "Wails dev server started with PID: $WAILS_PID"
+    #
+    #     # Wait for port 34115 to be listening
+    #     echo "Waiting for Wails dev server to bind to port 34115..."
+    #     timeout=60
+    #     while ! lsof -iTCP:34115 -sTCP:LISTEN >/dev/null 2>&1 && [ $timeout -gt 0 ]; do
+    #       sleep 1
+    #       timeout=$((timeout - 1))
+    #       if [ $((60 - timeout)) -eq 30 ]; then
+    #         echo "Still waiting for port 34115 (30s elapsed)..."
+    #         # Check if the process is still running
+    #         if ! kill -0 $WAILS_PID 2>/dev/null; then
+    #           echo "Wails process died! Last log output:"
+    #           tail -20 wails.log
+    #           exit 1
+    #         fi
+    #       fi
+    #     done
+    #
+    #     if [ $timeout -eq 0 ]; then
+    #       echo "Port 34115 not listening after 60 seconds"
+    #       echo "Wails log contents:"
+    #       cat wails.log
+    #       exit 1
+    #     fi
+    #
+    #     echo "Port 34115 is now listening, proceeding with E2E tests"
+    #
+    #
+    # # Run E2E tests (macOS only)
+    # - name: Run E2E tests
+    #   if: matrix.os == 'macos-latest'
+    #   working-directory: frontend
+    #   run: bun run test:e2e
+    #   env:
+    #     CI: true
+    #
+    # # Stop Wails dev server (macOS only)
+    # - name: Stop Wails dev server
+    #   if: always() && matrix.os == 'macos-latest'
+    #   run: |
+    #     if [ -f wails.pid ]; then
+    #       kill $(cat wails.pid) || true
+    #       rm wails.pid
+    #     fi
+    #
+    # # Upload E2E test results on failure (macOS only)
+    # - name: Upload E2E test results
+    #   if: failure() && matrix.os == 'macos-latest'
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: e2e-test-results-${{ matrix.os }}
+    #     path: |
+    #       frontend/tests/e2e/test-results/
+    #       frontend/tests/e2e/playwright-report/
+    #     retention-days: 7
     
     # Build the application
     - name: Build application
