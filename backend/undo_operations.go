@@ -34,12 +34,14 @@ type OperationGroup struct {
 	Timestamp   time.Time         `json:"timestamp"`
 }
 
-// Global undo state
+// Global undo/redo state
 var (
 	operationHistory   []OperationGroup
+	redoHistory        []OperationGroup
 	currentTransaction *OperationGroup
 	maxHistorySize     = 50
 	isUndoing          = false // Prevent recording operations during undo
+	isRedoing          = false // Prevent recording operations during redo
 )
 
 // BeginOperationGroup starts a new operation group for transaction-like undo
@@ -74,8 +76,12 @@ func (a *App) CommitOperationGroup() {
 		operationHistory = operationHistory[len(operationHistory)-maxHistorySize:]
 	}
 
+	// Clear redo history when new operation is committed
+	redoHistory = nil
+
 	currentTransaction = nil
 	a.updateUndoMenuItem()
+	a.updateRedoMenuItem()
 }
 
 // RollbackOperationGroup cancels the current operation group without adding to history
@@ -85,8 +91,8 @@ func (a *App) RollbackOperationGroup() {
 
 // recordOperation adds an operation to the current group or creates a single-op group
 func (a *App) recordOperation(op SingleOperation) {
-	// Don't record operations during undo
-	if isUndoing {
+	// Don't record operations during undo or redo
+	if isUndoing || isRedoing {
 		return
 	}
 
@@ -107,7 +113,11 @@ func (a *App) recordOperation(op SingleOperation) {
 			operationHistory = operationHistory[len(operationHistory)-maxHistorySize:]
 		}
 
+		// Clear redo history when new operation is recorded
+		redoHistory = nil
+
 		a.updateUndoMenuItem()
+		a.updateRedoMenuItem()
 	}
 }
 
@@ -124,7 +134,7 @@ func (a *App) GetLastOperationDescription() string {
 	return operationHistory[len(operationHistory)-1].Description
 }
 
-// UndoLastOperation reverses the last operation group
+// UndoLastOperation reverses the last operation group and moves it to redo history
 func (a *App) UndoLastOperation() error {
 	if len(operationHistory) == 0 {
 		return fmt.Errorf("no operations to undo")
@@ -137,7 +147,7 @@ func (a *App) UndoLastOperation() error {
 	// Get the last operation group
 	lastGroup := operationHistory[len(operationHistory)-1]
 
-	// Remove from history
+	// Remove from undo history
 	operationHistory = operationHistory[:len(operationHistory)-1]
 
 	// Undo operations in reverse order
@@ -158,7 +168,16 @@ func (a *App) UndoLastOperation() error {
 		}
 	}
 
+	// Add to redo history
+	redoHistory = append(redoHistory, lastGroup)
+
+	// Maintain max redo history size
+	if len(redoHistory) > maxHistorySize {
+		redoHistory = redoHistory[len(redoHistory)-maxHistorySize:]
+	}
+
 	a.updateUndoMenuItem()
+	a.updateRedoMenuItem()
 	return nil
 }
 
@@ -174,6 +193,81 @@ func (a *App) updateUndoMenuItem() {
 	} else {
 		a.undoMenuItem.Label = "Undo"
 		a.undoMenuItem.Disabled = true
+	}
+
+	runtime.MenuUpdateApplicationMenu(a.ctx)
+}
+
+// CanRedo returns whether there are operations to redo
+func (a *App) CanRedo() bool {
+	return len(redoHistory) > 0
+}
+
+// GetLastRedoOperationDescription returns the description of the last redo operation group
+func (a *App) GetLastRedoOperationDescription() string {
+	if len(redoHistory) == 0 {
+		return ""
+	}
+	return redoHistory[len(redoHistory)-1].Description
+}
+
+// RedoLastOperation reapplies the last undone operation group
+func (a *App) RedoLastOperation() error {
+	if len(redoHistory) == 0 {
+		return fmt.Errorf("no operations to redo")
+	}
+
+	// Set redoing flag to prevent recording redo operations
+	isRedoing = true
+	defer func() { isRedoing = false }()
+
+	// Get the last redo operation group
+	lastGroup := redoHistory[len(redoHistory)-1]
+
+	// Remove from redo history
+	redoHistory = redoHistory[:len(redoHistory)-1]
+
+	// Redo operations in forward order
+	for _, op := range lastGroup.Operations {
+		switch op.Type {
+		case OpCopy:
+			// Redo a copy by re-inserting the line
+			if err := a.CopyToFile(op.SourceFile, op.TargetFile, op.LineNumber, op.LineContent); err != nil {
+				return fmt.Errorf("failed to redo copy: %w", err)
+			}
+		case OpRemove:
+			// Redo a remove by removing the line again
+			if err := a.RemoveLineFromFile(op.TargetFile, op.InsertIndex); err != nil {
+				return fmt.Errorf("failed to redo remove: %w", err)
+			}
+		}
+	}
+
+	// Add back to undo history
+	operationHistory = append(operationHistory, lastGroup)
+
+	// Maintain max undo history size
+	if len(operationHistory) > maxHistorySize {
+		operationHistory = operationHistory[len(operationHistory)-maxHistorySize:]
+	}
+
+	a.updateUndoMenuItem()
+	a.updateRedoMenuItem()
+	return nil
+}
+
+// updateRedoMenuItem updates the redo menu item text and state
+func (a *App) updateRedoMenuItem() {
+	if a.redoMenuItem == nil {
+		return
+	}
+
+	if len(redoHistory) > 0 {
+		a.redoMenuItem.Label = "Redo"
+		a.redoMenuItem.Disabled = false
+	} else {
+		a.redoMenuItem.Label = "Redo"
+		a.redoMenuItem.Disabled = true
 	}
 
 	runtime.MenuUpdateApplicationMenu(a.ctx)

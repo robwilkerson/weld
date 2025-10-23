@@ -7,6 +7,8 @@ import {menu} from '../models';
 
 export function BeginOperationGroup(arg1:string):Promise<string>;
 
+export function CanRedo():Promise<boolean>;
+
 export function CanUndo():Promise<boolean>;
 
 export function CommitOperationGroup():Promise<void>;
@@ -23,6 +25,8 @@ export function GetInitialFiles():Promise<backend.InitialFiles>;
 
 export function GetLastOperationDescription():Promise<string>;
 
+export function GetLastRedoOperationDescription():Promise<string>;
+
 export function GetMinimapVisible():Promise<boolean>;
 
 export function GetUnsavedFilesList():Promise<Array<string>>;
@@ -34,6 +38,8 @@ export function QuitWithoutSaving():Promise<void>;
 export function ReadFileContent(arg1:string):Promise<Array<string>>;
 
 export function ReadFileContentWithCache(arg1:string):Promise<Array<string>>;
+
+export function RedoLastOperation():Promise<void>;
 
 export function RemoveLineFromFile(arg1:string,arg2:number):Promise<void>;
 
@@ -62,6 +68,8 @@ export function SetMinimapVisible(arg1:boolean):Promise<void>;
 export function SetNextDiffMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetPrevDiffMenuItem(arg1:menu.MenuItem):Promise<void>;
+
+export function SetRedoMenuItem(arg1:menu.MenuItem):Promise<void>;
 
 export function SetSaveAllMenuItem(arg1:menu.MenuItem):Promise<void>;
 

@@ -12,6 +12,7 @@
  * - Shift + L: Copy current diff from right to left
  * - Shift + H: Copy current diff from left to right
  * - Cmd/Ctrl + Z or u: Undo last change
+ * - Cmd/Ctrl + Shift + Z or Ctrl + r: Redo last undone change
  */
 
 export interface KeyboardHandlerCallbacks {
@@ -24,6 +25,7 @@ export interface KeyboardHandlerCallbacks {
 	copyCurrentDiffLeftToRight?: () => void;
 	copyCurrentDiffRightToLeft?: () => void;
 	undoLastChange?: () => void;
+	redoLastChange?: () => void;
 	compareFiles?: () => void;
 	closeMenu?: () => void;
 }
@@ -138,9 +140,23 @@ export function handleKeydown(
 
 	// Undo shortcuts: Cmd/Ctrl+Z or vim 'u' key
 	if (callbacks.undoLastChange) {
-		if ((isCtrlOrCmd && event.key === "z") || event.key === "u") {
+		if (
+			(isCtrlOrCmd && event.key === "z" && !event.shiftKey) ||
+			event.key === "u"
+		) {
 			event.preventDefault();
 			callbacks.undoLastChange();
+		}
+	}
+
+	// Redo shortcuts: Cmd/Ctrl+Shift+Z or Ctrl+r (vim-style)
+	if (callbacks.redoLastChange) {
+		if (
+			(isCtrlOrCmd && event.key === "z" && event.shiftKey) ||
+			(event.ctrlKey && event.key === "r" && !event.metaKey)
+		) {
+			event.preventDefault();
+			callbacks.redoLastChange();
 		}
 	}
 }

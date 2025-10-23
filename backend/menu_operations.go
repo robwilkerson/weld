@@ -25,6 +25,11 @@ func (a *App) SetUndoMenuItem(item *menu.MenuItem) {
 	a.undoMenuItem = item
 }
 
+// SetRedoMenuItem stores a reference to the redo menu item
+func (a *App) SetRedoMenuItem(item *menu.MenuItem) {
+	a.redoMenuItem = item
+}
+
 // SetDiscardMenuItem stores a reference to the discard menu item
 func (a *App) SetDiscardMenuItem(item *menu.MenuItem) {
 	a.discardMenuItem = item

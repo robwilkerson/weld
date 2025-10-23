@@ -17,13 +17,19 @@ vi.mock("../../wailsjs/runtime/runtime", () => ({
 // Mock the App functions
 vi.mock("../../wailsjs/go/backend/App", () => ({
 	UndoLastOperation: vi.fn(),
+	RedoLastOperation: vi.fn(),
 	CanUndo: vi.fn(),
+	CanRedo: vi.fn(),
 	GetLastOperationDescription: vi.fn(),
+	GetLastRedoOperationDescription: vi.fn(),
 }));
 
 import {
+	CanRedo,
 	CanUndo,
 	GetLastOperationDescription,
+	GetLastRedoOperationDescription,
+	RedoLastOperation,
 	UndoLastOperation,
 } from "../../wailsjs/go/backend/App";
 
@@ -33,23 +39,31 @@ describe("UndoManager", () => {
 		mockEventHandlers.clear();
 		// Set default return values
 		vi.mocked(CanUndo).mockResolvedValue(false);
+		vi.mocked(CanRedo).mockResolvedValue(false);
 		vi.mocked(GetLastOperationDescription).mockResolvedValue("");
+		vi.mocked(GetLastRedoOperationDescription).mockResolvedValue("");
 	});
 
 	it("should expose public API methods", () => {
 		const { component } = render(UndoManager);
 
 		expect(typeof component.undo).toBe("function");
+		expect(typeof component.redo).toBe("function");
 		expect(typeof component.getUndoState).toBe("function");
+		expect(typeof component.getRedoState).toBe("function");
 		expect(typeof component.refreshUndoState).toBe("function");
 	});
 
 	it("should initialize with default state", () => {
 		const { component } = render(UndoManager);
 
-		const state = component.getUndoState();
-		expect(state.canUndo).toBe(false);
-		expect(state.lastOperationDescription).toBe("");
+		const undoState = component.getUndoState();
+		expect(undoState.canUndo).toBe(false);
+		expect(undoState.lastOperationDescription).toBe("");
+
+		const redoState = component.getRedoState();
+		expect(redoState.canRedo).toBe(false);
+		expect(redoState.lastRedoOperationDescription).toBe("");
 	});
 
 	it("should update undo state", async () => {
@@ -172,5 +186,147 @@ describe("UndoManager", () => {
 				detail: { canUndo: true, description: "Delete chunk" },
 			}),
 		);
+	});
+
+	// Redo tests
+	it("should update redo state", async () => {
+		vi.mocked(CanRedo).mockResolvedValue(true);
+		vi.mocked(GetLastRedoOperationDescription).mockResolvedValue(
+			"Copy chunk to left",
+		);
+
+		const { component } = render(UndoManager);
+
+		const redoStateChangedHandler = vi.fn();
+		component.$on("redoStateChanged", redoStateChangedHandler);
+
+		await component.refreshUndoState();
+
+		expect(CanRedo).toHaveBeenCalled();
+		expect(GetLastRedoOperationDescription).toHaveBeenCalled();
+
+		const state = component.getRedoState();
+		expect(state.canRedo).toBe(true);
+		expect(state.lastRedoOperationDescription).toBe("Copy chunk to left");
+
+		expect(redoStateChangedHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { canRedo: true, description: "Copy chunk to left" },
+			}),
+		);
+	});
+
+	it("should handle redo operation", async () => {
+		vi.mocked(CanRedo).mockResolvedValue(true);
+		vi.mocked(GetLastRedoOperationDescription).mockResolvedValue(
+			"Copy chunk to left",
+		);
+		vi.mocked(RedoLastOperation).mockResolvedValue(undefined);
+
+		const { component } = render(UndoManager);
+
+		// First update state
+		await component.refreshUndoState();
+
+		const statusUpdateHandler = vi.fn();
+		component.$on("statusUpdate", statusUpdateHandler);
+
+		await component.redo();
+
+		expect(RedoLastOperation).toHaveBeenCalled();
+		expect(statusUpdateHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { message: "Redoing last operation..." },
+			}),
+		);
+		expect(statusUpdateHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { message: "Redid: Copy chunk to left" },
+			}),
+		);
+	});
+
+	it("should handle redo error", async () => {
+		const error = new Error("Redo failed");
+		vi.mocked(RedoLastOperation).mockRejectedValue(error);
+
+		const { component } = render(UndoManager);
+
+		const statusUpdateHandler = vi.fn();
+		component.$on("statusUpdate", statusUpdateHandler);
+
+		await component.redo();
+
+		expect(statusUpdateHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { message: "Redo failed: Error: Redo failed" },
+			}),
+		);
+	});
+
+	it("should handle state when canRedo is false", async () => {
+		vi.mocked(CanRedo).mockResolvedValue(false);
+
+		const { component } = render(UndoManager);
+
+		await component.refreshUndoState();
+
+		expect(GetLastRedoOperationDescription).not.toHaveBeenCalled();
+
+		const state = component.getRedoState();
+		expect(state.canRedo).toBe(false);
+		expect(state.lastRedoOperationDescription).toBe("");
+	});
+
+	it("should dispatch redoStateChanged event", async () => {
+		vi.mocked(CanRedo).mockResolvedValue(true);
+		vi.mocked(GetLastRedoOperationDescription).mockResolvedValue(
+			"Remove chunk",
+		);
+
+		const { component } = render(UndoManager);
+
+		const redoStateChangedHandler = vi.fn();
+		component.$on("redoStateChanged", redoStateChangedHandler);
+
+		await component.refreshUndoState();
+
+		expect(redoStateChangedHandler).toHaveBeenCalledTimes(1);
+		expect(redoStateChangedHandler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				detail: { canRedo: true, description: "Remove chunk" },
+			}),
+		);
+	});
+
+	it("should handle undo/redo cycle", async () => {
+		// Setup: operation exists, can undo
+		vi.mocked(CanUndo).mockResolvedValue(true);
+		vi.mocked(GetLastOperationDescription).mockResolvedValue("Test operation");
+		vi.mocked(UndoLastOperation).mockResolvedValue(undefined);
+
+		const { component } = render(UndoManager);
+		await component.refreshUndoState();
+
+		// Undo - should create redo possibility
+		await component.undo();
+
+		// After undo, can redo
+		vi.mocked(CanUndo).mockResolvedValue(false);
+		vi.mocked(CanRedo).mockResolvedValue(true);
+		vi.mocked(GetLastRedoOperationDescription).mockResolvedValue(
+			"Test operation",
+		);
+		vi.mocked(RedoLastOperation).mockResolvedValue(undefined);
+
+		await component.refreshUndoState();
+
+		const state = component.getRedoState();
+		expect(state.canRedo).toBe(true);
+
+		// Redo the operation
+		await component.redo();
+
+		expect(RedoLastOperation).toHaveBeenCalled();
 	});
 });
