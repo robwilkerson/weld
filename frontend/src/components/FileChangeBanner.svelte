@@ -56,8 +56,8 @@ function handleHide() {
 		top: 0;
 		left: 0;
 		right: 0;
-		background: #f9e2af;
-		border-bottom: 1px solid #f5c99b;
+		background: var(--banner-bg);
+		border-bottom: 1px solid var(--banner-border);
 		z-index: 100;
 		animation: slideDown 0.3s ease-out;
 	}
@@ -83,7 +83,7 @@ function handleHide() {
 		flex-shrink: 0;
 		width: 20px;
 		height: 20px;
-		color: #df8e1d;
+		color: var(--banner-icon-color);
 	}
 
 	.icon :global(svg) {
@@ -93,7 +93,7 @@ function handleHide() {
 
 	.message {
 		flex: 1;
-		color: #40310a;
+		color: var(--banner-text-color);
 		font-size: 13px;
 		display: flex;
 		flex-direction: column;
@@ -111,7 +111,7 @@ function handleHide() {
 	}
 
 	.question {
-		color: #5c4813;
+		color: var(--banner-text-secondary);
 		font-size: 12px;
 	}
 
@@ -131,61 +131,23 @@ function handleHide() {
 	}
 
 	.reload-btn {
-		background: #df8e1d;
-		color: white;
-		border-color: #df8e1d;
+		background: var(--banner-btn-primary-bg);
+		color: var(--banner-btn-primary-color);
+		border-color: var(--banner-btn-primary-bg);
 	}
 
 	.reload-btn:hover {
-		background: #c77c0a;
-		border-color: #c77c0a;
+		background: var(--banner-btn-primary-bg-hover);
+		border-color: var(--banner-btn-primary-bg-hover);
 	}
 
 	.hide-btn {
-		background: transparent;
-		color: #5c4813;
-		border-color: #f5c99b;
+		background: var(--banner-btn-secondary-bg);
+		color: var(--banner-btn-secondary-color);
+		border-color: var(--banner-btn-secondary-border);
 	}
 
 	.hide-btn:hover {
-		background: #f5c99b;
-	}
-
-	/* Dark mode */
-	:global([data-theme="dark"]) .file-change-banner {
-		background: #665c54;
-		border-bottom-color: #504945;
-	}
-
-	:global([data-theme="dark"]) .icon {
-		color: #fabd2f;
-	}
-
-	:global([data-theme="dark"]) .message {
-		color: #fbf1c7;
-	}
-
-	:global([data-theme="dark"]) .question {
-		color: #ebdbb2;
-	}
-
-	:global([data-theme="dark"]) .reload-btn {
-		background: #fabd2f;
-		color: #282828;
-		border-color: #fabd2f;
-	}
-
-	:global([data-theme="dark"]) .reload-btn:hover {
-		background: #f9b915;
-		border-color: #f9b915;
-	}
-
-	:global([data-theme="dark"]) .hide-btn {
-		color: #ebdbb2;
-		border-color: #504945;
-	}
-
-	:global([data-theme="dark"]) .hide-btn:hover {
-		background: #504945;
+		background: var(--banner-btn-secondary-bg-hover);
 	}
 </style>
