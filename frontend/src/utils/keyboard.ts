@@ -12,7 +12,7 @@
  * - Shift + L: Copy current diff from right to left
  * - Shift + H: Copy current diff from left to right
  * - Cmd/Ctrl + Z or u: Undo last change
- * - Cmd/Ctrl + Shift + Z or Ctrl + r: Redo last undone change
+ * - Cmd/Ctrl + Shift + Z or r: Redo last undone change
  */
 
 export interface KeyboardHandlerCallbacks {
@@ -36,6 +36,18 @@ export interface KeyboardHandlerState {
 	isComparing: boolean;
 	hasCompletedComparison: boolean;
 	showMenu: boolean;
+}
+
+/**
+ * Checks if the event target is an input element where keyboard shortcuts should be disabled
+ */
+function isInputTarget(event: KeyboardEvent): boolean {
+	const target = event.target as HTMLElement;
+	return (
+		target.tagName === "INPUT" ||
+		target.tagName === "TEXTAREA" ||
+		target.isContentEditable
+	);
 }
 
 /**
@@ -142,18 +154,18 @@ export function handleKeydown(
 	if (callbacks.undoLastChange) {
 		if (
 			(isCtrlOrCmd && event.key === "z" && !event.shiftKey) ||
-			event.key === "u"
+			(event.key === "u" && !isInputTarget(event))
 		) {
 			event.preventDefault();
 			callbacks.undoLastChange();
 		}
 	}
 
-	// Redo shortcuts: Cmd/Ctrl+Shift+Z or 'r' key (matching 'u' for undo)
+	// Redo shortcuts: Cmd/Ctrl+Shift+Z or vim 'r' key
 	if (callbacks.redoLastChange) {
 		if (
-			(isCtrlOrCmd && event.key === "z" && event.shiftKey) ||
-			event.key === "r"
+			(isCtrlOrCmd && event.key === "Z" && event.shiftKey) ||
+			(event.key === "r" && !isInputTarget(event))
 		) {
 			event.preventDefault();
 			callbacks.redoLastChange();
