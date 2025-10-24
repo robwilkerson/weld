@@ -181,10 +181,8 @@ func (a *App) UndoLastOperation() error {
 	// Get the last operation group
 	lastGroup := operationHistory[len(operationHistory)-1]
 
-	// Remove from undo history
-	operationHistory = operationHistory[:len(operationHistory)-1]
-
-	// Undo operations in reverse order
+	// Undo operations in reverse order BEFORE modifying history stacks
+	// This ensures atomicity - if any operation fails, history remains unchanged
 	for i := len(lastGroup.Operations) - 1; i >= 0; i-- {
 		op := lastGroup.Operations[i]
 
@@ -201,6 +199,10 @@ func (a *App) UndoLastOperation() error {
 			}
 		}
 	}
+
+	// Only after successful undo, move between stacks
+	// Remove from undo history
+	operationHistory = operationHistory[:len(operationHistory)-1]
 
 	// Add to redo history
 	redoHistory = append(redoHistory, lastGroup)
@@ -275,10 +277,8 @@ func (a *App) RedoLastOperation() error {
 	// Get the last redo operation group
 	lastGroup := redoHistory[len(redoHistory)-1]
 
-	// Remove from redo history
-	redoHistory = redoHistory[:len(redoHistory)-1]
-
-	// Redo operations in forward order
+	// Redo operations in forward order BEFORE modifying history stacks
+	// This ensures atomicity - if any operation fails, history remains unchanged
 	for _, op := range lastGroup.Operations {
 		switch op.Type {
 		case OpCopy:
@@ -293,6 +293,10 @@ func (a *App) RedoLastOperation() error {
 			}
 		}
 	}
+
+	// Only after successful redo, move between stacks
+	// Remove from redo history
+	redoHistory = redoHistory[:len(redoHistory)-1]
 
 	// Add back to undo history
 	operationHistory = append(operationHistory, lastGroup)
