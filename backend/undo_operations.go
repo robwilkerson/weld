@@ -50,9 +50,16 @@ var (
 // BeginOperationGroup starts a new operation group for transaction-like undo
 func (a *App) BeginOperationGroup(description string) string {
 	historyMu.Lock()
-	defer historyMu.Unlock()
+	hadTransaction := currentTransaction != nil
+	id := a.beginOperationGroupLocked(description)
+	historyMu.Unlock()
 
-	return a.beginOperationGroupLocked(description)
+	// Update menu after releasing lock if we auto-committed a transaction
+	if hadTransaction && a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
+
+	return id
 }
 
 // beginOperationGroupLocked is the internal implementation without locking
