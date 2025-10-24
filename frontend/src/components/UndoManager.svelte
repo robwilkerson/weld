@@ -28,15 +28,16 @@ export async function undo(): Promise<void> {
 	try {
 		dispatch("statusUpdate", { message: "Undoing last operation..." });
 
+		// Capture description BEFORE undo, so we show what was actually undone
+		const undoneDesc = lastOperationDescription;
+
 		await UndoLastOperation();
 
 		// Update state
 		await updateUndoRedoState();
 
 		dispatch("statusUpdate", {
-			message: lastOperationDescription
-				? `Undid: ${lastOperationDescription}`
-				: "Undo complete",
+			message: undoneDesc ? `Undid: ${undoneDesc}` : "Undo complete",
 		});
 	} catch (error) {
 		console.error("Undo failed:", error);
