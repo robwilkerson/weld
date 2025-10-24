@@ -115,11 +115,49 @@ func (a *App) commitOperationGroupLocked() {
 }
 
 // RollbackOperationGroup cancels the current operation group without adding to history
+// It reverts all operations in the transaction to ensure files are not left in a modified state
 func (a *App) RollbackOperationGroup() {
 	historyMu.Lock()
-	defer historyMu.Unlock()
+
+	if currentTransaction == nil || len(currentTransaction.Operations) == 0 {
+		currentTransaction = nil
+		historyMu.Unlock()
+		return
+	}
+
+	// Set undoing flag to prevent recording rollback operations
+	isUndoing.Store(true)
+	defer isUndoing.Store(false)
+
+	// Revert operations in reverse order
+	for i := len(currentTransaction.Operations) - 1; i >= 0; i-- {
+		op := currentTransaction.Operations[i]
+
+		switch op.Type {
+		case OpCopy:
+			// Undo a copy by removing the line
+			if err := a.RemoveLineFromFile(op.TargetFile, op.InsertIndex); err != nil {
+				// Log error but continue with rollback
+				fmt.Printf("Warning: failed to rollback copy operation: %v\n", err)
+			}
+		case OpRemove:
+			// Undo a remove by re-inserting the line
+			if err := a.CopyToFile("", op.TargetFile, op.LineNumber, op.LineContent); err != nil {
+				// Log error but continue with rollback
+				fmt.Printf("Warning: failed to rollback remove operation: %v\n", err)
+			}
+		}
+	}
 
 	currentTransaction = nil
+	a.updateUndoMenuItemLocked()
+	a.updateRedoMenuItemLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 }
 
 // recordOperation adds an operation to the current group or creates a single-op group
