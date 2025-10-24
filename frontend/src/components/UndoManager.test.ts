@@ -51,7 +51,7 @@ describe("UndoManager", () => {
 		expect(typeof component.redo).toBe("function");
 		expect(typeof component.getUndoState).toBe("function");
 		expect(typeof component.getRedoState).toBe("function");
-		expect(typeof component.refreshUndoState).toBe("function");
+		expect(typeof component.refreshUndoRedoState).toBe("function");
 	});
 
 	it("should initialize with default state", () => {
@@ -77,7 +77,7 @@ describe("UndoManager", () => {
 		const undoStateChangedHandler = vi.fn();
 		component.$on("undoStateChanged", undoStateChangedHandler);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(CanUndo).toHaveBeenCalled();
 		expect(GetLastOperationDescription).toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("UndoManager", () => {
 		const { component } = render(UndoManager);
 
 		// First update state
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		const statusUpdateHandler = vi.fn();
 		component.$on("statusUpdate", statusUpdateHandler);
@@ -141,13 +141,13 @@ describe("UndoManager", () => {
 		);
 	});
 
-	it("should handle refreshUndoState error gracefully", async () => {
+	it("should handle refreshUndoRedoState error gracefully", async () => {
 		vi.mocked(CanUndo).mockRejectedValue(new Error("API error"));
 
 		const { component } = render(UndoManager);
 
 		// Should not throw
-		await expect(component.refreshUndoState()).resolves.not.toThrow();
+		await expect(component.refreshUndoRedoState()).resolves.not.toThrow();
 
 		// State should remain unchanged
 		const state = component.getUndoState();
@@ -160,7 +160,7 @@ describe("UndoManager", () => {
 
 		const { component } = render(UndoManager);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(GetLastOperationDescription).not.toHaveBeenCalled();
 
@@ -178,7 +178,7 @@ describe("UndoManager", () => {
 		const undoStateChangedHandler = vi.fn();
 		component.$on("undoStateChanged", undoStateChangedHandler);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(undoStateChangedHandler).toHaveBeenCalledTimes(1);
 		expect(undoStateChangedHandler).toHaveBeenCalledWith(
@@ -200,7 +200,7 @@ describe("UndoManager", () => {
 		const redoStateChangedHandler = vi.fn();
 		component.$on("redoStateChanged", redoStateChangedHandler);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(CanRedo).toHaveBeenCalled();
 		expect(GetLastRedoOperationDescription).toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe("UndoManager", () => {
 		const { component } = render(UndoManager);
 
 		// First update state
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		const statusUpdateHandler = vi.fn();
 		component.$on("statusUpdate", statusUpdateHandler);
@@ -269,7 +269,7 @@ describe("UndoManager", () => {
 
 		const { component } = render(UndoManager);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(GetLastRedoOperationDescription).not.toHaveBeenCalled();
 
@@ -289,7 +289,7 @@ describe("UndoManager", () => {
 		const redoStateChangedHandler = vi.fn();
 		component.$on("redoStateChanged", redoStateChangedHandler);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		expect(redoStateChangedHandler).toHaveBeenCalledTimes(1);
 		expect(redoStateChangedHandler).toHaveBeenCalledWith(
@@ -306,7 +306,7 @@ describe("UndoManager", () => {
 		vi.mocked(UndoLastOperation).mockResolvedValue(undefined);
 
 		const { component } = render(UndoManager);
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		// Undo - should create redo possibility
 		await component.undo();
@@ -319,7 +319,7 @@ describe("UndoManager", () => {
 		);
 		vi.mocked(RedoLastOperation).mockResolvedValue(undefined);
 
-		await component.refreshUndoState();
+		await component.refreshUndoRedoState();
 
 		const state = component.getRedoState();
 		expect(state.canRedo).toBe(true);

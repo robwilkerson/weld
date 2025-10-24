@@ -115,7 +115,7 @@ async function handleMenuRedo() {
 }
 
 // Update undo/redo state periodically or after operations
-export async function refreshUndoState() {
+export async function refreshUndoRedoState() {
 	await updateUndoRedoState();
 }
 

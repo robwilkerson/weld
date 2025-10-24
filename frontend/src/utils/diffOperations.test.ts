@@ -25,7 +25,7 @@ describe("diffOperations", () => {
 		diffResult: null,
 		compareBothFiles: vi.fn(),
 		updateUnsavedChangesStatus: vi.fn(),
-		refreshUndoState: vi.fn(),
+		refreshUndoRedoState: vi.fn(),
 	};
 
 	const mockDiffResult: DiffResult = {
@@ -441,7 +441,7 @@ describe("diffOperations", () => {
 
 			await diffOps.copyChunkToRight(chunk, mockContext);
 
-			expect(mockContext.refreshUndoState).toHaveBeenCalled();
+			expect(mockContext.refreshUndoRedoState).toHaveBeenCalled();
 		});
 
 		it("should begin and commit transaction for deleteChunkFromRight", async () => {
@@ -499,10 +499,10 @@ describe("diffOperations", () => {
 			expect(RollbackOperationGroup).not.toHaveBeenCalled();
 		});
 
-		it("should handle refreshUndoState being optional", async () => {
+		it("should handle refreshUndoRedoState being optional", async () => {
 			const contextWithoutRefresh = {
 				...mockContext,
-				refreshUndoState: undefined,
+				refreshUndoRedoState: undefined,
 			};
 
 			const chunk: LineChunk = {
@@ -511,7 +511,7 @@ describe("diffOperations", () => {
 				type: "removed",
 			};
 
-			// Should not throw when refreshUndoState is undefined
+			// Should not throw when refreshUndoRedoState is undefined
 			await expect(
 				diffOps.copyChunkToRight(chunk, contextWithoutRefresh),
 			).resolves.not.toThrow();

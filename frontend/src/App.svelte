@@ -706,9 +706,9 @@ function getDiffOperationContext(): diffOps.DiffOperationContext {
 		diffResult: $diffStore.rawDiff,
 		compareBothFiles,
 		updateUnsavedChangesStatus,
-		refreshUndoState: async () => {
+		refreshUndoRedoState: async () => {
 			if (undoManager) {
-				await undoManager.refreshUndoState();
+				await undoManager.refreshUndoRedoState();
 			}
 		},
 	};
