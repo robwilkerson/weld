@@ -10,7 +10,7 @@ func TestApp_UndoOperations(t *testing.T) {
 	// Reset global state
 	operationHistory = []OperationGroup{}
 	currentTransaction = nil
-	isUndoing = false
+	isUndoing.Store(false)
 
 	t.Run("BeginOperationGroup", func(t *testing.T) {
 		id := app.BeginOperationGroup("Test operation")
@@ -152,7 +152,7 @@ func TestApp_UndoOperations(t *testing.T) {
 	t.Run("recordOperation_DuringUndo", func(t *testing.T) {
 		// Clear history
 		operationHistory = []OperationGroup{}
-		isUndoing = true
+		isUndoing.Store(true)
 
 		// Try to record during undo
 		app.recordOperation(SingleOperation{
@@ -168,7 +168,7 @@ func TestApp_UndoOperations(t *testing.T) {
 			t.Error("Expected no operations to be recorded during undo")
 		}
 
-		isUndoing = false
+		isUndoing.Store(false)
 	})
 
 	t.Run("MaxHistorySize", func(t *testing.T) {
@@ -319,7 +319,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 		// Clear history and reset state
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Add a simple operation
 		app.recordOperation(SingleOperation{
@@ -341,7 +341,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 		}
 
 		// Check that isUndoing was reset
-		if isUndoing {
+		if isUndoing.Load() {
 			t.Error("Expected isUndoing to be reset to false after undo")
 		}
 	})
@@ -523,7 +523,7 @@ func TestApp_RedoOperations(t *testing.T) {
 		operationHistory = []OperationGroup{}
 		redoHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isRedoing = false
+		isRedoing.Store(false)
 
 		// Add a simple operation
 		app.recordOperation(SingleOperation{
@@ -551,7 +551,7 @@ func TestApp_RedoOperations(t *testing.T) {
 		}
 
 		// Check that isRedoing was reset
-		if isRedoing {
+		if isRedoing.Load() {
 			t.Error("Expected isRedoing to be reset to false after redo")
 		}
 	})
@@ -604,7 +604,7 @@ func TestApp_RedoOperations(t *testing.T) {
 		// Clear history
 		operationHistory = []OperationGroup{}
 		redoHistory = []OperationGroup{}
-		isRedoing = true
+		isRedoing.Store(true)
 
 		// Try to record during redo
 		app.recordOperation(SingleOperation{
@@ -620,7 +620,7 @@ func TestApp_RedoOperations(t *testing.T) {
 			t.Error("Expected no operations to be recorded during redo")
 		}
 
-		isRedoing = false
+		isRedoing.Store(false)
 	})
 
 	t.Run("MaxRedoHistorySize", func(t *testing.T) {
@@ -669,7 +669,7 @@ func TestApp_IntegrationWithFileOperations(t *testing.T) {
 		// Clear history and cache
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Set up initial file
 		app.storeFileInMemory("target.txt", []string{"line1", "line2"})
@@ -693,7 +693,7 @@ func TestApp_IntegrationWithFileOperations(t *testing.T) {
 		// Clear history and cache
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Set up initial file
 		app.storeFileInMemory("target.txt", []string{"line1", "line2", "line3"})

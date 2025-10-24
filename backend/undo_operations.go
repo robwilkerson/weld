@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,8 +42,8 @@ var (
 	redoHistory        []OperationGroup
 	currentTransaction *OperationGroup
 	maxHistorySize     = 50
-	isUndoing          = false // Prevent recording operations during undo
-	isRedoing          = false // Prevent recording operations during redo
+	isUndoing          atomic.Bool // Prevent recording operations during undo
+	isRedoing          atomic.Bool // Prevent recording operations during redo
 	historyMu          sync.Mutex
 )
 
@@ -114,7 +115,7 @@ func (a *App) RollbackOperationGroup() {
 func (a *App) recordOperation(op SingleOperation) {
 	// Don't record operations during undo or redo
 	// Check this BEFORE acquiring lock to avoid deadlock
-	if isUndoing || isRedoing {
+	if isUndoing.Load() || isRedoing.Load() {
 		return
 	}
 
@@ -175,8 +176,8 @@ func (a *App) UndoLastOperation() error {
 	}
 
 	// Set undoing flag to prevent recording undo operations
-	isUndoing = true
-	defer func() { isUndoing = false }()
+	isUndoing.Store(true)
+	defer isUndoing.Store(false)
 
 	// Get the last operation group
 	lastGroup := operationHistory[len(operationHistory)-1]
@@ -271,8 +272,8 @@ func (a *App) RedoLastOperation() error {
 	}
 
 	// Set redoing flag to prevent recording redo operations
-	isRedoing = true
-	defer func() { isRedoing = false }()
+	isRedoing.Store(true)
+	defer isRedoing.Store(false)
 
 	// Get the last redo operation group
 	lastGroup := redoHistory[len(redoHistory)-1]
