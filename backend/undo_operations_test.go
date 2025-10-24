@@ -256,7 +256,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 			TargetFile:  "target.txt",
 			LineNumber:  2, // Original line number before removal
 			LineContent: "line2",
-			InsertIndex: 0,
+			InsertIndex: 2, // Where to remove from when redoing
 		})
 		app.CommitOperationGroup()
 
@@ -299,7 +299,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 			TargetFile:  "left.txt",
 			LineNumber:  2,
 			LineContent: "left2",
-			InsertIndex: 0,
+			InsertIndex: 2, // Where to remove from when redoing
 		})
 		app.CommitOperationGroup()
 
@@ -493,7 +493,7 @@ func TestApp_RedoOperations(t *testing.T) {
 			TargetFile:  "target.txt",
 			LineNumber:  2,
 			LineContent: "line2",
-			InsertIndex: 0,
+			InsertIndex: 2, // Where to remove from when redoing
 		})
 		app.CommitOperationGroup()
 
@@ -629,20 +629,26 @@ func TestApp_RedoOperations(t *testing.T) {
 		redoHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
 
-		// Add more than maxHistorySize operations and undo them all
+		// Create initial file with enough lines
+		initialLines := make([]string, maxHistorySize+10)
+		for i := range initialLines {
+			initialLines[i] = "initial line"
+		}
+		app.storeFileInMemory("target.txt", initialLines)
+
+		// Add more than maxHistorySize operations
 		for i := 0; i < maxHistorySize+10; i++ {
-			app.storeFileInMemory("target.txt", []string{"test"})
 			app.recordOperation(SingleOperation{
 				Type:        OpCopy,
 				SourceFile:  "source.txt",
 				TargetFile:  "target.txt",
-				LineNumber:  i,
+				LineNumber:  i + 1,
 				LineContent: "test line",
-				InsertIndex: i,
+				InsertIndex: i + 1, // Insert at beginning each time
 			})
 		}
 
-		// Undo all operations (more than maxHistorySize)
+		// Undo all operations to populate redo history
 		for i := 0; i < maxHistorySize+10; i++ {
 			err := app.UndoLastOperation()
 			if err != nil {
