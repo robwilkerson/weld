@@ -125,7 +125,7 @@ onMount(() => {
 	EventsOn("menu-redo", handleMenuRedo);
 
 	// Initial state update
-	updateUndoRedoState();
+	void updateUndoRedoState();
 });
 
 onDestroy(() => {
