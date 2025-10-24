@@ -51,15 +51,16 @@ export async function redo(): Promise<void> {
 	try {
 		dispatch("statusUpdate", { message: "Redoing last operation..." });
 
+		// Capture description BEFORE redo, so we show what was actually redone
+		const redoneDesc = lastRedoOperationDescription;
+
 		await RedoLastOperation();
 
 		// Update state
 		await updateUndoRedoState();
 
 		dispatch("statusUpdate", {
-			message: lastRedoOperationDescription
-				? `Redid: ${lastRedoOperationDescription}`
-				: "Redo complete",
+			message: redoneDesc ? `Redid: ${redoneDesc}` : "Redo complete",
 		});
 	} catch (error) {
 		console.error("Redo failed:", error);
