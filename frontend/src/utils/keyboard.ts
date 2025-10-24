@@ -149,11 +149,11 @@ export function handleKeydown(
 		}
 	}
 
-	// Redo shortcuts: Cmd/Ctrl+Shift+Z or Ctrl+r (vim-style)
+	// Redo shortcuts: Cmd/Ctrl+Shift+Z or 'r' key (matching 'u' for undo)
 	if (callbacks.redoLastChange) {
 		if (
 			(isCtrlOrCmd && event.key === "z" && event.shiftKey) ||
-			(event.ctrlKey && event.key === "r" && !event.metaKey)
+			event.key === "r"
 		) {
 			event.preventDefault();
 			callbacks.redoLastChange();
