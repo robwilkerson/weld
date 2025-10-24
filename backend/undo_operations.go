@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,13 +43,22 @@ var (
 	maxHistorySize     = 50
 	isUndoing          = false // Prevent recording operations during undo
 	isRedoing          = false // Prevent recording operations during redo
+	historyMu          sync.Mutex
 )
 
 // BeginOperationGroup starts a new operation group for transaction-like undo
 func (a *App) BeginOperationGroup(description string) string {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
+	return a.beginOperationGroupLocked(description)
+}
+
+// beginOperationGroupLocked is the internal implementation without locking
+func (a *App) beginOperationGroupLocked(description string) string {
 	if currentTransaction != nil {
 		// If there's an existing transaction, commit it first
-		a.CommitOperationGroup()
+		a.commitOperationGroupLocked()
 	}
 
 	currentTransaction = &OperationGroup{
@@ -63,6 +73,14 @@ func (a *App) BeginOperationGroup(description string) string {
 
 // CommitOperationGroup finalizes the current operation group and adds it to history
 func (a *App) CommitOperationGroup() {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
+	a.commitOperationGroupLocked()
+}
+
+// commitOperationGroupLocked is the internal implementation without locking
+func (a *App) commitOperationGroupLocked() {
 	if currentTransaction == nil || len(currentTransaction.Operations) == 0 {
 		currentTransaction = nil
 		return
@@ -80,21 +98,28 @@ func (a *App) CommitOperationGroup() {
 	redoHistory = nil
 
 	currentTransaction = nil
-	a.updateUndoMenuItem()
-	a.updateRedoMenuItem()
+	a.updateUndoMenuItemLocked()
+	a.updateRedoMenuItemLocked()
 }
 
 // RollbackOperationGroup cancels the current operation group without adding to history
 func (a *App) RollbackOperationGroup() {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	currentTransaction = nil
 }
 
 // recordOperation adds an operation to the current group or creates a single-op group
 func (a *App) recordOperation(op SingleOperation) {
 	// Don't record operations during undo or redo
+	// Check this BEFORE acquiring lock to avoid deadlock
 	if isUndoing || isRedoing {
 		return
 	}
+
+	historyMu.Lock()
+	defer historyMu.Unlock()
 
 	if currentTransaction != nil {
 		currentTransaction.Operations = append(currentTransaction.Operations, op)
@@ -116,18 +141,24 @@ func (a *App) recordOperation(op SingleOperation) {
 		// Clear redo history when new operation is recorded
 		redoHistory = nil
 
-		a.updateUndoMenuItem()
-		a.updateRedoMenuItem()
+		a.updateUndoMenuItemLocked()
+		a.updateRedoMenuItemLocked()
 	}
 }
 
 // CanUndo returns whether there are operations to undo
 func (a *App) CanUndo() bool {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	return len(operationHistory) > 0
 }
 
 // GetLastOperationDescription returns the description of the last operation group
 func (a *App) GetLastOperationDescription() string {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	if len(operationHistory) == 0 {
 		return ""
 	}
@@ -136,6 +167,9 @@ func (a *App) GetLastOperationDescription() string {
 
 // UndoLastOperation reverses the last operation group and moves it to redo history
 func (a *App) UndoLastOperation() error {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	if len(operationHistory) == 0 {
 		return fmt.Errorf("no operations to undo")
 	}
@@ -176,13 +210,21 @@ func (a *App) UndoLastOperation() error {
 		redoHistory = redoHistory[len(redoHistory)-maxHistorySize:]
 	}
 
-	a.updateUndoMenuItem()
-	a.updateRedoMenuItem()
+	a.updateUndoMenuItemLocked()
+	a.updateRedoMenuItemLocked()
 	return nil
 }
 
 // updateUndoMenuItem updates the undo menu item text and state
 func (a *App) updateUndoMenuItem() {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
+	a.updateUndoMenuItemLocked()
+}
+
+// updateUndoMenuItemLocked is the internal implementation without locking
+func (a *App) updateUndoMenuItemLocked() {
 	if a.undoMenuItem == nil {
 		return
 	}
@@ -200,11 +242,17 @@ func (a *App) updateUndoMenuItem() {
 
 // CanRedo returns whether there are operations to redo
 func (a *App) CanRedo() bool {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	return len(redoHistory) > 0
 }
 
 // GetLastRedoOperationDescription returns the description of the last redo operation group
 func (a *App) GetLastRedoOperationDescription() string {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	if len(redoHistory) == 0 {
 		return ""
 	}
@@ -213,6 +261,9 @@ func (a *App) GetLastRedoOperationDescription() string {
 
 // RedoLastOperation reapplies the last undone operation group
 func (a *App) RedoLastOperation() error {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
 	if len(redoHistory) == 0 {
 		return fmt.Errorf("no operations to redo")
 	}
@@ -251,13 +302,21 @@ func (a *App) RedoLastOperation() error {
 		operationHistory = operationHistory[len(operationHistory)-maxHistorySize:]
 	}
 
-	a.updateUndoMenuItem()
-	a.updateRedoMenuItem()
+	a.updateUndoMenuItemLocked()
+	a.updateRedoMenuItemLocked()
 	return nil
 }
 
 // updateRedoMenuItem updates the redo menu item text and state
 func (a *App) updateRedoMenuItem() {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+
+	a.updateRedoMenuItemLocked()
+}
+
+// updateRedoMenuItemLocked is the internal implementation without locking
+func (a *App) updateRedoMenuItemLocked() {
 	if a.redoMenuItem == nil {
 		return
 	}
