@@ -383,6 +383,11 @@ export async function deleteLineFromRight(
 		// Refresh the diff to show the changes
 		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
+		}
 	}
 }
 
@@ -408,6 +413,11 @@ export async function deleteLineFromLeft(
 		// Refresh the diff to show the changes
 		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
+		}
 	}
 }
 
@@ -464,6 +474,11 @@ export async function copyLineToRight(
 	// Refresh the diff to show the changes
 	await context.compareBothFiles(true);
 	await context.updateUnsavedChangesStatus();
+
+	// Update undo state
+	if (context.refreshUndoRedoState) {
+		await context.refreshUndoRedoState();
+	}
 }
 
 export async function copyLineToLeft(
@@ -531,4 +546,9 @@ export async function copyLineToLeft(
 	// Refresh the diff to show the changes
 	await context.compareBothFiles(true);
 	await context.updateUnsavedChangesStatus();
+
+	// Update undo state
+	if (context.refreshUndoRedoState) {
+		await context.refreshUndoRedoState();
+	}
 }
