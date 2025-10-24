@@ -6,6 +6,10 @@ export function BeginOperationGroup(arg1) {
   return window['go']['backend']['App']['BeginOperationGroup'](arg1);
 }
 
+export function CanRedo() {
+  return window['go']['backend']['App']['CanRedo']();
+}
+
 export function CanUndo() {
   return window['go']['backend']['App']['CanUndo']();
 }
@@ -38,6 +42,10 @@ export function GetLastOperationDescription() {
   return window['go']['backend']['App']['GetLastOperationDescription']();
 }
 
+export function GetLastRedoOperationDescription() {
+  return window['go']['backend']['App']['GetLastRedoOperationDescription']();
+}
+
 export function GetMinimapVisible() {
   return window['go']['backend']['App']['GetMinimapVisible']();
 }
@@ -60,6 +68,10 @@ export function ReadFileContent(arg1) {
 
 export function ReadFileContentWithCache(arg1) {
   return window['go']['backend']['App']['ReadFileContentWithCache'](arg1);
+}
+
+export function RedoLastOperation() {
+  return window['go']['backend']['App']['RedoLastOperation']();
 }
 
 export function RemoveLineFromFile(arg1, arg2) {
@@ -116,6 +128,10 @@ export function SetNextDiffMenuItem(arg1) {
 
 export function SetPrevDiffMenuItem(arg1) {
   return window['go']['backend']['App']['SetPrevDiffMenuItem'](arg1);
+}
+
+export function SetRedoMenuItem(arg1) {
+  return window['go']['backend']['App']['SetRedoMenuItem'](arg1);
 }
 
 export function SetSaveAllMenuItem(arg1) {

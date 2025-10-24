@@ -1,8 +1,11 @@
 <script lang="ts">
 import { createEventDispatcher, onDestroy, onMount } from "svelte";
 import {
+	CanRedo,
 	CanUndo,
 	GetLastOperationDescription,
+	GetLastRedoOperationDescription,
+	RedoLastOperation,
 	UndoLastOperation,
 } from "../../wailsjs/go/backend/App";
 import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
@@ -10,27 +13,31 @@ import { EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 export interface UndoManagerEvents {
 	statusUpdate: { message: string };
 	undoStateChanged: { canUndo: boolean; description: string };
+	redoStateChanged: { canRedo: boolean; description: string };
 }
 
 const dispatch = createEventDispatcher<UndoManagerEvents>();
 
 let canUndo = false;
+let canRedo = false;
 let lastOperationDescription = "";
+let lastRedoOperationDescription = "";
 
 // Public API exposed to parent
 export async function undo(): Promise<void> {
 	try {
 		dispatch("statusUpdate", { message: "Undoing last operation..." });
 
+		// Capture description BEFORE undo, so we show what was actually undone
+		const undoneDesc = lastOperationDescription;
+
 		await UndoLastOperation();
 
 		// Update state
-		await updateUndoState();
+		await updateUndoRedoState();
 
 		dispatch("statusUpdate", {
-			message: lastOperationDescription
-				? `Undid: ${lastOperationDescription}`
-				: "Undo complete",
+			message: undoneDesc ? `Undid: ${undoneDesc}` : "Undo complete",
 		});
 	} catch (error) {
 		console.error("Undo failed:", error);
@@ -40,23 +47,63 @@ export async function undo(): Promise<void> {
 	}
 }
 
+export async function redo(): Promise<void> {
+	try {
+		dispatch("statusUpdate", { message: "Redoing last operation..." });
+
+		// Capture description BEFORE redo, so we show what was actually redone
+		const redoneDesc = lastRedoOperationDescription;
+
+		await RedoLastOperation();
+
+		// Update state
+		await updateUndoRedoState();
+
+		dispatch("statusUpdate", {
+			message: redoneDesc ? `Redid: ${redoneDesc}` : "Redo complete",
+		});
+	} catch (error) {
+		console.error("Redo failed:", error);
+		dispatch("statusUpdate", {
+			message: `Redo failed: ${error}`,
+		});
+	}
+}
+
 export function getUndoState() {
 	return { canUndo, lastOperationDescription };
 }
 
-async function updateUndoState() {
+export function getRedoState() {
+	return { canRedo, lastRedoOperationDescription };
+}
+
+async function updateUndoRedoState() {
 	try {
-		canUndo = await CanUndo();
-		lastOperationDescription = canUndo
-			? await GetLastOperationDescription()
-			: "";
+		// Fetch undo/redo flags concurrently for better performance
+		const [undoFlag, redoFlag] = await Promise.all([CanUndo(), CanRedo()]);
+		canUndo = undoFlag;
+		canRedo = redoFlag;
+
+		// Fetch descriptions concurrently (only if needed)
+		const [undoDesc, redoDesc] = await Promise.all([
+			canUndo ? GetLastOperationDescription() : Promise.resolve(""),
+			canRedo ? GetLastRedoOperationDescription() : Promise.resolve(""),
+		]);
+		lastOperationDescription = undoDesc;
+		lastRedoOperationDescription = redoDesc;
 
 		dispatch("undoStateChanged", {
 			canUndo,
 			description: lastOperationDescription,
 		});
+
+		dispatch("redoStateChanged", {
+			canRedo,
+			description: lastRedoOperationDescription,
+		});
 	} catch (error) {
-		console.error("Failed to update undo state:", error);
+		console.error("Failed to update undo/redo state:", error);
 	}
 }
 
@@ -65,20 +112,27 @@ async function handleMenuUndo() {
 	await undo();
 }
 
-// Update undo state periodically or after operations
-export async function refreshUndoState() {
-	await updateUndoState();
+// Handle menu-triggered redo
+async function handleMenuRedo() {
+	await redo();
+}
+
+// Update undo/redo state periodically or after operations
+export async function refreshUndoRedoState() {
+	await updateUndoRedoState();
 }
 
 onMount(() => {
 	// Listen for menu events
 	EventsOn("menu-undo", handleMenuUndo);
+	EventsOn("menu-redo", handleMenuRedo);
 
 	// Initial state update
-	updateUndoState();
+	void updateUndoRedoState();
 });
 
 onDestroy(() => {
 	EventsOff("menu-undo");
+	EventsOff("menu-redo");
 });
 </script>

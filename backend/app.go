@@ -24,6 +24,7 @@ type App struct {
 	minimapVisible    bool
 	minimapMenuItem   *menu.MenuItem
 	undoMenuItem      *menu.MenuItem
+	redoMenuItem      *menu.MenuItem
 	discardMenuItem   *menu.MenuItem
 	saveLeftMenuItem  *menu.MenuItem
 	saveRightMenuItem *menu.MenuItem

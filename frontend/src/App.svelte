@@ -706,9 +706,9 @@ function getDiffOperationContext(): diffOps.DiffOperationContext {
 		diffResult: $diffStore.rawDiff,
 		compareBothFiles,
 		updateUnsavedChangesStatus,
-		refreshUndoState: async () => {
+		refreshUndoRedoState: async () => {
 			if (undoManager) {
-				await undoManager.refreshUndoState();
+				await undoManager.refreshUndoRedoState();
 			}
 		},
 	};
@@ -1052,6 +1052,7 @@ function handleKeydown(event: KeyboardEvent): void {
 			copyCurrentDiffLeftToRight,
 			copyCurrentDiffRightToLeft,
 			undoLastChange,
+			redoLastChange,
 			compareFiles: compareBothFiles,
 			closeMenu: () => uiStore.setMenuVisible(false),
 		},
@@ -1068,6 +1069,12 @@ function handleKeydown(event: KeyboardEvent): void {
 async function undoLastChange(): Promise<void> {
 	if (undoManager) {
 		await undoManager.undo();
+	}
+}
+
+async function redoLastChange(): Promise<void> {
+	if (undoManager) {
+		await undoManager.redo();
 	}
 }
 

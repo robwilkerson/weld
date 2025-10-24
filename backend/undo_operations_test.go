@@ -10,7 +10,7 @@ func TestApp_UndoOperations(t *testing.T) {
 	// Reset global state
 	operationHistory = []OperationGroup{}
 	currentTransaction = nil
-	isUndoing = false
+	isUndoing.Store(false)
 
 	t.Run("BeginOperationGroup", func(t *testing.T) {
 		id := app.BeginOperationGroup("Test operation")
@@ -152,7 +152,7 @@ func TestApp_UndoOperations(t *testing.T) {
 	t.Run("recordOperation_DuringUndo", func(t *testing.T) {
 		// Clear history
 		operationHistory = []OperationGroup{}
-		isUndoing = true
+		isUndoing.Store(true)
 
 		// Try to record during undo
 		app.recordOperation(SingleOperation{
@@ -168,7 +168,7 @@ func TestApp_UndoOperations(t *testing.T) {
 			t.Error("Expected no operations to be recorded during undo")
 		}
 
-		isUndoing = false
+		isUndoing.Store(false)
 	})
 
 	t.Run("MaxHistorySize", func(t *testing.T) {
@@ -256,7 +256,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 			TargetFile:  "target.txt",
 			LineNumber:  2, // Original line number before removal
 			LineContent: "line2",
-			InsertIndex: 0,
+			InsertIndex: 2, // Where to remove from when redoing
 		})
 		app.CommitOperationGroup()
 
@@ -299,7 +299,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 			TargetFile:  "left.txt",
 			LineNumber:  2,
 			LineContent: "left2",
-			InsertIndex: 0,
+			InsertIndex: 2, // Where to remove from when redoing
 		})
 		app.CommitOperationGroup()
 
@@ -319,7 +319,7 @@ func TestApp_UndoLastOperation(t *testing.T) {
 		// Clear history and reset state
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Add a simple operation
 		app.recordOperation(SingleOperation{
@@ -341,8 +341,323 @@ func TestApp_UndoLastOperation(t *testing.T) {
 		}
 
 		// Check that isUndoing was reset
-		if isUndoing {
+		if isUndoing.Load() {
 			t.Error("Expected isUndoing to be reset to false after undo")
+		}
+	})
+}
+
+func TestApp_RedoOperations(t *testing.T) {
+	app := &App{}
+
+	t.Run("CanRedo", func(t *testing.T) {
+		// Clear history
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+
+		if app.CanRedo() {
+			t.Error("Expected CanRedo to return false with empty redo history")
+		}
+
+		// Add an operation and undo it
+		app.BeginOperationGroup("Test redo")
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  1,
+			LineContent: "test line",
+			InsertIndex: 1,
+		})
+		app.CommitOperationGroup()
+
+		// Set up file state for undo
+		fileCache = make(map[string][]string)
+		app.storeFileInMemory("target.txt", []string{"test line"})
+
+		// Undo to populate redo history
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		if !app.CanRedo() {
+			t.Error("Expected CanRedo to return true after undo")
+		}
+	})
+
+	t.Run("GetLastRedoOperationDescription", func(t *testing.T) {
+		// Clear history
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+
+		if app.GetLastRedoOperationDescription() != "" {
+			t.Error("Expected empty description with no redo operations")
+		}
+
+		// Add an operation and undo it
+		app.BeginOperationGroup("Redo description test")
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  1,
+			LineContent: "test line",
+			InsertIndex: 1,
+		})
+		app.CommitOperationGroup()
+
+		// Set up file state for undo
+		fileCache = make(map[string][]string)
+		app.storeFileInMemory("target.txt", []string{"test line"})
+
+		// Undo to populate redo history
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		if app.GetLastRedoOperationDescription() != "Redo description test" {
+			t.Errorf("Expected 'Redo description test', got %s", app.GetLastRedoOperationDescription())
+		}
+	})
+
+	t.Run("RedoLastOperation_NoOperations", func(t *testing.T) {
+		// Clear redo history
+		redoHistory = []OperationGroup{}
+
+		err := app.RedoLastOperation()
+		if err == nil {
+			t.Error("Expected error when redoing with no operations")
+		}
+	})
+
+	t.Run("RedoLastOperation_CopyOperation", func(t *testing.T) {
+		// Clear history and reset state
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		fileCache = make(map[string][]string)
+
+		// Set up initial file state
+		targetLines := []string{"line1", "line2", "line3"}
+		app.storeFileInMemory("target.txt", targetLines)
+
+		// Record a copy operation
+		app.BeginOperationGroup("Copy test")
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  2,
+			LineContent: "inserted line",
+			InsertIndex: 2,
+		})
+		app.CommitOperationGroup()
+
+		// Undo the operation
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		// Redo the operation
+		err = app.RedoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during redo: %v", err)
+		}
+
+		// Check that the operation was moved back to undo history
+		if len(operationHistory) != 1 {
+			t.Errorf("Expected 1 operation in undo history, got %d", len(operationHistory))
+		}
+		if len(redoHistory) != 0 {
+			t.Errorf("Expected 0 operations in redo history, got %d", len(redoHistory))
+		}
+	})
+
+	t.Run("RedoLastOperation_RemoveOperation", func(t *testing.T) {
+		// Clear history and reset state
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		fileCache = make(map[string][]string)
+
+		// Set up initial file state (after a line was removed)
+		targetLines := []string{"line1", "line3"}
+		app.storeFileInMemory("target.txt", targetLines)
+
+		// Record a remove operation
+		app.BeginOperationGroup("Remove test")
+		app.recordOperation(SingleOperation{
+			Type:        OpRemove,
+			SourceFile:  "",
+			TargetFile:  "target.txt",
+			LineNumber:  2,
+			LineContent: "line2",
+			InsertIndex: 2, // Where to remove from when redoing
+		})
+		app.CommitOperationGroup()
+
+		// Undo the operation (re-inserts line2)
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		// Redo the operation (removes line2 again)
+		err = app.RedoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during redo: %v", err)
+		}
+
+		// Check that the operation was moved back to undo history
+		if len(operationHistory) != 1 {
+			t.Errorf("Expected 1 operation in undo history, got %d", len(operationHistory))
+		}
+		if len(redoHistory) != 0 {
+			t.Errorf("Expected 0 operations in redo history, got %d", len(redoHistory))
+		}
+	})
+
+	t.Run("RedoLastOperation_SetsRedoingFlag", func(t *testing.T) {
+		// Clear history and reset state
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		fileCache = make(map[string][]string)
+		isRedoing.Store(false)
+
+		// Add a simple operation
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  1,
+			LineContent: "test",
+			InsertIndex: 1,
+		})
+
+		// Store target file to avoid errors
+		app.storeFileInMemory("target.txt", []string{"test"})
+
+		// Undo the operation
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		// Redo the operation
+		err = app.RedoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during redo: %v", err)
+		}
+
+		// Check that isRedoing was reset
+		if isRedoing.Load() {
+			t.Error("Expected isRedoing to be reset to false after redo")
+		}
+	})
+
+	t.Run("RedoHistory_ClearedOnNewOperation", func(t *testing.T) {
+		// Clear history and reset state
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		fileCache = make(map[string][]string)
+
+		// Add an operation
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  1,
+			LineContent: "test",
+			InsertIndex: 1,
+		})
+
+		// Store target file to avoid errors
+		app.storeFileInMemory("target.txt", []string{"test"})
+
+		// Undo to populate redo history
+		err := app.UndoLastOperation()
+		if err != nil {
+			t.Errorf("Unexpected error during undo: %v", err)
+		}
+
+		if len(redoHistory) == 0 {
+			t.Error("Expected redo history to be populated after undo")
+		}
+
+		// Add a new operation - should clear redo history
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source2.txt",
+			TargetFile:  "target2.txt",
+			LineNumber:  1,
+			LineContent: "new operation",
+			InsertIndex: 1,
+		})
+
+		if len(redoHistory) != 0 {
+			t.Error("Expected redo history to be cleared after new operation")
+		}
+	})
+
+	t.Run("recordOperation_DuringRedo", func(t *testing.T) {
+		// Clear history
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		isRedoing.Store(true)
+
+		// Try to record during redo
+		app.recordOperation(SingleOperation{
+			Type:        OpCopy,
+			SourceFile:  "source.txt",
+			TargetFile:  "target.txt",
+			LineNumber:  1,
+			LineContent: "test line",
+			InsertIndex: 1,
+		})
+
+		if len(operationHistory) != 0 {
+			t.Error("Expected no operations to be recorded during redo")
+		}
+
+		isRedoing.Store(false)
+	})
+
+	t.Run("MaxRedoHistorySize", func(t *testing.T) {
+		// Clear history and reset state
+		operationHistory = []OperationGroup{}
+		redoHistory = []OperationGroup{}
+		fileCache = make(map[string][]string)
+
+		// Create initial file with enough lines
+		initialLines := make([]string, maxHistorySize+10)
+		for i := range initialLines {
+			initialLines[i] = "initial line"
+		}
+		app.storeFileInMemory("target.txt", initialLines)
+
+		// Add more than maxHistorySize operations
+		for i := 0; i < maxHistorySize+10; i++ {
+			app.recordOperation(SingleOperation{
+				Type:        OpCopy,
+				SourceFile:  "source.txt",
+				TargetFile:  "target.txt",
+				LineNumber:  i + 1,
+				LineContent: "test line",
+				InsertIndex: i + 1, // Insert at beginning each time
+			})
+		}
+
+		// Undo all operations to populate redo history
+		for i := 0; i < maxHistorySize+10; i++ {
+			err := app.UndoLastOperation()
+			if err != nil {
+				break
+			}
+		}
+
+		if len(redoHistory) != maxHistorySize {
+			t.Errorf("Expected redo history size to be capped at %d, got %d", maxHistorySize, len(redoHistory))
 		}
 	})
 }
@@ -354,7 +669,7 @@ func TestApp_IntegrationWithFileOperations(t *testing.T) {
 		// Clear history and cache
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Set up initial file
 		app.storeFileInMemory("target.txt", []string{"line1", "line2"})
@@ -378,7 +693,7 @@ func TestApp_IntegrationWithFileOperations(t *testing.T) {
 		// Clear history and cache
 		operationHistory = []OperationGroup{}
 		fileCache = make(map[string][]string)
-		isUndoing = false
+		isUndoing.Store(false)
 
 		// Set up initial file
 		app.storeFileInMemory("target.txt", []string{"line1", "line2", "line3"})

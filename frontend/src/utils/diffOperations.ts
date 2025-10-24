@@ -13,7 +13,7 @@ export interface DiffOperationContext {
 	diffResult: DiffResult | null;
 	compareBothFiles: (preserveCurrentDiff: boolean) => Promise<void>;
 	updateUnsavedChangesStatus: () => Promise<void>;
-	refreshUndoState?: () => Promise<void>;
+	refreshUndoRedoState?: () => Promise<void>;
 }
 
 export async function copyChunkToRight(
@@ -57,8 +57,8 @@ export async function copyChunkToRight(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -123,8 +123,8 @@ export async function copyChunkToLeft(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -183,8 +183,8 @@ export async function copyModifiedChunkToRight(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -243,8 +243,8 @@ export async function copyModifiedChunkToLeft(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -297,8 +297,8 @@ export async function deleteChunkFromRight(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -351,8 +351,8 @@ export async function deleteChunkFromLeft(
 		await updateUnsavedChangesStatus();
 
 		// Update undo state
-		if (context.refreshUndoState) {
-			await context.refreshUndoState();
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
 		}
 	} catch (error) {
 		// Rollback on error
@@ -383,6 +383,11 @@ export async function deleteLineFromRight(
 		// Refresh the diff to show the changes
 		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
+		}
 	}
 }
 
@@ -408,6 +413,11 @@ export async function deleteLineFromLeft(
 		// Refresh the diff to show the changes
 		await compareBothFiles(true);
 		await updateUnsavedChangesStatus();
+
+		// Update undo state
+		if (context.refreshUndoRedoState) {
+			await context.refreshUndoRedoState();
+		}
 	}
 }
 
@@ -464,6 +474,11 @@ export async function copyLineToRight(
 	// Refresh the diff to show the changes
 	await context.compareBothFiles(true);
 	await context.updateUnsavedChangesStatus();
+
+	// Update undo state
+	if (context.refreshUndoRedoState) {
+		await context.refreshUndoRedoState();
+	}
 }
 
 export async function copyLineToLeft(
@@ -531,4 +546,9 @@ export async function copyLineToLeft(
 	// Refresh the diff to show the changes
 	await context.compareBothFiles(true);
 	await context.updateUnsavedChangesStatus();
+
+	// Update undo state
+	if (context.refreshUndoRedoState) {
+		await context.refreshUndoRedoState();
+	}
 }

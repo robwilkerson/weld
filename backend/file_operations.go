@@ -239,9 +239,9 @@ func (a *App) RemoveLineFromFile(targetFile string, lineNumber int) error {
 		Type:        OpRemove,
 		SourceFile:  "",
 		TargetFile:  targetFile,
-		LineNumber:  lineNumber,
+		LineNumber:  lineNumber, // Used for undo (where to reinsert)
 		LineContent: removedContent,
-		InsertIndex: 0,
+		InsertIndex: lineNumber, // Used for redo (where to remove from)
 	})
 
 	return nil

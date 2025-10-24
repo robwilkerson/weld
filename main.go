@@ -84,6 +84,17 @@ func BuildMenu(app *backend.App) *menu.Menu {
 	// Set initial state
 	undoItem.Disabled = true
 
+	// Redo menu item
+	redoItem := editMenu.AddText("Redo", keys.Combo("z", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.GetContext(), "menu-redo")
+	})
+
+	// Store reference to redo menu item
+	app.SetRedoMenuItem(redoItem)
+
+	// Set initial state
+	redoItem.Disabled = true
+
 	// Discard All Changes menu item
 	discardItem := editMenu.AddText("Discard All Changes", nil, func(_ *menu.CallbackData) {
 		runtime.EventsEmit(app.GetContext(), "menu-discard-all")
