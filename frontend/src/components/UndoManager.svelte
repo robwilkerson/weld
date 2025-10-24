@@ -80,15 +80,18 @@ export function getRedoState() {
 
 async function updateUndoRedoState() {
 	try {
-		canUndo = await CanUndo();
-		lastOperationDescription = canUndo
-			? await GetLastOperationDescription()
-			: "";
+		// Fetch undo/redo flags concurrently for better performance
+		const [undoFlag, redoFlag] = await Promise.all([CanUndo(), CanRedo()]);
+		canUndo = undoFlag;
+		canRedo = redoFlag;
 
-		canRedo = await CanRedo();
-		lastRedoOperationDescription = canRedo
-			? await GetLastRedoOperationDescription()
-			: "";
+		// Fetch descriptions concurrently (only if needed)
+		const [undoDesc, redoDesc] = await Promise.all([
+			canUndo ? GetLastOperationDescription() : Promise.resolve(""),
+			canRedo ? GetLastRedoOperationDescription() : Promise.resolve(""),
+		]);
+		lastOperationDescription = undoDesc;
+		lastRedoOperationDescription = redoDesc;
 
 		dispatch("undoStateChanged", {
 			canUndo,
