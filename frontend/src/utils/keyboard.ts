@@ -42,7 +42,10 @@ export interface KeyboardHandlerState {
  * Checks if the event target is an input element where keyboard shortcuts should be disabled
  */
 function isInputTarget(event: KeyboardEvent): boolean {
-	const target = event.target as HTMLElement;
+	const target = event.target as HTMLElement | null;
+	if (!target) {
+		return false;
+	}
 	return (
 		target.tagName === "INPUT" ||
 		target.tagName === "TEXTAREA" ||
