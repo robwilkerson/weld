@@ -75,9 +75,13 @@ func (a *App) beginOperationGroupLocked(description string) string {
 // CommitOperationGroup finalizes the current operation group and adds it to history
 func (a *App) CommitOperationGroup() {
 	historyMu.Lock()
-	defer historyMu.Unlock()
-
 	a.commitOperationGroupLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 }
 
 // commitOperationGroupLocked is the internal implementation without locking
@@ -120,7 +124,7 @@ func (a *App) recordOperation(op SingleOperation) {
 	}
 
 	historyMu.Lock()
-	defer historyMu.Unlock()
+	needsMenuUpdate := false
 
 	if currentTransaction != nil {
 		currentTransaction.Operations = append(currentTransaction.Operations, op)
@@ -144,6 +148,13 @@ func (a *App) recordOperation(op SingleOperation) {
 
 		a.updateUndoMenuItemLocked()
 		a.updateRedoMenuItemLocked()
+		needsMenuUpdate = true
+	}
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if needsMenuUpdate && a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
 	}
 }
 
@@ -169,9 +180,9 @@ func (a *App) GetLastOperationDescription() string {
 // UndoLastOperation reverses the last operation group and moves it to redo history
 func (a *App) UndoLastOperation() error {
 	historyMu.Lock()
-	defer historyMu.Unlock()
 
 	if len(operationHistory) == 0 {
+		historyMu.Unlock()
 		return fmt.Errorf("no operations to undo")
 	}
 
@@ -191,11 +202,13 @@ func (a *App) UndoLastOperation() error {
 		case OpCopy:
 			// Undo a copy by removing the line
 			if err := a.RemoveLineFromFile(op.TargetFile, op.InsertIndex); err != nil {
+				historyMu.Unlock()
 				return fmt.Errorf("failed to undo copy: %w", err)
 			}
 		case OpRemove:
 			// Undo a remove by re-inserting the line
 			if err := a.CopyToFile("", op.TargetFile, op.LineNumber, op.LineContent); err != nil {
+				historyMu.Unlock()
 				return fmt.Errorf("failed to undo remove: %w", err)
 			}
 		}
@@ -215,18 +228,29 @@ func (a *App) UndoLastOperation() error {
 
 	a.updateUndoMenuItemLocked()
 	a.updateRedoMenuItemLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 	return nil
 }
 
 // updateUndoMenuItem updates the undo menu item text and state
 func (a *App) updateUndoMenuItem() {
 	historyMu.Lock()
-	defer historyMu.Unlock()
-
 	a.updateUndoMenuItemLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 }
 
 // updateUndoMenuItemLocked is the internal implementation without locking
+// Does NOT call MenuUpdateApplicationMenu - caller must do that after unlocking
 func (a *App) updateUndoMenuItemLocked() {
 	if a.undoMenuItem == nil {
 		return
@@ -239,8 +263,6 @@ func (a *App) updateUndoMenuItemLocked() {
 		a.undoMenuItem.Label = "Undo"
 		a.undoMenuItem.Disabled = true
 	}
-
-	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
 
 // CanRedo returns whether there are operations to redo
@@ -265,9 +287,9 @@ func (a *App) GetLastRedoOperationDescription() string {
 // RedoLastOperation reapplies the last undone operation group
 func (a *App) RedoLastOperation() error {
 	historyMu.Lock()
-	defer historyMu.Unlock()
 
 	if len(redoHistory) == 0 {
+		historyMu.Unlock()
 		return fmt.Errorf("no operations to redo")
 	}
 
@@ -285,11 +307,13 @@ func (a *App) RedoLastOperation() error {
 		case OpCopy:
 			// Redo a copy by re-inserting the line
 			if err := a.CopyToFile(op.SourceFile, op.TargetFile, op.LineNumber, op.LineContent); err != nil {
+				historyMu.Unlock()
 				return fmt.Errorf("failed to redo copy: %w", err)
 			}
 		case OpRemove:
 			// Redo a remove by removing the line again
 			if err := a.RemoveLineFromFile(op.TargetFile, op.InsertIndex); err != nil {
+				historyMu.Unlock()
 				return fmt.Errorf("failed to redo remove: %w", err)
 			}
 		}
@@ -309,18 +333,29 @@ func (a *App) RedoLastOperation() error {
 
 	a.updateUndoMenuItemLocked()
 	a.updateRedoMenuItemLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 	return nil
 }
 
 // updateRedoMenuItem updates the redo menu item text and state
 func (a *App) updateRedoMenuItem() {
 	historyMu.Lock()
-	defer historyMu.Unlock()
-
 	a.updateRedoMenuItemLocked()
+	historyMu.Unlock()
+
+	// Update menu after releasing lock to avoid blocking while holding mutex
+	if a.ctx != nil {
+		runtime.MenuUpdateApplicationMenu(a.ctx)
+	}
 }
 
 // updateRedoMenuItemLocked is the internal implementation without locking
+// Does NOT call MenuUpdateApplicationMenu - caller must do that after unlocking
 func (a *App) updateRedoMenuItemLocked() {
 	if a.redoMenuItem == nil {
 		return
@@ -333,6 +368,4 @@ func (a *App) updateRedoMenuItemLocked() {
 		a.redoMenuItem.Label = "Redo"
 		a.redoMenuItem.Disabled = true
 	}
-
-	runtime.MenuUpdateApplicationMenu(a.ctx)
 }
